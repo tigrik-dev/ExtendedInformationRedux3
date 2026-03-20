@@ -35,6 +35,9 @@
     <Content Include="Content\UILibrary_ExtendedInformationRedux3.upk" />
     <Content Include="Localization\ExtendedInformationRedux3.fra" />
     <Content Include="Localization\ExtendedInformationRedux3.int" />
+    <Content Include="Src\ExtendedInformationRedux3\Classes\ExpectedDamageLib.uc">
+      <SubType>Content</SubType>
+    </Content>
     <Content Include="Src\ExtendedInformationRedux3\Classes\ExtendedInformationRedux3_MCMScreen.uc" />
     <Content Include="Src\ExtendedInformationRedux3\Classes\ExtendedInformationRedux3_MCMScreenListener.uc" />
     <Content Include="Src\ExtendedInformationRedux3\Classes\ExtendedInformationRedux3_UITacticalHUD_ShotHUD.uc" />

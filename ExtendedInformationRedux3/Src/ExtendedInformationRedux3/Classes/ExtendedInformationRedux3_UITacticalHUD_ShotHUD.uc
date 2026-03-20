@@ -176,15 +176,6 @@ simulated function Update() {
 	local int Chance[3];
 
 	// Tigrik: ExpectedDamage
-	local float AvgNormal, AvgCrit, AvgGraze;
-	local float ExpectedDamage;
-	local float pCrit, pHit, pGraze;
-	local float GrazeMultiplier;
-	local string ExpectedDamageStr;
-	local int ED_CritChance;
-	local int ED_HitChance;
-	local int ED_GrazeChance;
-	local int ED_MissChance;
 	local bool ShouldPrintDamage;
 
 	initValues();
@@ -378,67 +369,18 @@ simulated function Update() {
                 // Generate a display for Crit Damage
                 GrimyCritDmg = GetCritDamage(SelectedAbilityState, Target);
 
-				// ===============================
-				// Tigrik: ExpectedDamage. Calculation
-				// ===============================
-
-				// Read probabilities directly from result table
-				ED_CritChance  = kBreakdown.ResultTable[eHit_Crit];
-				ED_HitChance   = kBreakdown.ResultTable[eHit_Success];
-				ED_GrazeChance = kBreakdown.ResultTable[eHit_Graze];
-				ED_MissChance  = kBreakdown.ResultTable[eHit_Miss];
-
-				// Convert to probabilities
-				pCrit  = float(ED_CritChance)  / 100.0;
-				pHit   = float(ED_HitChance)   / 100.0;
-				pGraze = float(ED_GrazeChance) / 100.0;
-
-				// Average damage
-				AvgNormal = (MinDamage + MaxDamage) / 2.0;
-
-				// Crit adds damage (not multiplies)
-				AvgCrit = AvgNormal + GrimyCritDmg;
-
-				// Graze multiplier
-				GrazeMultiplier = 0.5;
-				AvgGraze = AvgNormal * GrazeMultiplier;
-
-				// Expected damage
-				ExpectedDamage =
-					  pHit  * AvgNormal
-					+ pCrit * AvgCrit
-					+ pGraze * AvgGraze;
-
-				ExpectedDamageStr = " avg " $ class'UIUtilities'.static.FormatFloat(ExpectedDamage, 1);
-				ShotDamage $= ExpectedDamageStr;
-				`log("ExpectedDamage RAW =" @ ExpectedDamage);
-				`log("ExpectedDamage formatted =" @ ExpectedDamageStr);
+				// Tigrik: ExpectedDamage
+				ShotDamage $= class'ExpectedDamageLib'.static.GetExpectedDamageString(
+					kBreakdown,
+					MinDamage,
+					MaxDamage,
+					GrimyCritDmg
+				);
 
 				if (ShouldPrintDamage)
 				{
 					AddDamage(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, eUIState_Good, 36), true);
 				}
-
-				// ===============================
-				// DEBUG LOGGING
-				// ===============================
-
-				`log("===== Expected Damage Debug =====");
-				`log("MinDamage: " $ MinDamage);
-				`log("MaxDamage: " $ MaxDamage);
-				`log("CritBonus: " $ GrimyCritDmg);
-
-				`log("ED_HitChance: " $ ED_HitChance);
-				`log("ED_CritChance: " $ ED_CritChance);
-				`log("ED_GrazeChance: " $ ED_GrazeChance);
-				`log("ED_MissChance: " $ ED_MissChance);
-
-				`log("AvgNormal: " $ AvgNormal);
-				`log("AvgCrit: " $ AvgCrit);
-				`log("AvgGraze: " $ AvgGraze);
-
-				`log("ExpectedDamage: " $ ExpectedDamage);
-				`log("=================================");
 
                 if (GetTH_SHOW_CRIT_DMG() && GrimyCritDmg > 0 )
 				{
