@@ -11,6 +11,8 @@
  */
 class ExpectedDamageLib extends Object;
 
+`include(ExtendedInformationRedux3\Src\ExtendedInformationRedux3\EIR_LoggerMacros.uci)
+
 /**
  * Calculates Expected Damage (numeric value)
  *
@@ -33,6 +35,8 @@ static function float GetExpectedDamage(
     local float AvgNormal, AvgCrit, AvgGraze;
     local float ExpectedDamage;
 
+	`TRACE(">> Enter. MinDamage:" @ MinDamage $ ", MaxDamage:" @ MaxDamage $ ", CritBonus:" @ CritBonus);
+
     ED_CritChance  = kBreakdown.ResultTable[eHit_Crit];
     ED_HitChance   = kBreakdown.ResultTable[eHit_Success];
     ED_GrazeChance = kBreakdown.ResultTable[eHit_Graze];
@@ -51,22 +55,26 @@ static function float GetExpectedDamage(
         + pCrit * AvgCrit
         + pGraze * AvgGraze;
 
-    `log("===== Expected Damage Debug =====");
-    `log("MinDamage: " $ MinDamage);
-    `log("MaxDamage: " $ MaxDamage);
-    `log("CritBonus: " $ CritBonus);
+    `DEBUG("======== Expected Damage ========");
+    `DEBUG("MinDamage:" @ MinDamage);
+    `DEBUG("MaxDamage:" @ MaxDamage);
+    `DEBUG("CritBonus:" @ CritBonus);
 
-    `log("ED_HitChance: " $ ED_HitChance);
-    `log("ED_CritChance: " $ ED_CritChance);
-    `log("ED_GrazeChance: " $ ED_GrazeChance);
-    `log("ED_MissChance: " $ ED_MissChance);
+    `DEBUG("ED_HitChance:" @ ED_HitChance);
+    `DEBUG("ED_CritChance:" @ ED_CritChance);
+    `DEBUG("ED_GrazeChance:" @ ED_GrazeChance);
+    `DEBUG("ED_MissChance:" @ ED_MissChance);
 
-    `log("AvgNormal: " $ AvgNormal);
-    `log("AvgCrit: " $ AvgCrit);
-    `log("AvgGraze: " $ AvgGraze);
+    `DEBUG("AvgNormal:" @ AvgNormal);
+    `DEBUG("AvgCrit:" @ AvgCrit);
+    `DEBUG("AvgGraze:" @ AvgGraze);
 
-    `log("ExpectedDamage RAW =" @ ExpectedDamage);
+	`DEBUG("ExpectedDamage = (pHit * AvgNormal) + (pCrit * AvgCrit) + (pGraze * AvgGraze)");
+	`DEBUG("ExpectedDamage = (" $ pHit @ "*" @ AvgNormal $ ") + (" $ pCrit @ "*" @ AvgCrit $ ") + (" $ pGraze @ "*" @ AvgGraze $ ")");
+    `DEBUG("ExpectedDamage RAW:" @ ExpectedDamage);
+	`DEBUG("=================================");
 
+	`TRACE("<< Exit. ExpectedDamage:" @ ExpectedDamage);
     return ExpectedDamage;
 }
 
@@ -88,16 +96,19 @@ static function string GetExpectedDamageString(
 )
 {
     local float ExpectedDamage;
-    local string ExpectedDamageStr;
+	local string ExpectedDamageFormatted;
+	local string ExpectedDamageString;
+
+	`TRACE(">> Enter. MinDamage:" @ MinDamage $ ", MaxDamage:" @ MaxDamage $ ", CritBonus:" @ CritBonus);
 
     ExpectedDamage = GetExpectedDamage(kBreakdown, MinDamage, MaxDamage, CritBonus);
 
-    ExpectedDamageStr = " (" $ class'UIUtilities'.static.FormatFloat(ExpectedDamage, 1) $ ")";
+	ExpectedDamageFormatted = class'UIUtilities'.static.FormatFloat(ExpectedDamage, 1);
 
-    `log("ExpectedDamage formatted =" @ ExpectedDamageStr);
-	`log("=================================");
+	ExpectedDamageString = " (" $ ExpectedDamageFormatted $ ")";
 
-    return ExpectedDamageStr;
+	`TRACE("<< Exit. ExpectedDamageString:" @ ExpectedDamageString);
+    return ExpectedDamageString;
 }
 
 /**
@@ -117,6 +128,9 @@ static function float GetAvgGraze(int MinDamage, int MaxDamage)
     local int dmg;
     local float SumGraze;
     local int Count;
+	local float AvgGraze;
+
+	`TRACE(">> Enter. MinDamage:" @ MinDamage $ ", MaxDamage:" @ MaxDamage);
 
     SumGraze = 0;
     Count = 0;
@@ -127,5 +141,8 @@ static function float GetAvgGraze(int MinDamage, int MaxDamage)
         Count++;
     }
 
-    return SumGraze / Count;
+	AvgGraze = SumGraze / Count;
+
+	`TRACE("<< Exit. AvgGraze:" @ AvgGraze);
+    return AvgGraze;
 }

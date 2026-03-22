@@ -25,6 +25,9 @@
     <Folder Include="Src\ExtendedInformationRedux3\Classes\" />
     <Folder Include="Src\ModConfigMenuAPI\" />
     <Folder Include="Src\ModConfigMenuAPI\Classes\" />
+    <Content Include="Config\XComExtendedInformationRedux3.ini">
+      <SubType>Content</SubType>
+    </Content>
     <Content Include="ReadMe.txt" />
     <Content Include="ModPreview.jpg" />
     <Content Include="Config\XComEditor.ini" />
@@ -35,6 +38,12 @@
     <Content Include="Content\UILibrary_ExtendedInformationRedux3.upk" />
     <Content Include="Localization\ExtendedInformationRedux3.fra" />
     <Content Include="Localization\ExtendedInformationRedux3.int" />
+    <Content Include="Src\ExtendedInformationRedux3\Classes\EIR_Logger.uc">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Src\ExtendedInformationRedux3\Classes\EIR_LoggerMacros.uci">
+      <SubType>Content</SubType>
+    </Content>
     <Content Include="Src\ExtendedInformationRedux3\Classes\ExpectedDamageLib.uc">
       <SubType>Content</SubType>
     </Content>
@@ -63,6 +72,9 @@
     <Content Include="Src\ExtendedInformationRedux3\Classes\X2Action_ApplyWeaponDamageToUnit_HITCHANCE.uc" />
     <Content Include="Src\ExtendedInformationRedux3\Classes\X2Condition_ShadowStrike.uc" />
     <Content Include="Src\ExtendedInformationRedux3\Classes\X2DownloadableContentInfo_ExtendedInformationRedux3.uc" />
+    <Content Include="Src\ExtendedInformationRedux3\EIR_LoggerMacros.uci">
+      <SubType>Content</SubType>
+    </Content>
     <Content Include="Src\ModConfigMenuAPI\MCM_API_CfgHelpers.uci" />
     <Content Include="Src\ModConfigMenuAPI\MCM_API_Includes.uci" />
     <Content Include="Src\ModConfigMenuAPI\Classes\MCM_API.uc" />

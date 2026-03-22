@@ -1,0 +1,6 @@
+# Ensure all INI files are Windows-style
+*.ini text eol=crlf
+*.xml text eol=crlf
+*.uc text eol=crlf
+*.cpp text eol=crlf
+*.h text eol=crlf
