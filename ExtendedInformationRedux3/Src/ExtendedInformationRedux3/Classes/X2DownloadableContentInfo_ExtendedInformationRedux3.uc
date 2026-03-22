@@ -16,6 +16,7 @@
 
 class X2DownloadableContentInfo_ExtendedInformationRedux3 extends X2DownloadableContentInfo;
 
+`include(ExtendedInformationRedux3\Src\ExtendedInformationRedux3\EIR_LoggerMacros.uci)
 `define GETAB(ABNAME) abilities.FindAbilityTemplate('`ABNAME')
 `define IFGETAB(ABNAME) ability=`GETAB(`ABNAME); if (ability!=none)
 
@@ -27,6 +28,7 @@ static event OnPostTemplatesCreated()
 	local HitChanceBuildVisualization NewVis;
 	local X2Condition_ShadowStrike SSCondition;
 
+	`INFO(class'EIR_Version'.static.GetDisplayString());
 
 	Abilities = class'X2AbilityTemplateManager'.static.GetAbilityTemplateManager();
 

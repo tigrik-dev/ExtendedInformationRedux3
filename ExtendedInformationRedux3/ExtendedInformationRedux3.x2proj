@@ -41,7 +41,7 @@
     <Content Include="Src\ExtendedInformationRedux3\Classes\EIR_Logger.uc">
       <SubType>Content</SubType>
     </Content>
-    <Content Include="Src\ExtendedInformationRedux3\Classes\EIR_LoggerMacros.uci">
+    <Content Include="Src\ExtendedInformationRedux3\Classes\EIR_Version.uc">
       <SubType>Content</SubType>
     </Content>
     <Content Include="Src\ExtendedInformationRedux3\Classes\ExpectedDamageLib.uc">
