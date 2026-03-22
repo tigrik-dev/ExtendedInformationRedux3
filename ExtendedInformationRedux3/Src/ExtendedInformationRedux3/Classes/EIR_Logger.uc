@@ -9,9 +9,7 @@
  *
  * Responsibilities:
  * - Provide static logging functions for different severity levels
- * - Prefix log messages with level and originating class name
  * - Respect config-driven toggles for TRACE, DEBUG, and INFO verbosity
- * - Route WARN and ERROR messages through Unreal's built-in warn() system
  *
  * Configuration (ExtendedInformationRedux3):
  * - bEnableInfo:  Enables INFO-level logging for general flow messages
