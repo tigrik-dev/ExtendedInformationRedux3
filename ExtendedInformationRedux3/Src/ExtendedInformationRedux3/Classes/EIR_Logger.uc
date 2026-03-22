@@ -20,7 +20,6 @@
  *
  * Usage:
  * - Intended to be used via macros (e.g. `TRACE, `DEBUG, etc.)
- * - Automatically includes class context via 'self'
  */
 class EIR_Logger extends Object config(ExtendedInformationRedux3);
 
