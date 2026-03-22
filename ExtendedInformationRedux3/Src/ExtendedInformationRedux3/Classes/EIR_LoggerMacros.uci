@@ -1,5 +1,0 @@
-`define TRACE(msg) class'EIR_Logger'.static.Trace(msg, self)
-`define DEBUG(msg) class'EIR_Logger'.static.Debug(msg, self)
-`define INFO(msg)  class'EIR_Logger'.static.Info(msg, self)
-`define WARN(msg)  class'EIR_Logger'.static.Warn(msg, self)
-`define ERROR(msg) class'EIR_Logger'.static.Error(msg, self)
