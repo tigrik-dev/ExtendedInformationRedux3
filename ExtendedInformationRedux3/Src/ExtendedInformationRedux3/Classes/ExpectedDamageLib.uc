@@ -79,7 +79,7 @@ static function float GetExpectedDamage(
 }
 
 /**
- * Returns formatted Expected Damage string, e.g. " (4.6)"
+ * Returns formatted Expected Damage string, e.g. "4.6"
  *
  * @param kBreakdown      Shot breakdown containing result probabilities
  * @param MinDamage       Minimum weapon damage
@@ -96,16 +96,13 @@ static function string GetExpectedDamageString(
 )
 {
     local float ExpectedDamage;
-	local string ExpectedDamageFormatted;
 	local string ExpectedDamageString;
 
 	`TRACE(">> Enter. MinDamage:" @ MinDamage $ ", MaxDamage:" @ MaxDamage $ ", CritBonus:" @ CritBonus);
 
     ExpectedDamage = GetExpectedDamage(kBreakdown, MinDamage, MaxDamage, CritBonus);
 
-	ExpectedDamageFormatted = class'UIUtilities'.static.FormatFloat(ExpectedDamage, 1);
-
-	ExpectedDamageString = " (" $ ExpectedDamageFormatted $ ")";
+	ExpectedDamageString = class'UIUtilities'.static.FormatFloat(ExpectedDamage, 1);
 
 	`TRACE("<< Exit. ExpectedDamageString:" @ ExpectedDamageString);
     return ExpectedDamageString;

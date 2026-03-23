@@ -370,12 +370,12 @@ simulated function Update() {
                 GrimyCritDmg = GetCritDamage(SelectedAbilityState, Target);
 
 				// Tigrik: ExpectedDamage
-				ShotDamage $= class'ExpectedDamageLib'.static.GetExpectedDamageString(
+				ShotDamage $= " (" $ class'ExpectedDamageLib'.static.GetExpectedDamageString(
 					kBreakdown,
 					MinDamage,
 					MaxDamage,
 					GrimyCritDmg
-				);
+				) $ ")";
 
 				if (ShouldPrintDamage)
 				{
