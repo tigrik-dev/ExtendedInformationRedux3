@@ -1,0 +1,6 @@
+`define BEGIN_TEST \
+    class'EIR_TestRunner'.static.BeginTest(string(GetFuncName()));
+
+`define END_TEST \
+    class'EIR_TestRunner'.static.EndTest(string(GetFuncName())); \
+    return true;

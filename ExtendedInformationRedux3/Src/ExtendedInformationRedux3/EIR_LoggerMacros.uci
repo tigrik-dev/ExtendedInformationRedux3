@@ -3,3 +3,4 @@
 `define INFO(msg)  class'EIR_Logger'.static.Info(class'EIR_Logger'.static.PadFuncName(string(GetFuncName())) $ ":" @ `msg)
 `define WARN(msg)  class'EIR_Logger'.static.Warn(class'EIR_Logger'.static.PadFuncName(string(GetFuncName())) $ ":" @ `msg)
 `define ERROR(msg) class'EIR_Logger'.static.Error(class'EIR_Logger'.static.PadFuncName(string(GetFuncName())) $ ":" @ `msg)
+`define TEST(msg) class'EIR_Logger'.static.Test(class'EIR_Logger'.static.PadFuncName(string(GetFuncName())) $ ":" @ `msg)

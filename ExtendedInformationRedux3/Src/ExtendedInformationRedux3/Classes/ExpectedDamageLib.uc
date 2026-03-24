@@ -8,6 +8,8 @@
  * - Compute Expected Damage using hit/crit/graze probabilities
  * - Correctly calculate graze damage using floor(dmg * 0.5)
  * - Provide formatted output string for UI display
+ * 
+ * @author Tigrik
  */
 class ExpectedDamageLib extends Object;
 

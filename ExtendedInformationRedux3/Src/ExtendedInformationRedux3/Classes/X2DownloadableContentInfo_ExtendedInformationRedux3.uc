@@ -30,6 +30,9 @@ static event OnPostTemplatesCreated()
 
 	`INFO(class'EIR_Version'.static.GetDisplayString());
 
+	// Tigrik: Run all unit tests
+	class'EIR_TestRunner'.static.RunAllTests();
+
 	Abilities = class'X2AbilityTemplateManager'.static.GetAbilityTemplateManager();
 
 

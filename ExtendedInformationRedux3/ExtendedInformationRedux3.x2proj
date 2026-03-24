@@ -23,6 +23,7 @@
     <Folder Include="ContentForCook\" />
     <Folder Include="Src\ExtendedInformationRedux3\" />
     <Folder Include="Src\ExtendedInformationRedux3\Classes\" />
+    <Folder Include="Src\ExtendedInformationRedux3\Testing" />
     <Folder Include="Src\ModConfigMenuAPI\" />
     <Folder Include="Src\ModConfigMenuAPI\Classes\" />
     <Content Include="Config\XComExtendedInformationRedux3.ini">
@@ -41,10 +42,19 @@
     <Content Include="Src\ExtendedInformationRedux3\Classes\EIR_Logger.uc">
       <SubType>Content</SubType>
     </Content>
+    <Content Include="Src\ExtendedInformationRedux3\Classes\EIR_TestAsserts.uc">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Src\ExtendedInformationRedux3\Classes\EIR_TestRunner.uc">
+      <SubType>Content</SubType>
+    </Content>
     <Content Include="Src\ExtendedInformationRedux3\Classes\EIR_Version.uc">
       <SubType>Content</SubType>
     </Content>
     <Content Include="Src\ExtendedInformationRedux3\Classes\ExpectedDamageLib.uc">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Src\ExtendedInformationRedux3\Classes\ExpectedDamageLib_Test.uc">
       <SubType>Content</SubType>
     </Content>
     <Content Include="Src\ExtendedInformationRedux3\Classes\ExtendedInformationRedux3_MCMScreen.uc" />
@@ -73,6 +83,9 @@
     <Content Include="Src\ExtendedInformationRedux3\Classes\X2Condition_ShadowStrike.uc" />
     <Content Include="Src\ExtendedInformationRedux3\Classes\X2DownloadableContentInfo_ExtendedInformationRedux3.uc" />
     <Content Include="Src\ExtendedInformationRedux3\EIR_LoggerMacros.uci">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Src\ExtendedInformationRedux3\EIR_TestMacros.uci">
       <SubType>Content</SubType>
     </Content>
     <Content Include="Src\ModConfigMenuAPI\MCM_API_CfgHelpers.uci" />

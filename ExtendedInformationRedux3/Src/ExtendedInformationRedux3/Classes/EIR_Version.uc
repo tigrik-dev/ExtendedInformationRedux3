@@ -16,6 +16,8 @@
  * - MAJOR: breaking changes
  * - MINOR: new features (backwards compatible)
  * - PATCH: bug fixes / small tweaks
+ * 
+ * @author Tigrik
  */
 class EIR_Version extends Object;
 

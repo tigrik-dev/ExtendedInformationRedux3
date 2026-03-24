@@ -18,6 +18,8 @@
  *
  * Usage:
  * - Intended to be used via macros (e.g. `TRACE, `DEBUG, etc.)
+ * 
+ * @author Tigrik
  */
 class EIR_Logger extends Object config(ExtendedInformationRedux3);
 
@@ -51,19 +53,25 @@ static function Info(string Msg)
     if (!default.bEnableInfo)
         return;
 
-	// Add extra space to align with the majority of 5-symbol log levels
+	// Add an extra space to align with the 5-symbol log levels
     LogWithLevel("[INFO] ", Msg);
 }
 
 static function Warn(string Msg)
 {
-	// Add extra space to align with the majority of 5-symbol log levels
+	// Add an extra space to align with the 5-symbol log levels
     LogWithLevel("[WARN] ", Msg);
 }
 
 static function Error(string Msg)
 {
-    LogWithLevel("ERROR", Msg);
+    LogWithLevel("[ERROR]", Msg);
+}
+
+static function Test(string Msg)
+{
+	// Add an extra space to align with the 5-symbol log levels
+    LogWithLevel("[TEST] ", Msg);
 }
 
 /**
