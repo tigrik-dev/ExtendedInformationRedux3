@@ -6,7 +6,7 @@
 
 class MCM_Defaults extends object config(ExtendedInformationRedux3_MCMDefaults);
 
-var config int		VERSION;
+var config int		Version;
 
 var config bool		TH_AIM_ASSIST;
 var config bool		HIT_CHANCE_ENABLED;
@@ -17,8 +17,8 @@ var config bool		SHOW_TEMPLAR_MSG;
 var config bool		SHOW_GUARANTEED_HIT;
 
 var config int		BAR_HEIGHT;
-/*var config int		BAR_OFFSET_X;
-var config int		BAR_OFFSET_Y;*/
+//var config int		BAR_OFFSET_X;
+var config int		BAR_OFFSET_Y;
 var config int		BAR_ALPHA;
 /*var config int		BAR_WIDTH_MULT;
 var config int		GENERAL_OFFSET_Y;
@@ -38,6 +38,7 @@ var config bool		TH_AIM_LEFT_OF_CRIT;
 var config bool		TH_ASSIST_BESIDE_HIT;
 var config bool		TH_PREVIEW_MINIMUM;
 var config bool		TH_PREVIEW_HACKING;
+var config bool		TH_ASSIST_BAR;
 
 //var config bool		SHOW_ALWAYS_SHOT_BREAKDOWN_HUD;
 

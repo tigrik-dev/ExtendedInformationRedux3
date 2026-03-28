@@ -1,11 +1,16 @@
-//-----------------------------------------------------------
-//	Class:	ITacticalHUD_EnemyAbilityTooltip
-//	Author: Mr. Nice / Sebkulu
-//	
-//-----------------------------------------------------------
-
+/**
+ * Tooltip for displaying enemy abilities in the tactical HUD.
+ *
+ * Extends UITooltip to:
+ * - Show enemy ability list with hit chance integration
+ * - Dynamically build UI based on hovered enemy
+ * - Handle layout, masking, and resizing
+ *
+ * @author Mr. Nice / Sebkulu
+ */
 class UITacticalHUD_EnemyAbilityTooltip extends UITooltip;
 
+`include(ExtendedInformationRedux3\Src\ExtendedInformationRedux3\EIR_LoggerMacros.uci)
 `include(ExtendedInformationRedux3\Src\ModConfigMenuAPI\MCM_API_CfgHelpers.uci)
 
 var int PADDING_LEFT;
@@ -29,8 +34,22 @@ var int TOOLTIP_ALPHA;
 
 var int Weight, DeadHeight;
 
+/**
+ * Initializes the enemy abilities tooltip UI.
+ *
+ * Sets up:
+ * - Background panel
+ * - Title text
+ * - Ability list and mask
+ * - Layout and padding
+ *
+ * @param InitName Name of the panel
+ * @param InitLibID Library identifier
+ * @return Initialized UIPanel instance
+ */
 simulated function UIPanel InitEnemyAbilities(optional name InitName, optional name InitLibID)
 {
+	`TRACE_ENTRY("");
 	InitPanel(InitName, InitLibID);
 
 	//height = StatsHeight + PaddingBetweenBoxes;
@@ -70,13 +89,21 @@ simulated function UIPanel InitEnemyAbilities(optional name InitName, optional n
 
 	//Re-enabling EnemyToolTip
 	BGBox.SetAlpha(getTOOLTIP_ALPHA());
+	`TRACE_EXIT("");
 	return self; 
 }
 
 `MCM_CH_VersionChecker(class'MCM_Defaults'.default.VERSION, class'ExtendedInformationRedux3_MCMScreen'.default.CONFIG_VERSION)
 
+/**
+ * Displays the tooltip if valid data is available.
+ *
+ * Calls RefreshData and only shows the tooltip if data exists.
+ * Handles grouped tooltip behavior.
+ */
 simulated function ShowTooltip()
 {
+	`TRACE_ENTRY("");
 	if (!RefreshData()) return;
 
 	if ((TooltipGroup) == none) super.ShowTooltip();
@@ -85,8 +112,19 @@ simulated function ShowTooltip()
 		bIsVisible=true;
 		ClearTimer(nameof(Hide));
 	}
+	`TRACE_EXIT("");
 }
 
+/**
+ * Refreshes tooltip data based on the currently hovered enemy.
+ *
+ * Determines:
+ * - Active enemy unit
+ * - Retrieves ability list
+ * - Updates UI list and layout
+ *
+ * @return True if data is valid and tooltip should be shown, false otherwise
+ */
 simulated function bool RefreshData()
 {
 	local XGUnit				ActiveUnit;
@@ -94,6 +132,8 @@ simulated function bool RefreshData()
 	local array<UISummary_Ability> UIAbilities;
 	local int					iTargetIndex;
 	local array<string>			Path;
+
+	`TRACE_ENTRY("");
 
 	Path = SplitString(currentPath, ".");
 	iTargetIndex = int(Split(Path[5], "icon", true));
@@ -127,9 +167,21 @@ simulated function bool RefreshData()
 		AbilityList.OnItemChanged(none);
 	}
 	OnAbilityListSizeRealized();
+	`TRACE_EXIT("Return: true");
 	return true;
 }
 
+/**
+ * Builds a list of UI ability summaries for a unit.
+ *
+ * Filters abilities based on:
+ * - Visibility rules
+ * - Template flags
+ * - Valid ability data
+ *
+ * @param Unit Target unit
+ * @return Array of UISummary_Ability entries
+ */
 function array<UISummary_Ability> GetUISummary_Abilities(XComGameState_Unit Unit)
 {
 	local array<UISummary_Ability> UIAbilities; 
@@ -138,6 +190,7 @@ function array<UISummary_Ability> GetUISummary_Abilities(XComGameState_Unit Unit
 	local UISummary_Ability AbilityData;
 	local int i, len; 
 
+	`TRACE_ENTRY("");
 	len = Unit.Abilities.Length;
 	for(i = 0; i < len; i++)
 	{	
@@ -155,16 +208,22 @@ function array<UISummary_Ability> GetUISummary_Abilities(XComGameState_Unit Unit
 		if (AbilityData.Name != "")
 			UIAbilities.AddItem(AbilityData);
 	}
-
+	`TRACE_EXIT("");
 	return UIAbilities; 
 }
 
+/**
+ * Generates debug ability data for testing UI behavior.
+ *
+ * @return Array of mock UISummary_Ability entries
+ */
 simulated function array<UISummary_Ability> DEBUG_GetUISummary_Abilities()
 {
 	local UISummary_Ability Data; 
 	local array<UISummary_Ability> Abilities; 
 	local int i; 
 
+	`TRACE_ENTRY("");
 	for( i = 0; i < 5; i ++ )
 	{
 		Data.KeybindingLabel = "KEY";
@@ -179,12 +238,22 @@ simulated function array<UISummary_Ability> DEBUG_GetUISummary_Abilities()
 	
 		Abilities.additem(Data);
 	}
-
+	`TRACE_EXIT("");
 	return Abilities; 
 }
 
+/**
+ * Handles layout updates when the ability list size changes.
+ *
+ * Adjusts:
+ * - Tooltip height
+ * - Background size
+ * - Mask height
+ * - Tooltip group positioning
+ */
 simulated function OnAbilityListSizeRealized()
 {
+	`TRACE_ENTRY("");
 	Height = DeadHeight + AbilityList.MaskHeight;
 	BGBox.SetHeight( Height );
 	AbilityListMask.SetHeight(AbilityList.MaskHeight);
@@ -195,10 +264,22 @@ simulated function OnAbilityListSizeRealized()
 			UITooltipGroup_Stacking(TooltipGroup).UpdateRestingYPosition(self, Y);
 		TooltipGroup.SignalNotify();
 	}
+	`TRACE_EXIT("");
 }
 
+/**
+ * Sets tooltip height and updates layout accordingly.
+ *
+ * Adjusts:
+ * - Ability list mask
+ * - Scroll behavior
+ * - Background size
+ *
+ * @param NewHeight New height value
+ */
 simulated function SetHeight(float NewHeight)
 {
+	`TRACE_ENTRY("");
 	if (Height==NewHeight) return;
 	Height=NewHeight;
 
@@ -208,6 +289,7 @@ simulated function SetHeight(float NewHeight)
 
 	BGBox.SetHeight( Height );
 	AbilityListMask.SetHeight(AbilityList.MaskHeight);
+	`TRACE_EXIT("");
 }
 
 function int getTOOLTIP_ALPHA()

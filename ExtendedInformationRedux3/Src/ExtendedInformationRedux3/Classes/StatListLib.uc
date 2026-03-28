@@ -1,15 +1,23 @@
-//-----------------------------------------------------------
-//	Class:	StatListLib
-//	Author: Mr.Nice / Sebkulu
-//	
-//-----------------------------------------------------------
-
-
+/**
+ * StatListLib
+ *
+ * Utility class responsible for building and formatting unit stat lists
+ * for UI display in the tactical HUD.
+ *
+ * Responsibilities:
+ * - Aggregate base and current unit stats into UI-friendly structures
+ * - Format stat values with colors and deltas
+ * - Include weapon damage and derived combat stats
+ * - Apply effect-based stat modifications
+ *
+ * Supports both XCOM and non-XCOM unit stat visualization.
+ *
+ * @author Mr.Nice / Sebkulu
+ */
 class StatListLib extends Object;
 
-//var localized string KILLS_LABEL; Can get from UIAfterAction_ListItem
-//var localized string ASSIST_LABEL; Can get from UITacticalHUD_SoldierInfoTooltip_HitChance
-//var localized string FLANKING_CRIT_LABEL;
+`include(ExtendedInformationRedux3\Src\ExtendedInformationRedux3\EIR_LoggerMacros.uci)
+`include(ExtendedInformationRedux3\Src\ExtendedInformationRedux3\LangFallBack.uci)
 
 `define BASESTAT(STAT) Summary.base`STAT
 `define CURRENTSTAT(STAT) Summary.`STAT
@@ -17,7 +25,8 @@ class StatListLib extends Object;
 `define BASECURRENTSTAT(STAT) `BASESTAT(`STAT), `CURRENTSTAT(`STAT)
 `define NONZERO(STAT) (`CURRENTSTAT(`STAT)!=0 || `BASESTAT(`STAT)!=0)
 
-var localized string HackDefenseLabel;
+var localized string AssistsLabel;
+var localized string FlankCritLabel;
 
 struct EUISummary_UnitStats_HitChance extends UIQueryInterfaceUnit.EUISummary_UnitStats
 {
@@ -31,8 +40,17 @@ struct EUISummary_UnitStats_HitChance extends UIQueryInterfaceUnit.EUISummary_Un
 	var int BaseCrit, Crit;
 	var int BaseArmorPiercing, ArmorPiercing;
 	var int BaseHackDefense, HackDefense;
+	var int BaseFlankCrit, FlankCrit;
 };
 
+/**
+ * Builds a list of UI stats for a given unit.
+ *
+ * @param kGameStateUnit   Unit to extract stats from
+ * @param Xcom             Whether the unit is an XCOM unit (affects displayed stats)
+ *
+ * @return array<UISummary_ItemStat>   List of formatted UI stats
+ */
 static simulated function array<UISummary_ItemStat> GetStats(XComGameState_Unit kGameStateUnit, optional bool Xcom=false)
 {
 	local array<UISummary_ItemStat> Stats; 
@@ -41,6 +59,8 @@ static simulated function array<UISummary_ItemStat> GetStats(XComGameState_Unit 
 	local WeaponDamageValue WeapDam;
 	local int MinDam, MaxDam;//Mr. Nice: "t" for Temporary
 	local XComGameState_Unit BackInTimeGameStateUnit;
+
+	`TRACE_ENTRY("Xcom:" @ Xcom);
 
 	Summary = GetUISummary_UnitStats(kGameStateUnit);
 
@@ -80,6 +100,13 @@ static simulated function array<UISummary_ItemStat> GetStats(XComGameState_Unit 
 			Stats.AddItem(Item);
 		}
 
+		if (`NONZERO(FlankCrit) && `NONZERO(FlankCrit-40))
+		{
+			Item.Label = default.FlankCritLabel;
+			Item.Value = ColorAndStringForStats(`BASECURRENTSTAT(FlankCrit), "%");
+			Stats.AddItem(Item);
+		}
+
 		if (`NONZERO(ArmorPiercing))
 		{
 			Item.Label = class'XLocalizedData'.default.PierceLabel;
@@ -107,8 +134,15 @@ static simulated function array<UISummary_ItemStat> GetStats(XComGameState_Unit 
 	
 		if (`NONZERO(Crit))
 		{
-			Item.Label = class'XLocalizedData'.default.CritLabel;
+			Item.Label = class'XLocalizedData'.default.CritChanceLabel;
 			Item.Value = ColorAndStringForStats(`BASECURRENTSTAT(Crit), "%");
+			Stats.AddItem(Item);
+		}
+
+		if (`NONZERO(FlankCrit) && `NONZERO(FlankCrit-40))
+		{
+			Item.Label = default.FlankCritLabel;
+			Item.Value = ColorAndStringForStats(`BASECURRENTSTAT(FlankCrit), "%");
 			Stats.AddItem(Item);
 		}
 
@@ -156,8 +190,7 @@ static simulated function array<UISummary_ItemStat> GetStats(XComGameState_Unit 
 	if (`NONZERO(HackDefense))
 	{
 		// Preferring Localization method so we don't have to test all languages...
-		Item.Label = default.HackDefenseLabel;
-		//Item.Label = class'XLocalizedData'.default.TechLabel @ class'XLocalizedData'.default.DefenseLabel; 
+		Item.Label = `LOCFALLBACK(HackDefenceLabel, class'XLocalizedData'.default.TechLabel @ class'XLocalizedData'.default.DefenseLabel); 
 		Item.Value = ColorAndStringForStats(`BASECURRENTSTAT(HackDefense)); 
 		Stats.AddItem(Item);
 	}
@@ -177,14 +210,22 @@ static simulated function array<UISummary_ItemStat> GetStats(XComGameState_Unit 
 		Item.Value = ColorAndStringForStats(BackInTimeGameStateUnit.GetNumKills(), kGameStateUnit.GetNumKills(), "+");
 		Stats.AddItem(Item);
 
-		Item.Label = class'UITacticalHUD_SoldierInfoTooltip_HitChance'.default.ASSIST_LABEL;
+		Item.Label = default.AssistsLabel;
 		Item.Value = ColorAndStringForStats(BackInTimeGameStateUnit.GetNumKillsFromAssists(), kGameStateUnit.GetNumKillsFromAssists(), "+");
 		Stats.AddItem(Item);
 	}
 
+	`TRACE_EXIT("Stats.Length:" @ Stats.Length);
 	return Stats;
 }
 
+/**
+ * Retrieves extended unit summary stats including base and modified values.
+ *
+ * @param Unit   Unit to extract summary stats from
+ *
+ * @return EUISummary_UnitStats_HitChance   Extended stat summary structure
+ */
 static function EUISummary_UnitStats_HitChance GetUISummary_UnitStats(XComGameState_Unit Unit)
 {
 	local XComGameStateHistory History;
@@ -193,6 +234,8 @@ static function EUISummary_UnitStats_HitChance GetUISummary_UnitStats(XComGameSt
 	local X2Effect_Persistent EffectTemplate;
 
 	local EUISummary_UnitStats_HitChance Summary;
+
+	`TRACE_ENTRY("");
 
 	Summary=Unit.GetUISummary_UnitStats();
 
@@ -207,10 +250,12 @@ static function EUISummary_UnitStats_HitChance GetUISummary_UnitStats(XComGameSt
 	Summary.BaseCrit=Unit.GetBaseStat(eStat_CritChance);
 	Summary.BaseArmorPiercing=Unit.GetBaseStat(eStat_ArmorPiercing);
 	Summary.BaseHackDefense=Unit.GetBaseStat(eStat_HackDefense);
+	Summary.BaseFlankCrit=Unit.GetBaseStat(eStat_FlankingCritChance);
 
 	Summary.Crit=Unit.GetCurrentStat(eStat_CritChance);
 	Summary.ArmorPiercing=Unit.GetCurrentStat(eStat_ArmorPiercing);
 	Summary.HackDefense=Unit.GetCurrentStat(eStat_HackDefense);
+	Summary.FlankCrit=Unit.GetCurrentStat(eStat_FlankingCritChance);
 
 	History = `XCOMHISTORY;
 	foreach Unit.AffectedByEffects(EffectRef)
@@ -226,13 +271,25 @@ static function EUISummary_UnitStats_HitChance GetUISummary_UnitStats(XComGameSt
 			EffectTemplate.ModifyUISummaryUnitStats(EffectState, unit, eStat_Mobility, Summary.Mobility);
 		}
 	}
+	`TRACE_EXIT("Summary.Crit:" @ Summary.Crit $ ", Summary.ArmorPiercing:" @ Summary.ArmorPiercing);
 	return Summary;
 }
-	
+
+/**
+ * Formats stat values into a colored string representation.
+ *
+ * @param statbase     Base stat value
+ * @param statcurrent  Current stat value
+ * @param Suffix       Optional suffix (e.g. "%", "/", "+")
+ *
+ * @return string      Formatted and colorized stat string
+ */
 static function string ColorAndStringForStats(int statbase, int statcurrent, optional string Suffix="") {
 	//local eUIState Tcolor;
 	//local string CText;
 	local String CurrentText, BaseText; 
+
+	`TRACE_ENTRY("statbase:" @ statbase $ ", statcurrent:" @ statcurrent $ ", Suffix:" @ Suffix);
 
 	//CText = "(" $ StatChange(statbase, statcurrent) $ Suffix $ ")"; 
 	switch (Suffix)
@@ -249,19 +306,44 @@ static function string ColorAndStringForStats(int statbase, int statcurrent, opt
 			 CurrentText=class'UIUtilities_Text'.static.GetColoredText(statCurrent $ Suffix, StatChangeColor(statbase, statcurrent));
 			 BaseText="(" $ StatBase $ Suffix $ ")";
 	}
+	`TRACE_EXIT("Result:" @ (statbase @ statcurrent));
 	if ((statbase - statcurrent) == 0)
 		return CurrentText;
 	else return CurrentText $ BaseText;
 } 
 
+/**
+ * Calculates the difference between base and current stat.
+ *
+ * @param statbase     Base stat value
+ * @param statcurrent  Current stat value
+ *
+ * @return string      Signed difference string
+ */
 static function string StatChange(int statbase, int statcurrent) {
-	if (statbase > statcurrent) 
+	`TRACE_ENTRY("statbase:" @ statbase $ ", statcurrent:" @ statcurrent);
+	if (statbase > statcurrent)
+	{
+		`TRACE_EXIT("-" $ (statbase - statcurrent));
 		return "-" $ (statbase - statcurrent);
+	}
 	else
+	{
+		`TRACE_EXIT("+" $ (statcurrent - statbase));
 		return "+" $ (statcurrent - statbase);
+	}
 }
 
+/**
+ * Determines UI color state based on HP percentage.
+ *
+ * @param CurrentHP   Current HP value
+ * @param MaxHP       Maximum HP value
+ *
+ * @return eUIState   UI color state (Good, Warning, Bad)
+ */
 static function eUIState ColorHP(float CurrentHP, int MaxHP) {
+	`TRACE_ENTRY("CurrentHP:" @ CurrentHP $ ", MaxHP:" @ MaxHP);
 	if (CurrentHP/MaxHP > 2/3) 
 		return eUISTate_Good;
 	else if (CurrentHP/MaxHP > 1/3) 
@@ -270,7 +352,16 @@ static function eUIState ColorHP(float CurrentHP, int MaxHP) {
 		return eUIState_Bad;
 }
 
+/**
+ * Determines UI color state based on stat change.
+ *
+ * @param BaseStat      Base stat value
+ * @param CurrentStat   Current stat value
+ *
+ * @return eUIState     UI color state (Normal, Good, Bad)
+ */
 static function eUIState StatChangeColor(int BaseStat, int CurrentStat) {
+	`TRACE_ENTRY("BaseStat:" @ BaseStat $ ", CurrentStat:" @ CurrentStat);
 	if (BaseStat==CurrentStat)
 		return eUIState_Normal;
 	if (BaseStat > CurrentStat) 

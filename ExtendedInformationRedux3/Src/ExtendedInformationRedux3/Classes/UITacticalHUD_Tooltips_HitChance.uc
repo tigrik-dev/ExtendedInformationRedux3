@@ -1,16 +1,39 @@
-//-----------------------------------------------------------
-//	Class:	UITacticalHUD_Tooltips_HitChance
-//	Author: tjnome / Mr.Nice / Sebkulu
-//	
-//-----------------------------------------------------------
-
+/**
+ * Central tooltip initializer for the tactical HUD.
+ *
+ * Responsibilities:
+ * - Spawns and configures all tooltip panels (weapon, soldier, enemy, abilities, buffs)
+ * - Applies MCM configuration (visibility flags, transparency)
+ * - Wires tooltips to correct UI paths
+ * - Groups enemy-related tooltips into a shared tooltip group
+ *
+ * Acts as the main entry point for all tooltip-related UI customization
+ * introduced by the HitChance system
+ *
+ * @author tjnome / Mr.Nice / Sebkulu
+ */
 class UITacticalHUD_Tooltips_HitChance extends UITacticalHUD_Tooltips;
 
+`include(ExtendedInformationRedux3\Src\ExtendedInformationRedux3\EIR_LoggerMacros.uci)
 `include(ExtendedInformationRedux3\Src\ModConfigMenuAPI\MCM_API_CfgHelpers.uci)
 
 var bool ES_TOOLTIP;
 var int TOOLTIP_ALPHA;
 
+/**
+ * Initializes and registers all tactical HUD tooltips.
+ *
+ * This includes:
+ * - Weapon tooltip (with modified info lists)
+ * - Soldier stats tooltip
+ * - Enemy stats / abilities / buffs tooltips (conditionally enabled)
+ * - Soldier perks and buffs tooltips
+ * - Ability hover tooltip
+ *
+ * Also applies:
+ * - Tooltip transparency (TOOLTIP_ALPHA)
+ * - Conditional enemy tooltip display (ES_TOOLTIP)
+ */
 simulated function InitializeTooltipData()
 {
 	local UITacticalHUD_WeaponTooltip WeaponTooltip;
@@ -27,6 +50,7 @@ simulated function InitializeTooltipData()
 	local UITacticalHUD_BuffsTooltip SoldierBonusesTooltip;
 	local UITacticalHUD_BuffsTooltip SoldierPenaltiesTooltip;
 
+	`TRACE_ENTRY("");
 	ES_TOOLTIP = getES_TOOLTIP();
 	TOOLTIP_ALPHA = getTOOLTIP_ALPHA();
 
@@ -195,6 +219,7 @@ simulated function InitializeTooltipData()
 		`ADDGP(EnemyAbilityTooltip);
 		`ADDGP(EnemyPassivesTooltip);
 	}
+	`TRACE_EXIT("");
 }
 
 `MCM_CH_VersionChecker(class'MCM_Defaults'.default.VERSION, class'ExtendedInformationRedux3_MCMScreen'.default.CONFIG_VERSION)

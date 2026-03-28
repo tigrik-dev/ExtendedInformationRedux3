@@ -1,17 +1,30 @@
-//-----------------------------------------------------------
-//	Class:	UIEffectList_HitChance
-//	Author: Mr.Nice / Sebkulu
-//	
-//-----------------------------------------------------------
-
-
+/**
+ * UIEffectList_HitChance
+ *
+ * Custom UI list component for displaying unit effects with hit chance integration.
+ *
+ * Responsibilities:
+ * - Dynamically create and manage effect list items
+ * - Update UI elements based on incoming effect data
+ * - Hide unused UI elements to maintain clean presentation
+ *
+ * @author Mr.Nice / Sebkulu
+ */
 class UIEffectList_HitChance extends UIEffectList;
 
+`include(ExtendedInformationRedux3\Src\ExtendedInformationRedux3\EIR_LoggerMacros.uci)
+
+/**
+ * Refreshes the effect list UI with new effect data.
+ *
+ * @param Data   Array of unit effects to display
+ */
 simulated function RefreshDisplay(array<UISummary_UnitEffect> Data)
 {
 	local UIEffectListItem Item; 
 	local int i; 
 
+	`TRACE_ENTRY("Data.Length:" @ Data.Length);
 	//Test
 
 	for( i = 0; i < Data.Length; i++ )
@@ -39,5 +52,6 @@ simulated function RefreshDisplay(array<UISummary_UnitEffect> Data)
 	{
 		Items[i].Hide();
 	}
+	`TRACE_EXIT("Items.Length:" @ Items.Length);
 }
 

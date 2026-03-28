@@ -1,22 +1,31 @@
-//-----------------------------------------------------------
-//	Class:	UITooltipInfoList_HitChance
-//	Author: tjnome / Mr.Nice / Sebkulu
-//	
-//-----------------------------------------------------------
-
+/**
+ *	Description:
+ *		Custom tooltip info list that extends weapon/tooltips UI to include
+ *		additional weapon stat information (e.g. upgrade bonuses like +aim, +crit).
+ *		Integrates with MCM settings to optionally display extended stats.
+ * @author tjnome / Mr.Nice / Sebkulu
+ */
 class UITooltipInfoList_HitChance extends UITooltipInfoList;
 
+`include(ExtendedInformationRedux3\Src\ExtendedInformationRedux3\EIR_LoggerMacros.uci)
 `include(ExtendedInformationRedux3\Src\ModConfigMenuAPI\MCM_API_CfgHelpers.uci)
 
 var bool SHOW_EXTRA_WEAPONSTATS;
 
+/**
+ * Refreshes tooltip display with provided summary items.
+ *
+ * @param SummaryItems	Array of item stats to render in the tooltip.
+ */
 simulated function RefreshDisplay(array<UISummary_ItemStat> SummaryItems)
 {
 	local int i;
 	local UIText LabelField, DescriptionField;
 
+	`TRACE_ENTRY("SummaryItems.Length:" @ SummaryItems.Length);
 	if (SummaryItems.Length == 0)
 	{
+		`TRACE("No SummaryItems, hiding tooltip");
 		Hide();
 		Height = 0;
 		OnTextSizeRealized();
@@ -25,12 +34,14 @@ simulated function RefreshDisplay(array<UISummary_ItemStat> SummaryItems)
 
 	if (TitleTextField == none)
 	{
+		`TRACE("Creating TitleTextField");
 		TitleTextField = Spawn(class'UIScrollingText', self).InitScrollingText('Title', "", width - PADDING_RIGHT - PADDING_LEFT, PADDING_LEFT);
 	}
 	TitleTextField.SetHTMLText(class'UIUtilities_Text'.static.StyleText(SummaryItems[0].Label, SummaryItems[0].LabelStyle));
 	
 	for (i = 1; i < SummaryItems.Length; i++)
 	{
+		`TRACE("Processing item index:" @ i);
 		// Place new items if we need to. 
 		if (i > LabelFields.Length)
 		{
@@ -52,6 +63,8 @@ simulated function RefreshDisplay(array<UISummary_ItemStat> SummaryItems)
 		LabelField.AnimateIn();
 
 		DescriptionField = DescriptionFields[i - 1];
+		`TRACE("Label:" @ SummaryItems[i].Label);
+		`TRACE("Value:" @ SummaryItems[i].Value);
 		DescriptionField.SetHTMLText(class'UIUtilities_Text'.static.StyleText(SummaryItems[i].Value $ GetExtraWeaponStats(SummaryItems[i].Label), SummaryItems[i].ValueStyle), OnChildTextRealized);
 		DescriptionField.Show();
 		DescriptionField.AnimateIn();
@@ -60,60 +73,55 @@ simulated function RefreshDisplay(array<UISummary_ItemStat> SummaryItems)
 	// Hide any excess list items if we didn't use them. 
 	for (i = SummaryItems.Length; i < LabelFields.Length; i++)
 	{
+		`TRACE("Hiding unused field index:" @ i);
 		LabelFields[i].Hide();
 		DescriptionFields[i].Hide();
 	}
 
 	OnChildTextRealized();
+	`TRACE_EXIT("");
 }
 
 `MCM_CH_VersionChecker(class'MCM_Defaults'.default.VERSION, class'ExtendedInformationRedux3_MCMScreen'.default.CONFIG_VERSION)
 
-function string GetExtraWeaponStats(string label) {
+/**
+ * Returns extra weapon stat string for a given label if applicable.
+ *
+ * @param label	The stat label to check against weapon upgrades.
+ * @return		Formatted bonus string (e.g. ": +10%") or empty string.
+ */
+function string GetExtraWeaponStats(string label)
+{
 	local XGUnit kActiveUnit;
 	local XComGameState_Unit kGameStateUnit;
 	local XComGameState_Item kPrimaryWeapon;
-	local GameRulesCache_VisibilityInfo VisInfo; // Aim Upgrades require VisibilityInfo since the aim benefit changes based on current cover state of the target
-
 	local array<X2WeaponUpgradeTemplate> UpgradeTemplates;
-	local int i, tmp;
+	local X2WeaponUpgradeTemplate UpgradeTemplate;
+	local string str;
 
-	if (getSHOW_EXTRA_WEAPONSTATS()) {
+	`TRACE_ENTRY("label:" @ label);
+	if (getSHOW_EXTRA_WEAPONSTATS())
+	{
 		kActiveUnit = XComTacticalController(PC).GetActiveUnit();
 		kGameStateUnit = XComGameState_Unit(`XCOMHISTORY.GetGameStateForObjectID(kActiveUnit.ObjectID));
 		kPrimaryWeapon = kGameStateUnit.GetPrimaryWeapon();
 		UpgradeTemplates = kPrimaryWeapon.GetMyWeaponUpgradeTemplates();
 
-		for (i = 0; i < UpgradeTemplates.Length; ++i) {
-			if (UpgradeTemplates[i].GetItemFriendlyName() == label) {
-				if(UpgradeTemplates[i].AddHitChanceModifierFn != none) {
-					UpgradeTemplates[i].AddHitChanceModifierFn(UpgradeTemplates[i], VisInfo, tmp);
-					return ": +" $ tmp $ "%";
-				}
-
-				if (UpgradeTemplates[i].AddCritChanceModifierFn != None) {
-					UpgradeTemplates[i].AddCritChanceModifierFn(UpgradeTemplates[i], tmp);
-					return ": +" $ tmp $ "%";
-				}
-
-				if(UpgradeTemplates[i].AdjustClipSizeFn != none) {
-					UpgradeTemplates[i].AdjustClipSizeFn(UpgradeTemplates[i], kPrimaryWeapon, 0, tmp); // we only want the modifier, so pass 0 for current
-					return ": +" $ tmp;
-				}
-				if (UpgradeTemplates[i].FreeFireChance > 0)
-					return ": " $ UpgradeTemplates[i].FreeFireChance $ "%";
-
-				if (UpgradeTemplates[i].NumFreeReloads > 0)
-					return ": " $ UpgradeTemplates[i].NumFreeReloads;
-
-				if (UpgradeTemplates[i].BonusDamage.Damage > 0)
-					return ": " $ UpgradeTemplates[i].BonusDamage.Damage;
-
-				if (UpgradeTemplates[i].FreeKillChance > 0)
-					return ": " $ UpgradeTemplates[i].FreeKillChance $ "%";
+		foreach UpgradeTemplates(UpgradeTemplate)
+		{
+			if (UpgradeTemplate.GetItemFriendlyName() == label)
+			{
+				str=": +" $ UpgradeTemplate.GetBonusAmountFn(UpgradeTemplate);
+				if( UpgradeTemplate.AddHitChanceModifierFn != none
+					|| UpgradeTemplate.AddCritChanceModifierFn != None
+					|| UpgradeTemplate.FreeFireCostFn !=none
+					|| UpgradeTemplate.FreeKillFn !=none )
+					str $= "%";
+				return str;
 			}
 		}
 	}
+	`TRACE_EXIT("");
 	return "";
 }
 

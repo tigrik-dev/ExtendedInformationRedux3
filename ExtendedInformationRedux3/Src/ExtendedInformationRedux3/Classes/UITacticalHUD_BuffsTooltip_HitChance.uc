@@ -1,10 +1,18 @@
-//-----------------------------------------------------------
-//	Class:	UITacticalHUD_BuffsTooltip_HitChance
-//	Author: tjnome / Mr.Nice / Sebkulu
-//	
-//-----------------------------------------------------------
-
+/**
+ * Tooltip class for displaying buffs, penalties, and passive effects
+ * in the tactical HUD with hit chance integration.
+ *
+ * Extends the default buffs tooltip to:
+ * - Support passive effect display
+ * - Dynamically adjust layout and size
+ * - Integrate custom effect lists with hit chance UI
+ * - Control visibility and refresh timing for smoother UX
+ *
+ * @author tjnome / Mr.Nice / Sebkulu
+ */
 class UITacticalHUD_BuffsTooltip_HitChance extends UITacticalHUD_BuffsTooltip;
+
+`include(ExtendedInformationRedux3\Src\ExtendedInformationRedux3\EIR_LoggerMacros.uci)
 
 var int TOOLTIP_ALPHA;
 
@@ -18,8 +26,27 @@ var bool bTop, ShowTip;
 
 var int Weight, DeadHeight;
 
+/**
+ * Initializes the bonuses/penalties tooltip panel and its UI components.
+ *
+ * Configures:
+ * - Background panel and transparency
+ * - Header (icon + title)
+ * - Effect list and mask
+ * - Layout depending on tooltip type (bonus, penalty, passive)
+ *
+ * @param InitName Name of the panel
+ * @param InitLibID Library identifier
+ * @param bIsBonusPanel Whether this is a bonus panel (otherwise penalty)
+ * @param bIsSoldier Whether this tooltip is for a soldier
+ * @param InitX Initial X position
+ * @param InitY Initial Y position
+ * @param bShowOnRight Whether tooltip should appear on the right side
+ * @return Initialized UIPanel instance
+ */
 simulated function UIPanel InitBonusesAndPenalties(optional name InitName, optional name InitLibID, optional bool bIsBonusPanel, optional bool bIsSoldier, optional float InitX = 0, optional float InitY = 0, optional bool bShowOnRight)
 {
+	`TRACE_ENTRY("");
 	InitPanel(InitName, InitLibID);
 
 	Hide();
@@ -92,12 +119,23 @@ simulated function UIPanel InitBonusesAndPenalties(optional name InitName, optio
 	}	
 
 	BGBox.SetAlpha(getTOOLTIP_ALPHA()); // Setting transparency
+	`TRACE_EXIT("");
 	return self; 
 }
 
-//Mr.Nice: UITacticalHUD_BuffsTooltip shows before it Refreshes?! Other tooltips Refresh first, which makes sense to avoid possibly showing partial tooltip data for a frame or so.
+/**
+ * Displays the tooltip after refreshing its data.
+ *
+ * Mr.Nice: UITacticalHUD_BuffsTooltip shows before it Refreshes?! Other tooltips Refresh first, which makes sense to avoid possibly showing partial tooltip data for a frame or so.
+ *
+ * Ensures:
+ * - Data is up-to-date before showing
+ * - Tooltip visibility is controlled via ShowTip flag
+ * - Handles grouped tooltips correctly
+ */
 simulated function ShowTooltip()
 {
+	`TRACE_ENTRY("");
 	RefreshData();
 	if (ShowTip) 
 	{
@@ -108,11 +146,24 @@ simulated function ShowTooltip()
 			ClearTimer(nameof(Hide));
 		}
 	}
+	`TRACE_EXIT("");
 }
 
 
 `MCM_CH_VersionChecker(class'MCM_Defaults'.default.VERSION, class'ExtendedInformationRedux3_MCMScreen'.default.CONFIG_VERSION)
 
+/**
+ * Refreshes tooltip data based on the currently hovered unit or target.
+ *
+ * Determines:
+ * - Active unit (player or enemy)
+ * - Relevant effects based on category
+ * - Updates UI list and header text
+ *
+ * Handles cases where:
+ * - No unit is found
+ * - No effects are available
+ */
 simulated function RefreshData()
 {
 	local XGUnit				kActiveUnit;
@@ -121,6 +172,7 @@ simulated function RefreshData()
 	local array<string>			Path; 
 	local array<UISummary_UnitEffect> Effects; 
 
+	`TRACE_ENTRY("");
 	//Trigger on the correct hover item 
 	if( XComTacticalController(PC) != None )
 	{	
@@ -187,8 +239,20 @@ simulated function RefreshData()
 
 	ShowTip=true;
 	//OnEffectListSizeRealized();
+	`TRACE_EXIT("");
 }
 
+/**
+ * Retrieves unit effects filtered by the current category.
+ *
+ * Includes:
+ * - Active effects applied to the unit
+ * - Effects applied by the unit (source effects)
+ * - Special handling for rupture effect
+ *
+ * @param kGameStateUnit Unit to retrieve effects for
+ * @return Array of UISummary_UnitEffect matching the category
+ */
 simulated function array<UISummary_UnitEffect> GetUnitEffectsByCategory(XComGameState_Unit kGameStateUnit)
 {
 	local UISummary_UnitEffect Item, EmptyItem;  
@@ -198,6 +262,7 @@ simulated function array<UISummary_UnitEffect> GetUnitEffectsByCategory(XComGame
 	local XComGameStateHistory History;
 	local StateObjectReference EffectRef;
 
+	`TRACE_ENTRY("");
 	History = `XCOMHISTORY;
 
 	foreach kGameStateUnit.AffectedByEffects(EffectRef)
@@ -250,14 +315,31 @@ simulated function array<UISummary_UnitEffect> GetUnitEffectsByCategory(XComGame
 		if (List[i].Name == "" || List[i].Name == " ") List.Remove(--i, 1);
 	}
 	*/
+	`TRACE_EXIT("");
 	return List; 
 	
 }
 
+/**
+ * Populates a UISummary_UnitEffect structure with effect data.
+ *
+ * Handles:
+ * - Source vs target effects
+ * - Name, description, and icon assignment
+ * - Cooldown calculation
+ * - Localization expansion for descriptions
+ *
+ * @param kGameStateUnit Target unit
+ * @param EffectState Effect game state
+ * @param Persist Effect template
+ * @param bSource Whether this is a source-applied effect
+ * @param Summary Output summary structure
+ */
 simulated function FillUnitEffect(const XComGameState_Unit kGameStateUnit, const XComGameState_Effect EffectState, const X2Effect_Persistent Persist, const bool bSource, out UISummary_UnitEffect Summary)
 {
 	local X2AbilityTag AbilityTag;
 
+	`TRACE_ENTRY("");
 	AbilityTag = X2AbilityTag(`XEXPANDCONTEXT.FindTag("Ability"));
 	AbilityTag.ParseObj = EffectState;
 
@@ -265,7 +347,7 @@ simulated function FillUnitEffect(const XComGameState_Unit kGameStateUnit, const
 	{
 		Summary.Name = Persist.SourceFriendlyName;
 		Summary.Description = `XEXPAND.ExpandString(Persist.SourceFriendlyDescription);
-		if (!bShowPassive) Summary.Description $= "\n" $ CooldownDescription(EffectState, Persist);
+		if (!(bShowPassive && Persist.bInfiniteDuration)) Summary.Description $= "\n" $ CooldownDescription(EffectState, Persist);
 		//Summary.Description = `XEXPAND.ExpandString(Persist.SourceFriendlyDescription);
 		Summary.Icon = Persist.SourceIconLabel;
 
@@ -281,7 +363,7 @@ simulated function FillUnitEffect(const XComGameState_Unit kGameStateUnit, const
 	{
 		Summary.Name = Persist.FriendlyName;
 		Summary.Description = `XEXPAND.ExpandString(Persist.FriendlyDescription);
-		if (!bShowPassive) Summary.Description $= "\n" $ CooldownDescription(EffectState, Persist);
+		if (!(bShowPassive && Persist.bInfiniteDuration)) Summary.Description $= "\n" $ CooldownDescription(EffectState, Persist);
 		//Summary.Description = `XEXPAND.ExpandString(Persist.FriendlyDescription);
 		Summary.Icon = Persist.IconImage;
 
@@ -300,12 +382,27 @@ simulated function FillUnitEffect(const XComGameState_Unit kGameStateUnit, const
 	}
 
 	AbilityTag.ParseObj = None;
+	`TRACE_EXIT("");
 }
 
+/**
+ * Generates a textual description of an effect's cooldown behavior.
+ *
+ * Includes:
+ * - Persistent effects
+ * - Turn-based ticking rules
+ * - Action-based expiration
+ * - Team-based turn ending
+ *
+ * @param EffectState Effect game state
+ * @param Persist Effect template
+ * @return Human-readable cooldown description
+ */
 simulated function string CooldownDescription (const XComGameState_Effect EffectState, const X2Effect_Persistent Persist)
 {
 	local XComGameState_Player PlayerState;
 
+	`TRACE_ENTRY("");
 	// Adds information if the effect is Persistent of not
 	if (Persist.bInfiniteDuration)
 		return "Persistent effect";
@@ -319,13 +416,20 @@ simulated function string CooldownDescription (const XComGameState_Effect Effect
 		return "Effect removed after action";
 	
 	PlayerState = XComGameState_Player(`XCOMHISTORY.GetGameStateForObjectID(EffectState.ApplyEffectParameters.PlayerStateObjectRef.ObjectID));
+	`TRACE_EXIT("");
 	return (WatchRule(Persist) @ GetTeam(PlayerState) @ "turn");
-	
 }
 
-// Get information if it ends on aliens or players turn.
+/**
+ * Returns a string representing the team associated with the player state.
+ * Get information if it ends on aliens or players turn.
+ *
+ * @param PlayerState Player game state
+ * @return Team name string
+ */
 static final function string GetTeam(const XComGameState_Player PlayerState)
 {
+	`TRACE_ENTRY("");
 	switch (PlayerState.GetTeam())
 	{
 		case eTeam_XCom:
@@ -343,9 +447,18 @@ static final function string GetTeam(const XComGameState_Player PlayerState)
 	}
 }
 
-// Get information from WatchRule if the effects on on start/after action/after turn ended.
+/**
+ * Converts the effect watch rule into a readable string.
+ * Get information from WatchRule if the effects on on start/after action/after turn ended.
+ *
+ * Describes when an effect ends based on game rules.
+ *
+ * @param Persist Effect template
+ * @return Watch rule description string
+ */
 static final function string WatchRule(const X2Effect_Persistent Persist)
 {
+	`TRACE_ENTRY("");
 	switch (Persist.WatchRule)
 	{
 		case eGameRule_PlayerTurnBegin:
@@ -360,8 +473,19 @@ static final function string WatchRule(const X2Effect_Persistent Persist)
 	}
 }
 
+/**
+ * Sets the height of the tooltip and updates layout accordingly.
+ *
+ * Adjusts:
+ * - Effect list mask height
+ * - Scroll behavior
+ * - Background panel size
+ *
+ * @param NewHeight New height value
+ */
 simulated function SetHeight(float NewHeight)
 {
+	`TRACE_ENTRY("");
 	if (Height==NewHeight) return;
 	Height=NewHeight;
 
@@ -371,6 +495,7 @@ simulated function SetHeight(float NewHeight)
 
 	BGBox.SetHeight( Height );
 	ItemListMask.SetHeight(ItemList.MaskHeight);
+	`TRACE_EXIT("");
 }
 
 function int getTOOLTIP_ALPHA()

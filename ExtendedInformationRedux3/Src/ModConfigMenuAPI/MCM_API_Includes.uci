@@ -19,3 +19,7 @@
 
 `define MCM_API_BasicDropdownSaveHandler(FuncName,VarName)\
     simulated function `{FuncName} (MCM_API_Setting _Setting, string _SettingValue) { `{VarName} = _SettingValue; }
+
+//Mr. Nice: I forgot how few "helper" Macros there were originally!
+`define MCM_API_BasicIndexSaveHandler(FuncName,VarName,ArrName)\
+    simulated function `{FuncName} (MCM_API_Setting _Setting, string _SettingValue) { `{VarName} = `ArrName.Find(_SettingValue); }

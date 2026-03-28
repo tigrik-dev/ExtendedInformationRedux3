@@ -37,7 +37,7 @@ static function float GetExpectedDamage(
     local float AvgNormal, AvgCrit, AvgGraze;
     local float ExpectedDamage;
 
-	`TRACE(">> Enter. MinDamage:" @ MinDamage $ ", MaxDamage:" @ MaxDamage $ ", CritBonus:" @ CritBonus);
+	`TRACE_ENTRY("MinDamage:" @ MinDamage $ ", MaxDamage:" @ MaxDamage $ ", CritBonus:" @ CritBonus);
 
     ED_CritChance  = kBreakdown.ResultTable[eHit_Crit];
     ED_HitChance   = kBreakdown.ResultTable[eHit_Success];
@@ -76,7 +76,7 @@ static function float GetExpectedDamage(
     `DEBUG("ExpectedDamage RAW:" @ ExpectedDamage);
 	`DEBUG("=================================");
 
-	`TRACE("<< Exit. ExpectedDamage:" @ ExpectedDamage);
+	`TRACE_EXIT("ExpectedDamage:" @ ExpectedDamage);
     return ExpectedDamage;
 }
 
@@ -100,13 +100,13 @@ static function string GetExpectedDamageString(
     local float ExpectedDamage;
 	local string ExpectedDamageString;
 
-	`TRACE(">> Enter. MinDamage:" @ MinDamage $ ", MaxDamage:" @ MaxDamage $ ", CritBonus:" @ CritBonus);
+	`TRACE_ENTRY("MinDamage:" @ MinDamage $ ", MaxDamage:" @ MaxDamage $ ", CritBonus:" @ CritBonus);
 
     ExpectedDamage = GetExpectedDamage(kBreakdown, MinDamage, MaxDamage, CritBonus);
 
 	ExpectedDamageString = class'UIUtilities'.static.FormatFloat(ExpectedDamage, 1);
 
-	`TRACE("<< Exit. ExpectedDamageString:" @ ExpectedDamageString);
+	`TRACE_EXIT("ExpectedDamageString:" @ ExpectedDamageString);
     return ExpectedDamageString;
 }
 
@@ -129,7 +129,7 @@ static function float GetAvgGraze(int MinDamage, int MaxDamage)
     local int Count;
 	local float AvgGraze;
 
-	`TRACE(">> Enter. MinDamage:" @ MinDamage $ ", MaxDamage:" @ MaxDamage);
+	`TRACE_ENTRY("MinDamage:" @ MinDamage $ ", MaxDamage:" @ MaxDamage);
 
     SumGraze = 0;
     Count = 0;
@@ -142,6 +142,6 @@ static function float GetAvgGraze(int MinDamage, int MaxDamage)
 
 	AvgGraze = SumGraze / Count;
 
-	`TRACE("<< Exit. AvgGraze:" @ AvgGraze);
+	`TRACE_EXIT("AvgGraze:" @ AvgGraze);
     return AvgGraze;
 }

@@ -1,17 +1,18 @@
 [X2Action_ApplyWeaponDamageToUnit_HITCHANCE]
-HIT_CHANCE ="TIR";
-CRIT_CHANCE ="CRIT";
-DODGE_CHANCE ="EVITE";
-MISS_CHANCE ="RATE";
+//HIT_CHANCE ="TIR";
+//CRIT_CHANCE ="CRIT";
+//DODGE_CHANCE ="EVITE";
+//MISS_CHANCE ="RATE";
 
 SHORT_GUARANTEED_HIT="T.G.";
 SHORT_HIT_CHANCE="T";
 SHORT_MISS_CHANCE="R";
 SHORT_CRIT_CHANCE="C";
 SHORT_DODGE_CHANCE="E";
+SHORT_COUNTER_CHANCE="Co";
 
 GUARANTEED_HIT ="TIR GARANTI";
-GUARANTEED_MISS ="IMPOSSIBLE DE TOUCHER";
+//GUARANTEED_MISS ="IMPOSSIBLE DE TOUCHER";
 
 REPEATER_KILL ="Repeater";
 
@@ -33,7 +34,7 @@ sShowGuaranteedHit_MCMText = "Montrer 'TIR GARANTI' dans les Messages Volants";
 sGroupShotBar_MCMText = "Paramètres de la Barre de Tir";
 sBarHeight_MCMText = "Hauteur de la Barre";
 ;sBarOffsetX_MCMText = "Décalage X de la Barre";
-;sBarOffsetY_MCMText = "Décalage Y de la Barre";
+sBarOffsetY_MCMText = "Décalage Y de la Barre";
 sBarAlpha_MCMText = "Opacité de la Barre";
 ;sBarWidthMult_MCMText = "Multiplicateur de Largeur de la Barre";
 ;sGeneralOffsetY_MCMText = "Décalage Y Général";
@@ -50,12 +51,13 @@ sGroupBarColors_MCMText = "Paramètres de Couleurs de la Barre";
 sShowGrazed_MCMText = "Montrer les Chances de Rater dans le Hud de Tir";
 sShowCrit_MCMText = "Montrer les Chances de Crit dans le HUD de Tir";
 sAimLeftOfCrit_MCMText = "Mettre la Visée à gauche des Chances de Crit";
-sAssistBesideHit_MCMText = "Mettre l'Assistance à la Visée à côté des chances de toucehr";
+sAssistBesideHit_MCMText = "Mettre l'Assistance à la Visée à côté des chances de toucher";
+sAssistBar_MCMText = "Inclure la Visée Assistée dans les Chances de Toucher de la Barre de Tir";
 sPreviewMinimum_MCMText = "Prévisualiser les Dégâts Minimum";
 sPreviewHacking_MCMText = "Prévisualiser les Chances de Piratage";
 sWarningMessage_MCMText = "Veuillez noter que toute modification sur les Décalages peuvent occasionner un mauvais affichage!";
-sGrazeCritLayout_MCMText = "Graze Chance and Crit Damage Display Layout"
-sAssistHexColor_MCMText = "Aim Assist Chance Color";
+sGrazeCritLayout_MCMText = "Disposition de 'Ecorchures et DGT C.'"
+sAssistHexColor_MCMText = "Couleur de la barre de Visée Assitée";
 
 sBlack = "Noir";
 sWhite = "Blanc";
@@ -74,9 +76,15 @@ sOrangeEngineering = "Orange Ingénérie";
 sBlueScience = "Bleu Science";
 sObjIconBackground = "Fond d'icônes objectifs";
 
-sLayoutLeft = "Ecorchures et DGT C. à gauche";
-sLayoutBalanced = "Ecorchures et DGT C. de chaque côté";
-sLayoutRight = "Ecorchures et DGT C. à droite";
+LayoutArray[0] = "Auto"
+LayoutArray[1] = "Ecorchures et DGT C. à gauche"
+LayoutArray[2] = "Ecorchures et DGT C. de chaque côté"
+LayoutArray[3] = "Ecorchures et DGT C. à droite"
+sLayoutCustom = "Disposition personnelle <index>"
+
+;sLayoutLeft = "Ecorchures et DGT C. à gauche";
+;sLayoutBalanced = "Ecorchures et DGT C. de chaque côté";
+;sLayoutRight = "Ecorchures et DGT C. à droite";
 
 sShowAlwaysShotBreakdownHUD_MCMText = "Toujours Montrer les informations du Tir";
 sGroupShotWings_MCMText = "Réglages des Ailes d'Infos de Tir";
@@ -87,29 +95,27 @@ sShowEnemyToolTip_MCMText = "Montrer le ToolTip des Ennemis";
 sShowExtraWeaponStats_MCMText = "Montrer les Stats des Armes";
 
 
-[ExtendedInformationRedux3_UITacticalHUD_ShotWings]
+[HitCalcLib]
 LOWER_DIFFICULTY_MSG = "Difficulté basse";
 MISS_STREAK_MSG = "Série de ratés";
 SOLDIER_LOST_BONUS = "Perte de bonus pour le Soldat";
-CRIT_DAMAGE_LABEL =  "DEGÂTS CRITIQUES";
 
+
+[ExtendedInformationRedux3_UITacticalHUD_ShotWings]
+CRIT_DAMAGE_LABEL =  "DEGÂTS CRITIQUES";
+MULTIPLIER="Multiplier"
 
 [ExtendedInformationRedux3_UITacticalHUD_ShotHUD]
 CRIT_DAMAGE_LABEL="D.CRT";
-GRAZE_CHANCE_LABEL="ECORCH.";
-
-
-[UITacticalHUD_EnemyTooltip_HitChance]
-PrimaryBase = "Dégâts de Base"
-PrimarySpread = "Propagation des Dégâts"
-PrimaryPlusOne = "Dégâts +1"
-EnemyStatsTitle = "Stats Ennemi";
-
-
-[UITacticalHUD_SoldierInfoTooltip_HitChance]
-KILLS_LABEL = "Tués";
-ASSIST_LABEL = "Tués Assistés";
-FLANKING_CRIT_LABEL = "Crit à Découvert";
+;GRAZE_CHANCE_LABEL="ECORCH.";
 
 [StatListLib]
-HackDefenseLabel = "Défense Piratage";
+ASSISTSLABELS = "TUÉS ASSISTÉS";
+
+[HackCalcLib]
+RatioLabel="RATIO"
+
+[HitChance_Localization]
+TongueGrabHit = "Attrapé!";
+HackDefenceLabel = "DÉFENSE PIRATAGE";
+ShortCounterAttack = "Contre"

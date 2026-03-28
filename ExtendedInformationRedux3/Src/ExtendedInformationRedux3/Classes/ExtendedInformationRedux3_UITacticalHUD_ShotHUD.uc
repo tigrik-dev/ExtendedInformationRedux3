@@ -1,33 +1,54 @@
-//-----------------------------------------------------------
-//	Class:	ExtendedInformationRedux3_UITacticalHUD_ShotHUD
-//	Author: Mr.Nice / Sebkulu
-//	
-//-----------------------------------------------------------
-
-class ExtendedInformationRedux3_UITacticalHUD_ShotHUD extends UITacticalHUD_ShotHUD config(ShotHUD);
+/**
+ * ExtendedInformationRedux3_UITacticalHUD_ShotHUD
+ *
+ * Custom tactical HUD class responsible for displaying shot-related
+ * information in XCOM 2 with the Extended Information Redux 3 mod.
+ *
+ * Responsibilities:
+ * - Display Hit, Crit, Graze, and Miss chances for abilities
+ * - Show Crit Damage preview for abilities with damage output
+ * - Handle dynamic UI layout based on screen resolution and DLC availability
+ * - Render visual hit bars and UI text elements, including assist and aim bonuses
+ * - Integrate counterattack logic for melee and special abilities
+ * - Respect user-configurable settings from the Mod Config Menu (MCM)
+ *
+ * @author Mr.Nice / Sebkulu
+ */
+class ExtendedInformationRedux3_UITacticalHUD_ShotHUD extends UITacticalHUD_ShotHUD config(ShotHUD) dependson(ExtendedInformationRedux3_UITacticalHUD_ShotWings, HackCalcLib);
 
 `include(ExtendedInformationRedux3\Src\ModConfigMenuAPI\MCM_API_CfgHelpers.uci)
+`include(ExtendedInformationRedux3\Src\ExtendedInformationRedux3\LangFallBack.uci)
+`include(ExtendedInformationRedux3\Src\ExtendedInformationRedux3\EIR_LoggerMacros.uci)
 
-var array <UIBGBox> BarBoxes;
-var UIText GrimyTextDodge, GrimyTextDodgeHeader, GrimyTextCrit, GrimyTextCritHeader;
-var int BAR_HEIGHT, BAR_OFFSET_X, BAR_OFFSET_Y, BAR_WIDTH_MULT, GENERAL_OFFSET_Y;
+`define RANGESTRING(MIN, MAX)  ( `MIN == `MAX ? string(`MIN) : string(`MIN) $ "-" $ string(`MAX) )
+
+var UIBGBox BarBoxes[5];
+var UIText GrazeValue, GrazeLabel, CritDamValue, CritDamLabel;
+var int BAR_HEIGHT, BAR_OFFSET_X, BAR_OFFSET_Y, BAR_POSITION_Y, BAR_WIDTH_MULT, GENERAL_OFFSET_Y;
 var int DODGE_OFFSET_X, DODGE_OFFSET_Y, CRIT_OFFSET_X, CRIT_OFFSET_Y;
 var int MAX_ABILITIES_PER_ROW;
 var int LabelFontSize, ValueFontSize, TEXTWIDTH;
 var int BAR_ALPHA;
-var string HIT_HEX_COLOR, CRIT_HEX_COLOR, DODGE_HEX_COLOR, MISS_HEX_COLOR, ASSIST_HEX_COLOR;
+var string BarColours[5];
 var int GRAZE_CRIT_LAYOUT;
 var float LabelsOffset;
 
+var EUIState GRAZE_STATE_COLOUR, CRIT_STATE_COLOUR;
+
+var bool HIT_SHOW_NonTRIVIAL;
+var bool GRAZE_SHOW_NonTRIVIAL;
+var bool CRIT_SHOW_NonTRIVIAL;
+var bool CRIT_HIDE_TRIVIAL;
+var bool BAR_HIDE_TRIVIAL;
+
 //FIX
-var bool TH_AIM_ASSIST;
+var bool TH_ASSIST_BAR;
 var bool DISPLAY_MISS_CHANCE;
 var bool TH_SHOW_GRAZED;
 var bool TH_SHOW_CRIT_DMG;
 var bool TH_AIM_LEFT_OF_CRIT;
 var bool TH_ASSIST_BESIDE_HIT;
 var bool TH_PREVIEW_MINIMUM;
-var bool TH_PREVIEW_HACKING;
 
 var localized string CRIT_DAMAGE_LABEL, GRAZE_CHANCE_LABEL, MISS_CHANCE_LABEL;
 
@@ -52,14 +73,33 @@ struct ResOffsetSt
 var config array<OffsetProperties> Offsets;
 var config array<ResOffsetSt> ResOffset;
 
-simulated function initValues()
+/**
+ * Initializes the Shot HUD and sets up layout.
+ *
+ * @return self Reference to this initialized ShotHUD instance.
+ */
+simulated function UITacticalHUD_ShotHUD InitShotHUD()
+{
+	`TRACE_ENTRY("");
+	Super.InitShotHUD();
+	InitLayout();
+	`TRACE_EXIT("");
+	return self;
+}
+
+/**
+ * Initializes layout, UI elements, and offsets for the ShotHUD.
+ */
+simulated function InitLayout()
 {
 	local int Index;
 	local int ResX, ResY;
 	local int RenderWidth, RenderHeight, FullWidth, FullHeight, AlreadyAdjustedVerticalSafeZone;
 	local float RenderAspectRatio, FullAspectRatio;
 	local string searchString, searchString2;
+	local XComOnlineEventMgr EventManager;
 
+	`TRACE_ENTRY("");
 	LabelsOffset = 0;
 	Movie.GetScreenDimensions(RenderWidth, RenderHeight, RenderAspectRatio, FullWidth, FullHeight, FullAspectRatio, AlreadyAdjustedVerticalSafeZone);
 	ResX = RenderWidth;
@@ -97,34 +137,96 @@ simulated function initValues()
 	// Init MCM Config Variables
 	/*BAR_WIDTH_MULT = getBAR_WIDTH_MULT();*/
 	BAR_HEIGHT = getBAR_HEIGHT();
-	/*BAR_OFFSET_X = getBAR_OFFSET_X();
-	BAR_OFFSET_Y = getBAR_OFFSET_Y();*/
 	BAR_ALPHA = getBAR_ALPHA();
-	/*GENERAL_OFFSET_Y = getGENERAL_OFFSET_Y();
+	BAR_OFFSET_Y = BAR_POSITION_Y -BAR_HEIGHT + getBAR_OFFSET_Y();
+	/*BAR_OFFSET_X = getBAR_OFFSET_X();
+	GENERAL_OFFSET_Y = getGENERAL_OFFSET_Y();
 	DODGE_OFFSET_X = getDODGE_OFFSET_X();
 	DODGE_OFFSET_Y = getDODGE_OFFSET_Y();
 	CRIT_OFFSET_X = getCRIT_OFFSET_X();
 	CRIT_OFFSET_Y = getCRIT_OFFSET_Y();*/
-	HIT_HEX_COLOR = getHIT_HEX_COLOR();
-	CRIT_HEX_COLOR = getCRIT_HEX_COLOR();
-	DODGE_HEX_COLOR = getDODGE_HEX_COLOR();
-	MISS_HEX_COLOR = getMISS_HEX_COLOR();
-	ASSIST_HEX_COLOR = getASSIST_HEX_COLOR();
-	TH_AIM_ASSIST = GetTH_AIM_ASSIST();
-	GRAZE_CRIT_LAYOUT = getGRAZE_CRIT_LAYOUT();	
+	BarColours[0] = getHIT_HEX_COLOR();
+	BarColours[1] = getCRIT_HEX_COLOR();
+	BarColours[2] = getDODGE_HEX_COLOR();
+	BarColours[3] = getASSIST_HEX_COLOR();
+	BarColours[4] = getMISS_HEX_COLOR();
+	GRAZE_CRIT_LAYOUT = getGRAZE_CRIT_LAYOUT();
+	//Mr. Nice Check for auto layout
+	if (GRAZE_CRIT_LAYOUT==0)
+	{
+		EventManager = `ONLINEEVENTMGR;
+		for(Index = EventManager.GetNumDLC() - 1; Index >= 0; Index--)
+		{
+			if(EventManager.GetDLCNames(Index)=='WOTCLifetimeStats') break;
+		}
+		if (Index==-1)
+		//if (XComGameState_CampaignSettings(class'XComGameStateHistory'.static.GetGameStateHistory().GetSingleGameStateObjectForClass(class'XComGameState_CampaignSettings', true)).RequiredDLC.Find('WOTCLifetimeStats')==INDEX_NONE)
+			GRAZE_CRIT_LAYOUT=2;
+		else GRAZE_CRIT_LAYOUT=3;
+	}
+		
+	TH_ASSIST_BAR = getTH_ASSIST_BAR();
+	TH_SHOW_GRAZED = getTH_SHOW_GRAZED();
+	TH_SHOW_CRIT_DMG = getTH_SHOW_CRIT_DMG();
+	TH_ASSIST_BESIDE_HIT = getTH_ASSIST_BESIDE_HIT();
+	TH_AIM_LEFT_OF_CRIT = getTH_AIM_LEFT_OF_CRIT();
+	TH_PREVIEW_MINIMUM = getTH_PREVIEW_MINIMUM();
+	DISPLAY_MISS_CHANCE = getDISPLAY_MISS_CHANCE();
 
 	DODGE_OFFSET_X = Offsets[GRAZE_CRIT_LAYOUT].GrazeOffsetX;
 	DODGE_OFFSET_Y = Offsets[GRAZE_CRIT_LAYOUT].GrazeOffsetY;
 	CRIT_OFFSET_X = Offsets[GRAZE_CRIT_LAYOUT].CritDOffsetX;
 	CRIT_OFFSET_Y = Offsets[GRAZE_CRIT_LAYOUT].CritDOffsetY;
-	// End of Init
+	
+	GrazeValue = Spawn(class'UIText', self);
+	GrazeValue.InitText();
+	GrazeValue.AnchorBottomCenter();
+	GrazeValue.SetWidth(TEXTWIDTH);
+	GrazeValue.Hide();
+
+	GrazeLabel = Spawn(class'UIText', self);
+	GrazeLabel.InitText();
+	GrazeLabel.AnchorBottomCenter();
+	GrazeLabel.SetWidth(TEXTWIDTH);
+	GrazeLabel.Hide();
+
+	CritDamValue = Spawn(class'UIText', self);
+	CritDamValue.InitText();
+	CritDamValue.AnchorBottomCenter();
+	CritDamValue.SetWidth(TEXTWIDTH);
+	CritDamValue.Hide();
+
+	CritDamLabel = Spawn(class'UIText', self);
+	CritDamLabel.InitText();
+	CritDamLabel.AnchorBottomCenter();
+	CritDamLabel.SetWidth(TEXTWIDTH);
+	CritDamLabel.Hide();
+	
+	for(Index=0; Index<ArrayCount(BarBoxes); Index++)
+	{
+		BarBoxes[Index]=Spawn(class'UIBGBox', self)
+			.InitBG(,,, 60, BAR_HEIGHT)
+			.SetBGColor("gray_highlight");
+		BarBoxes[Index].SetColor(BarColours[Index])
+			.AnchorBottomCenter()
+			.SetAlpha(BAR_ALPHA);
+		BarBoxes[Index].Hide();
+	}
+	`TRACE_EXIT("");
 }
 
+/**
+ * Finds the closest matching resolution from the ResOffset array.
+ *
+ * @param out ResX Width of the closest resolution.
+ * @param out ResY Height of the closest resolution.
+ */
 simulated function FindClosestRes(out int ResX, out int ResY)
 {
 	local ResOffsetSt ResOffsetItem;
 	local int tempInt, smallestDiff, i, tempResX, tempResY;
 	
+	`TRACE_ENTRY("");
 	foreach ResOffset(ResOffsetItem, i)
 	{
 		tempInt = Abs(ResY - ResOffsetItem.ResY);
@@ -148,147 +250,149 @@ simulated function FindClosestRes(out int ResX, out int ResY)
 	}
 	ResX = tempResX;
 	ResY = tempResY;
+	`TRACE_EXIT("ResX:" @ ResX $ ", ResY:" @ ResY);
 }
 
-simulated function Update() {
-
-    local bool isValidShot;
+/**
+ * Updates Shot HUD every frame to reflect current ability and target state.
+ */
+simulated function Update() 
+{
+    local bool isValidShot, IsSkPostMelee;
     local string ShotName, ShotDescription, ShotDamage;
-    local int HitChance, CritChance, TargetIndex, MinDamage, MaxDamage, AllowsShield, AimBonus;
+    local int HitChance, skHitChance, CritChance, GrazeChance, TargetIndex, AimBonus, skAimBonus, BarOffsetY, DodgeOffsetY, CritOffsetY;
     local ShotBreakdown kBreakdown;
-    local StateObjectReference Shooter, Target, EmptyRef;
-    local XComGameState_Ability SelectedAbilityState;
+    local StateObjectReference Target, EmptyRef;
+    local XComGameState_Ability SelectedAbilityState, skAbilityState;
     local X2AbilityTemplate SelectedAbilityTemplate;
     local AvailableAction SelectedUIAction;
     local AvailableTarget kTarget;
     local XGUnit ActionUnit;
     local UITacticalHUD TacticalHUD;
     local UIUnitFlag UnitFlag;
-    local WeaponDamageValue MinDamageValue, MaxDamageValue;
+    //local WeaponDamageValue MinDamageValue, MaxDamageValue;
     local X2TargetingMethod TargetingMethod;
-    local bool WillBreakConcealment, WillEndTurn;
-	
-    // New from Grimy Shot Bar
-    local int GrimyCritDmg;
-    local string FontString;
-   
-	local int offsetX, Current, i;
-	local int Chance[3];
+    local bool WillBreakConcealment, WillEndTurn, bHide, bCounter;
+	local DamageBreakdown NormalDamage, CritDamage;
+	local X2AbilityToHitCalc_StandardAim StandardHitCalc;
+	local UnitValue CounterattackCheck;
+	local XComGameState_Unit UnitState, TargetUnitState;
+	local XComGameStateHistory History;
+	// New from Grimy Shot Bar
+	local string FontString;
+   	local int offsetX, Current, i, CounterGraze, CounterCrit, CounterHit, CounterBonus;
+	local float Chance[4];
 
-	// Tigrik: ExpectedDamage
-	local bool ShouldPrintDamage;
-
-	initValues();
-
+	`TRACE_ENTRY("");
     TacticalHUD = UITacticalHUD(Screen);
+	History=`XCOMHISTORY;
  
-    // Remove the shotbar box when you aren't looking at it
-	for (i=0; i<BarBoxes.length; i++)
-	{
-		if ( BarBoxes[i] != none ) BarBoxes[i].Remove();
-	}
-	BarBoxes.length=0;
-
-	if ( GrimyTextDodge != none )
-	{
-		GrimyTextDodge.Remove();
-	}
-	if ( GrimyTextDodgeHeader != none )
-	{
-		GrimyTextDodgeHeader.Remove();
-	}
-	if ( GrimyTextCrit != none )
-	{
-		GrimyTextCrit.Remove();
-	}
-	if ( GrimyTextCritHeader != none )
-	{
-		GrimyTextCritHeader.Remove();
-	}
-
     SelectedUIAction = TacticalHUD.GetSelectedAction();
-    if (SelectedUIAction.AbilityObjectRef.ObjectID > 0)
+	if (SelectedUIAction.AbilityObjectRef.ObjectID > 0)
 	{ //If we do not have a valid action selected, ignore this update request
-        SelectedAbilityState = XComGameState_Ability(`XCOMHISTORY.GetGameStateForObjectID(SelectedUIAction.AbilityObjectRef.ObjectID));
-        SelectedAbilityTemplate = SelectedAbilityState.GetMyTemplate();
-        ActionUnit = XGUnit(`XCOMHISTORY.GetGameStateForObjectID(SelectedAbilityState.OwnerStateObject.ObjectID).GetVisualizer());
-        TargetingMethod = TacticalHUD.GetTargetingMethod();
-        if( TargetingMethod != None )
+		SelectedAbilityState = XComGameState_Ability(History.GetGameStateForObjectID(SelectedUIAction.AbilityObjectRef.ObjectID));
+		SelectedAbilityTemplate = SelectedAbilityState.GetMyTemplate();
+		UnitState=XComGameState_Unit(History.GetGameStateForObjectID(SelectedAbilityState.OwnerStateObject.ObjectID));
+		ActionUnit = XGUnit(UnitState.GetVisualizer());
+		TargetingMethod = TacticalHUD.GetTargetingMethod();
+		if( TargetingMethod != None )
 		{
-            TargetIndex = TargetingMethod.GetTargetIndex();
-            if( SelectedUIAction.AvailableTargets.Length > 0 && TargetIndex < SelectedUIAction.AvailableTargets.Length )
-                kTarget = SelectedUIAction.AvailableTargets[TargetIndex];
-        }
- 
-        //Update L3 help and OK button based on ability.
-        //*********************************************************************************
-        if (SelectedUIAction.bFreeAim)
+			TargetIndex = TargetingMethod.GetTargetIndex();
+			if( SelectedUIAction.AvailableTargets.Length > 0 && TargetIndex < SelectedUIAction.AvailableTargets.Length )
+			{
+				kTarget = SelectedUIAction.AvailableTargets[TargetIndex];
+				Target = kTarget.PrimaryTarget;
+
+			}
+		}
+
+		//Update L3 help and OK button based on ability.
+		//*********************************************************************************
+		if (SelectedUIAction.bFreeAim)
 		{
-            AS_SetButtonVisibility(Movie.IsMouseActive(), false);
-            isValidShot = true;
-        }
-        else if (SelectedUIAction.AvailableTargets.Length == 0 || SelectedUIAction.AvailableTargets[0].PrimaryTarget.ObjectID < 1)
+			AS_SetButtonVisibility(Movie.IsMouseActive(), false);
+			isValidShot = true;
+		}
+		else if (SelectedUIAction.AvailableTargets.Length == 0 || SelectedUIAction.AvailableTargets[0].PrimaryTarget.ObjectID < 1)
 		{
-            AS_SetButtonVisibility(Movie.IsMouseActive(), false);
-            isValidShot = false;
-        }
-        else
+			AS_SetButtonVisibility(Movie.IsMouseActive(), false);
+			isValidShot = false;
+		}
+		else
 		{
-            AS_SetButtonVisibility(Movie.IsMouseActive(), Movie.IsMouseActive());
-            isValidShot = true;
-        }
+			AS_SetButtonVisibility(Movie.IsMouseActive(), Movie.IsMouseActive());
+			isValidShot = true;
+		}
  
-        //Set shot name / help text
-        //*********************************************************************************
-        ShotName = SelectedAbilityState.GetMyFriendlyName();
+		//Set shot name / help text
+		//*********************************************************************************
+		ShotName = SelectedAbilityState.GetMyFriendlyName(kTarget.PrimaryTarget);
  
-        if (SelectedUIAction.AvailableCode == 'AA_Success')
+		if (SelectedUIAction.AvailableCode == 'AA_Success')
 		{
-            ShotDescription = SelectedAbilityState.GetMyHelpText();
-            if (ShotDescription == "") ShotDescription = "Missing 'LocHelpText' from ability template.";
-        }
-        else
+			ShotDescription = SelectedAbilityState.GetMyHelpText();
+			if (ShotDescription == "") ShotDescription = "Missing 'LocHelpText' from ability template.";
+		}
+		else
 		{
-            ShotDescription = class'X2AbilityTemplateManager'.static.GetDisplayStringForAvailabilityCode(SelectedUIAction.AvailableCode);
-        }
+			ShotDescription = class'X2AbilityTemplateManager'.static.GetDisplayStringForAvailabilityCode(SelectedUIAction.AvailableCode);
+		}
  
  
-        WillBreakConcealment = SelectedAbilityState.MayBreakConcealmentOnActivation(kTarget.PrimaryTarget.ObjectID);
-        WillEndTurn = SelectedAbilityState.WillEndTurn();
+		WillBreakConcealment = SelectedAbilityState.MayBreakConcealmentOnActivation(Target.ObjectID);
+		WillEndTurn = SelectedAbilityState.WillEndTurn();
  
-        AS_SetShotInfo(ShotName, ShotDescription, WillBreakConcealment, WillEndTurn);
+		//AS_SetShotInfo(ShotName, ShotDescription, WillBreakConcealment, WillEndTurn);
+		// Display Hack Info if relevant
+		AS_SetShotInfo(ShotName, UpdateHackDescription(SelectedAbilityState, Target, ShotDescription), WillBreakConcealment, WillEndTurn);
  
-        // Display Hack Info if relevant
-        AS_SetShotInfo(ShotName, UpdateHackDescription(SelectedAbilityTemplate, SelectedAbilityState, kTarget, ShotDescription, SelectedAbilityState.OwnerStateObject), WillBreakConcealment, WillEndTurn);
+		// Disable Shot Button if we don't have a valid target.
+		AS_SetShotButtonDisabled(!isValidShot);
  
-        // Disable Shot Button if we don't have a valid target.
-        AS_SetShotButtonDisabled(!isValidShot);
- 
-        ResetDamageBreakdown();
- 
-        // In the rare case that this ability is self-targeting, but has a multi-target effect on units around it,
-        // look at the damage preview, just not against the target (self).
-        if (SelectedAbilityTemplate.AbilityTargetStyle.IsA('X2AbilityTarget_Self')
+		ResetDamageBreakdown();
+		
+		if (SelectedUIAction.AvailableCode != 'AA_Success')
+		{
+			HideAll();
+			return;
+		}
+
+		if(SelectedAbilityTemplate.DataName=='SkirmisherVengeance'
+			|| SelectedAbilityTemplate.DataName=='Justice')
+		{
+			IsSkPostMelee=true;
+			skAbilityState=XComGameState_Ability(History.GetGameStateForObjectID(UnitState.FindAbility('SkirmisherPostAbilityMelee').ObjectID));
+		}
+		else skAbilityState=SelectedAbilityState;
+		// In the rare case that this ability is self-targeting, but has a multi-target effect on units around it,
+		// look at the damage preview, just not against the target (self).
+		if (SelectedAbilityTemplate.AbilityTargetStyle.IsA('X2AbilityTarget_Self')
 			&& SelectedAbilityTemplate.AbilityMultiTargetStyle != none
 			&& SelectedAbilityTemplate.AbilityMultiTargetEffects.Length > 0 )
 		{
-			SelectedAbilityState.GetDamagePreview(EmptyRef, MinDamageValue, MaxDamageValue, AllowsShield);
+			class'DamagePreviewLib'.static.GetDamagePreview(skAbilityState, EmptyRef, NormalDamage, CritDamage);
 		}
-        else SelectedAbilityState.GetDamagePreview(kTarget.PrimaryTarget, MinDamageValue, MaxDamageValue, AllowsShield);
-
-        MinDamage = MinDamageValue.Damage;
-        MaxDamage = MaxDamageValue.Damage;
+		else class'DamagePreviewLib'.static.GetDamagePreview(skAbilityState, Target, NormalDamage, CritDamage);
        
-		ShouldPrintDamage = MinDamage > 0 && MaxDamage > 0;
-        if (ShouldPrintDamage)
+        if (NormalDamage.Min > 0 || NormalDamage.Max > 0)
 		{
-            if (MinDamage == MaxDamage)
-                ShotDamage = String(MinDamage);
-            else
-                ShotDamage = MinDamage $ "-" $ MaxDamage;
- 
-			// Tigrik: ExpectedDamage. Delay AddDamage until ExpectedDamage can be calculated
-            //AddDamage(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, eUIState_Good, 36), true);
+			ShotDamage=`RANGESTRING(NormalDamage.Min, NormalDamage.Max);
+			// [TODO] Tigrik: ExpectedDamage
+			/*ShotDamage $= " (" $ class'ExpectedDamageLib'.static.GetExpectedDamageString(
+				kBreakdown,
+				MinDamage,
+				MaxDamage,
+				GrimyCritDmg
+			) $ ")";*/
+
+            if(NormalDamage.Bonus>0)
+			{
+				AddDamage(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, eUIState_Warning2, 38), true);
+			}
+			else
+			{
+				AddDamage(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, eUIState_Good, 36), true);
+			}
         }
  
         //Set up percent to hit / crit values
@@ -296,214 +400,231 @@ simulated function Update() {
        
         if (SelectedAbilityTemplate.AbilityToHitCalc != none && SelectedAbilityState.iCooldown == 0)
 		{
-            Shooter = SelectedAbilityState.OwnerStateObject;
-            Target = kTarget.PrimaryTarget;
- 
 			//Mr. Nice: these three lines from Firaxis original)
            /*****************************************************/
-            SelectedAbilityState.LookupShotBreakdown(Shooter, Target, SelectedAbilityState.GetReference(), kBreakdown);
-            HitChance = Clamp(((kBreakdown.bIsMultishot) ? kBreakdown.MultiShotHitChance : kBreakdown.FinalHitChance), 0, 100);
-            CritChance = kBreakdown.ResultTable[eHit_Crit];
+            class'HitCalcLib'.static.GetShotBreakdownDiffAdjust(SelectedAbilityState, kTarget, kBreakdown, AimBonus);
+			HitChance = Clamp(((kBreakdown.bIsMultishot) ? kBreakdown.MultiShotHitChance : kBreakdown.FinalHitChance), 0, 100);
+		    if(IsSkPostMelee)
+		    {
+			   class'HitCalcLib'.static.GetShotBreakdownDiffAdjust(skAbilityState, kTarget, kBreakdown, SkAimBonus);
+   			   skHitChance=Clamp(((kBreakdown.bIsMultishot) ? kBreakdown.MultiShotHitChance : kBreakdown.FinalHitChance), 0, 100);
+			}
+			else
+			{
+				skHitChance=HitChance;
+				skAimBonus=AimBonus;
+			}
+			CritChance = kBreakdown.ResultTable[eHit_Crit];
+			GrazeChance= kBreakdown.ResultTable[eHit_Graze];
            /*****************************************************/
 
  			
 			// If User selected to display the Modified Hit Chance
-			if (X2AbilityToHitCalc_StandardAim(SelectedAbilityState.GetMyTemplate().AbilityToHitCalc) != None && TH_AIM_ASSIST) {	
-				AimBonus = class'ExtendedInformationRedux3_UITacticalHUD_ShotWings'.static.GetModifiedHitChance(SelectedAbilityState, HitChance);
-				HitChance += AimBonus;
-				//Wierd treatment of aim bonus means you can't just add it to hitchance for bar breakdown yet;
-				//GrimyHitChance += AimBonus;
-			}
-
+			BarOffsetY=BAR_OFFSET_Y;
+			DodgeOffsetY=DODGE_OFFSET_Y;
+			CritOffsetY=CRIT_OFFSET_Y;
 			if (TacticalHUD.m_kAbilityHUD.ActiveAbilities > MAX_ABILITIES_PER_ROW)
 			{
-				BAR_OFFSET_Y = default.BAR_OFFSET_Y + GENERAL_OFFSET_Y;
-				DODGE_OFFSET_Y = Offsets[GRAZE_CRIT_LAYOUT].GrazeOffsetY + GENERAL_OFFSET_Y;
-				CRIT_OFFSET_Y = Offsets[GRAZE_CRIT_LAYOUT].CritDOffsetY + GENERAL_OFFSET_Y;
+				BarOffsetY += GENERAL_OFFSET_Y;
+				DodgeOffsetY += GENERAL_OFFSET_Y;
+				CritOffsetY += GENERAL_OFFSET_Y;
+			}
+
+			bHide = HitChance < 0 || kBreakdown.HideShotBreakdown;
+			
+			if (!bHide || HIT_SHOW_NonTRIVIAL && HitChance>0 && HitChance<100)
+			{
+				if (DISPLAY_MISS_CHANCE)
+				{
+					//Mr.Nice: Why special case Miss==0? We might as well manually draw it the whoLe time....
+					//Flipped version only used once, and now want the real hitchance later too, so don't bother changing the variable.
+					//HitChance = 100 - HitChance;
+					// DEBUG TEST
+					//if (HitChance == 0) AS_SetShotChance(class'UIUtilities_Text'.static.GetColoredText(class'X2Action_ApplyWeaponDamageToUnit_HITCHANCE'.default.MISS_CHANCE, eUIState_Header), HitChance + 0.0);
+					//AS_SetShotChance(class'UIUtilities_Text'.static.GetColoredText(class'X2Action_ApplyWeaponDamageToUnit_HITCHANCE'.default.MISS_CHANCE, eUIState_Header), HitChance);
+					//if (HitChance == 0)
+					//{
+						MC.ChildSetBool("statsHit", "_visible", true);
+						MC.ChildSetString("statsHit.shotLabel", "htmlText", Caps(class'X2TacticalGameRulesetDataStructures'.default.m_aAbilityHitResultStrings[eHit_Miss]));
+						MC.ChildSetString("statsHit.shotValue", "htmlText", (100-HitChance) @ "%");
+					//}
+				}
+				else AS_SetShotChance(class'UIUtilities_Text'.static.GetColoredText(m_sShotChanceLabel, eUIState_Header), HitChance);
+				TacticalHUD.SetReticleAimPercentages(float(HitChance) / 100.0f, float(CritChance) / 100.0f);
 			}
 			else
 			{
-				BAR_OFFSET_Y = default.BAR_OFFSET_Y;
-				DODGE_OFFSET_Y = Offsets[GRAZE_CRIT_LAYOUT].GrazeOffsetY;
-				CRIT_OFFSET_Y = Offsets[GRAZE_CRIT_LAYOUT].CritDOffsetY;
+				AS_SetShotChance("", -1);
+				TacticalHUD.SetReticleAimPercentages(-1, -1);
 			}
- 
-            if (HitChance > -1 && !kBreakdown.HideShotBreakdown) {
-				
-			   //Mr. Nice: If you're going to replicate the % results from RollforAbilityHit, then copy it's code structure!
-			   // Note RollforabilityHit() is an empty function is the basic X2AbilitytoHitCalc class, below is _StandardAim drived
-			   // In principle, other X2AbilitytoHitCalc implementations could use shotbreakdown differently, or even not use it at all!
-				//GrimyHitChance = ((kBreakdown.bIsMultishot) ? kBreakdown.MultiShotHitChance : kBreakdown.FinalHitChance);
-				for (i = 0; i < eHit_Miss; ++i)     //  If we don't match a result before miss, then it's a miss.
-				{
-					Chance[i]= max(0, min(Current + kBreakdown.ResultTable[i], 100) - max(Current, 0) );
-					Current += kBreakdown.ResultTable[i];
-				}
-				
-                // Generate a display for dodge chance
-                if (GetTH_SHOW_GRAZED() && Chance[eHit_Graze] > 0)
-				{
-                    FontString = Chance[eHit_Graze] $ "%";
-                    FontString = class'UIUtilities_Text'.static.GetColoredText(FontString, eUIState_Normal, , Offsets[GRAZE_CRIT_LAYOUT].GrazeTextAlign);
-                    FontString = class'UIUtilities_Text'.static.AddFontInfo(FontString,false,true, , ValueFontSize);
-					GrimyTextDodge = Spawn(class'UIText', self);
-					GrimyTextDodge.InitText('GrimyText1');
-					GrimyTextDodge.AnchorBottomCenter();
-					GrimyTextDodge.SetPosition(DODGE_OFFSET_X -TEXTWIDTH*int(Offsets[GRAZE_CRIT_LAYOUT].GrazeTextAlign=="right"),DODGE_OFFSET_Y - 0.8);
-					GrimyTextDodge.SetWidth(TEXTWIDTH);
-					GrimyTextDodge.SetText(FontString);
-					GrimyTextDodge.Show();
- 
-                    FontString = GRAZE_CHANCE_LABEL;
-                    //FontString = class'UIUtilities_Text'.static.GetSizedText(FontString,LabelFontSize);
-                    FontString = class'UIUtilities_Text'.static.GetColoredText(FontString,eUIState_Header,LabelFontSize ,Offsets[GRAZE_CRIT_LAYOUT].GrazeTextAlign);
-					GrimyTextDodgeHeader = Spawn(class'UIText', self);
-					GrimyTextDodgeHeader.InitText('GrimyText2');
-					GrimyTextDodgeHeader.AnchorBottomCenter();
-                    GrimyTextDodgeHeader.SetPosition(DODGE_OFFSET_X -TEXTWIDTH*int(Offsets[GRAZE_CRIT_LAYOUT].GrazeTextAlign=="right"),DODGE_OFFSET_Y + LabelsOffset);
-					GrimyTextDodgeHeader.SetWidth(TEXTWIDTH);
-					GrimyTextDodgeHeader.SetText(FontString);
-					GrimyTextDodgeHeader.Show();
-                }
- 
-                // Generate a display for Crit Damage
-                GrimyCritDmg = GetCritDamage(SelectedAbilityState, Target);
-
-				// Tigrik: ExpectedDamage
-				ShotDamage $= " (" $ class'ExpectedDamageLib'.static.GetExpectedDamageString(
-					kBreakdown,
-					MinDamage,
-					MaxDamage,
-					GrimyCritDmg
-				) $ ")";
-
-				if (ShouldPrintDamage)
-				{
-					AddDamage(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, eUIState_Good, 36), true);
-				}
-
-                if (GetTH_SHOW_CRIT_DMG() && GrimyCritDmg > 0 )
-				{
-                    FontString = "+" $ string(GrimyCritDmg);
-                    //FontString = class'UIUtilities_Text'.static.GetSizedText(FontString,ValueFontSize);
-                    FontString = class'UIUtilities_Text'.static.GetColoredText(FontString, eUIState_Normal, , Offsets[GRAZE_CRIT_LAYOUT].CritDTextAlign);
-                    FontString = class'UIUtilities_Text'.static.AddFontInfo(FontString,false,true, , ValueFontSize);
-					GrimyTextCrit = Spawn(class'UIText', self);
-					GrimyTextCrit.InitText('GrimyText3');
-					GrimyTextCrit.AnchorBottomCenter();
-                    //if (GrimyCritDmg > 9) //If the string is too long, shift it left by 15 pixels (~1 digit)
-                        GrimyTextCrit.SetPosition(CRIT_OFFSET_X-TEXTWIDTH*int(Offsets[GRAZE_CRIT_LAYOUT].CritDTextAlign=="right"),CRIT_OFFSET_Y - 0.8);
-					GrimyTextCrit.SetWidth(TEXTWIDTH);
-                    //else GrimyTextCrit.SetPosition(CRIT_OFFSET_X+15,CRIT_OFFSET_Y - 0.8);
-					GrimyTextCrit.SetText(FontString);
-					GrimyTextCrit.Show();
- 
-                    FontString = CRIT_DAMAGE_LABEL;
-//                    FontString = class'UIUtilities_Text'.static.GetSizedText(FontString,LabelFontSize);
-                    FontString = class'UIUtilities_Text'.static.GetColoredText(FontString,eUIState_Header, LabelFontSize, Offsets[GRAZE_CRIT_LAYOUT].CritDTextAlign);
-					GrimyTextCritHeader = Spawn(class'UIText', self);
-					GrimyTextCritHeader.InitText('GrimyText4');
-					GrimyTextCritHeader.AnchorBottomCenter();
-                    GrimyTextCritHeader.SetPosition(CRIT_OFFSET_X-TEXTWIDTH*int(Offsets[GRAZE_CRIT_LAYOUT].CritDTextAlign=="right"),CRIT_OFFSET_Y + LabelsOffset);
-                    GrimyTextCritHeader.SetWidth(TEXTWIDTH);
-					GrimyTextCritHeader.SetText(FontString);
-					GrimyTextCritHeader.Show();
-                }
-
-
-                // Generate the shot breakdown bar
-                if (BAR_HEIGHT > 0)
-				{
-					if (!TH_AIM_ASSIST)	Chance[eHit_Success] += AimBonus; //Assist bonus directly adds to eHit_Success changes;
-					offsetX = BAR_WIDTH_MULT * (-50) + BAR_OFFSET_X;
-					//Mr. Nice: offsetX is an out parameter, and is incremented in DrawBox() as required.
-					switch(int(GetTH_AIM_LEFT_OF_CRIT()) + 2* int(GetTH_ASSIST_BESIDE_HIT()))
-					{
-						case 1+0:
-							Drawbox(Chance[eHit_Success], HIT_HEX_COLOR, offsetX);
-							Drawbox(Chance[eHit_Crit], CRIT_HEX_COLOR, offsetX);
-							Drawbox(Chance[eHit_Graze], DODGE_HEX_COLOR, offsetX);
-							if (TH_AIM_ASSIST) Drawbox(AimBonus, ASSIST_HEX_COLOR, offsetX);
-						break;
-						case 1+2:
-							Drawbox(Chance[eHit_Success], HIT_HEX_COLOR, offsetX);
-							if (TH_AIM_ASSIST) Drawbox(AimBonus, ASSIST_HEX_COLOR, offsetX);
-							Drawbox(Chance[eHit_Crit], CRIT_HEX_COLOR, offsetX);
-							Drawbox(Chance[eHit_Graze], DODGE_HEX_COLOR, offsetX);
-						break;
-						case 0+0:
-							Drawbox(Chance[eHit_Crit], CRIT_HEX_COLOR, offsetX);
-							Drawbox(Chance[eHit_Success], HIT_HEX_COLOR, offsetX);
-							Drawbox(Chance[eHit_Graze], DODGE_HEX_COLOR, offsetX);
-							if (TH_AIM_ASSIST) Drawbox(AimBonus, ASSIST_HEX_COLOR, offsetX);
-						break;
-						case 0+2:
-							Drawbox(Chance[eHit_Crit], CRIT_HEX_COLOR, offsetX);
-							Drawbox(Chance[eHit_Success], HIT_HEX_COLOR, offsetX);
-							if (TH_AIM_ASSIST) Drawbox(AimBonus, ASSIST_HEX_COLOR, offsetX);
-							Drawbox(Chance[eHit_Graze], DODGE_HEX_COLOR, offsetX);
-						break;
-					}
-                    if (BAR_WIDTH_MULT*(1-HitChance) < 500)
-						Drawbox(100 - HitChance, MISS_HEX_COLOR, offsetX);
-				}
-
-				if (GetDISPLAY_MISS_CHANCE())
-				{
-					HitChance = 100 - HitChance;//Mr. Nice: moved from earlier in function. Otherwise messes up shotbar, was draw even in PI version of shotbar
-	                // DEBUG TEST
-					//if (HitChance == 0) AS_SetShotChance(class'UIUtilities_Text'.static.GetColoredText(class'X2Action_ApplyWeaponDamageToUnit_HITCHANCE'.default.MISS_CHANCE, eUIState_Header), HitChance + 0.0);
-					AS_SetShotChance(class'UIUtilities_Text'.static.GetColoredText(class'X2Action_ApplyWeaponDamageToUnit_HITCHANCE'.default.MISS_CHANCE, eUIState_Header), HitChance);
-					if (HitChance == 0)
-					{
-						/*MC.SetBool("._visible", true);
-						MC.SetString("shotLabel.htmlText", class'X2Action_ApplyWeaponDamageToUnit_HITCHANCE'.default.MISS_CHANCE);
-						MC.SetString("shotValue.htmlText", HitChance @ "%");*/
-						MC.ChildSetBool("statsHit", "_visible", true);
-						MC.ChildSetString("statsHit.shotLabel", "htmlText", class'X2Action_ApplyWeaponDamageToUnit_HITCHANCE'.default.MISS_CHANCE);
-						MC.ChildSetString("statsHit.shotValue", "htmlText", HitChance @ "%");
-					}
-				}
-
-                else AS_SetShotChance(class'UIUtilities_Text'.static.GetColoredText(m_sShotChanceLabel, eUIState_Header), HitChance);
-                AS_SetCriticalChance(class'UIUtilities_Text'.static.GetColoredText(m_sCritChanceLabel, eUIState_Header), CritChance);
-                TacticalHUD.SetReticleAimPercentages(float(HitChance) / 100.0f, float(CritChance) / 100.0f);
-            }
-            else
+			
+			if( CritChance>-1 &&(
+				(!bHide && !(CRIT_HIDE_TRIVIAL && CritDamage.InfoList.Length==0 && CritChance<=0))
+				|| (bHide && CRIT_SHOW_NonTRIVIAL &&(CritDamage.Min>0 || CritDamage.Max>0))) )
 			{
-				// Tigrik: ExpectedDamage. Delay AddDamage until ExpectedDamage can be calculated
-				if (ShouldPrintDamage)
+				if(TH_SHOW_CRIT_DMG)
 				{
-					AddDamage(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, eUIState_Good, 36), true);
+					FontString = "+" $ `RANGESTRING(CritDamage.Min, CritDamage.Max);
+					FontString = class'UIUtilities_Text'.static.GetColoredText(FontString, CRIT_STATE_COLOUR, , Offsets[GRAZE_CRIT_LAYOUT].CritDTextAlign);
+					FontString = class'UIUtilities_Text'.static.AddFontInfo(FontString,false,true, , ValueFontSize);
+					CritDamValue.SetPosition(CRIT_OFFSET_X-TEXTWIDTH*int(Offsets[GRAZE_CRIT_LAYOUT].CritDTextAlign=="right"),CritOffsetY - 0.8);
+					CritDamValue.SetText(FontString);
+					CritDamValue.Show();
+				
+					FontString = CRIT_DAMAGE_LABEL;
+					FontString = class'UIUtilities_Text'.static.GetColoredText(FontString,eUIState_Header, LabelFontSize, Offsets[GRAZE_CRIT_LAYOUT].CritDTextAlign);
+					CritDamLabel.SetPosition(CRIT_OFFSET_X-TEXTWIDTH*int(Offsets[GRAZE_CRIT_LAYOUT].CritDTextAlign=="right"),CritOffsetY + LabelsOffset);
+					CritDamLabel.SetText(FontString);
+					CritDamLabel.Show();
 				}
-
-                AS_SetShotChance("", -1);
-                AS_SetCriticalChance("", -1);
-                TacticalHUD.SetReticleAimPercentages(-1, -1);
-            }
-        }
-        else
-		{
-			// Tigrik: ExpectedDamage. Delay AddDamage until ExpectedDamage can be calculated
-			if (ShouldPrintDamage)
+				else
+				{
+					CritDamValue.Hide();
+					CritDamLabel.Hide();
+				}
+				if (!bHide || CritChance!=0)
+					AS_SetCriticalChance(class'UIUtilities_Text'.static.GetColoredText(m_sCritChanceLabel, eUIState_Header), CritChance);
+				else
+					AS_SetCriticalChance("", -1);
+			}
+			else
 			{
-				AddDamage(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, eUIState_Good, 36), true);
+				AS_SetCriticalChance("", -1);
+				CritDamValue.Hide();
+				CritDamLabel.Hide();
+			}
+			
+			//************Counter Attack Stuff**************************
+			//Mr. Nice: Counter attacks turn all graze & miss results to counters,
+			//plus a chance to turn guaranteed hit melees to counters (at the same rate as Mutons boosted dodge against melee)
+			StandardHitCalc=X2AbilityToHitCalc_StandardAim(skAbilityState.GetMyTemplate().AbilityToHitCalc);
+			if (StandardHitCalc!=none && StandardHitCalc.bMeleeAttack)
+			{
+				TargetUnitState = XComGameState_Unit(History.GetGameStateForObjectID(Target.ObjectID));
+				if (TargetUnitState!=none && !TargetUnitState.IsImpaired()
+					&& TargetUnitState.GetUnitValue(class'X2Ability'.default.CounterattackDodgeEffectName, CounterattackCheck)
+					&& CounterattackCheck.fValue == class'X2Ability'.default.CounterattackDodgeUnitValue)
+				{
+					bCounter=true;
+					if (StandardHitCalc.bGuaranteedHit)
+					{
+						CounterGraze=max(0,(skHitChance-GrazeChance))*class'X2Ability_Muton'.default.COUNTERATTACK_DODGE_AMOUNT/100;
+						if (CritChance!=0)
+							//Mr. Nice: For bar purposes, don't want crit to disappear if non-zero in principle
+							CounterCrit=max(1, CritChance*(100-class'X2Ability_Muton'.default.COUNTERATTACK_DODGE_AMOUNT)/100);
+						if (skAimBonus!=0)
+							CounterBonus=max(1, skAimBonus*(100-class'X2Ability_Muton'.default.COUNTERATTACK_DODGE_AMOUNT)/100);
+						CounterHit=CounterGraze-CounterCrit-CounterBonus;
+					}
+					if (!IsSkPostMelee) CounterGraze+=100-HitChance;
+					GrazeChance+=CounterGraze;
+				}
 			}
 
-            AS_SetShotChance("", -1);
-            AS_SetCriticalChance("", -1);
-        }
+			if (TH_SHOW_GRAZED && (!bHide || GRAZE_SHOW_NonTRIVIAL) && GrazeChance > 0)
+			{
+				FontString = GrazeChance $ "%";
+				FontString = class'UIUtilities_Text'.static.GetColoredText(FontString, GRAZE_STATE_COLOUR, , Offsets[GRAZE_CRIT_LAYOUT].GrazeTextAlign);
+				FontString = class'UIUtilities_Text'.static.AddFontInfo(FontString,false,true, , ValueFontSize);
+				GrazeValue.SetPosition(DODGE_OFFSET_X -TEXTWIDTH*int(Offsets[GRAZE_CRIT_LAYOUT].GrazeTextAlign=="right"),DodgeOffsetY - 0.8);
+				GrazeValue.SetText(FontString);
+				GrazeValue.Show();
+				FontString = Caps(bCounter ? `LOCFALLBACK(ShortCounterAttack, class'X2TacticalGameRulesetDataStructures'.default.m_aAbilityHitResultStrings[eHit_CounterAttack])
+					: class'X2TacticalGameRulesetDataStructures'.default.m_aAbilityHitResultStrings[eHit_Graze]);
+				FontString = class'UIUtilities_Text'.static.GetColoredText(FontString,eUIState_Header,LabelFontSize ,Offsets[GRAZE_CRIT_LAYOUT].GrazeTextAlign);
+				GrazeLabel.SetPosition(DODGE_OFFSET_X -TEXTWIDTH*int(Offsets[GRAZE_CRIT_LAYOUT].GrazeTextAlign=="right"),DodgeOffsetY + LabelsOffset);
+				GrazeLabel.SetText(FontString);
+				GrazeLabel.Show();
+			}
+			else
+			{
+				GrazeLabel.Hide();
+				GrazeValue.Hide();
+			}
+				
+			// Generate the shot breakdown bar
+			if ( BAR_HEIGHT > 0 && !bHide &&
+			!(BAR_HIDE_TRIVIAL && CritDamage.InfoList.Length==0 && CritChance<=0 && GrazeChance<=0) )
+			{	   //Mr. Nice: If you're going to replicate the % results from RollforAbilityHit, then copy it's code structure!
+					// Note RollforabilityHit() is an empty function is the basic X2AbilitytoHitCalc class, below is _StandardAim drived
+					// In principle, other X2AbilitytoHitCalc implementations could use shotbreakdown differently, or even not use it at all!
+					for (i = 0; i < eHit_Miss; ++i)	 //  If we don't match a result before miss, then it's a miss.
+					{
+						Chance[i]= max(0, min(Current + kBreakdown.ResultTable[i], 100) - max(Current, 0) );
+						Current += kBreakdown.ResultTable[i];
+					//`redscreen(`showvar(Current));
+					}
+					//`redscreen(`showvar(HitChance));
+					Chance[eHit_Miss]=100-HitChance;
+				if (bCounter)
+				{
+					Chance[eHit_Graze]+=CounterGraze;
+					Chance[eHit_Crit]-=CounterCrit;
+					Chance[eHit_Success]-=CounterHit;
+					AimBonus-=CounterBonus;
+					Chance[eHit_Miss]=0;//Misses will be Counters, so no miss to show in the bar
+				}
+				if (IsSkPostMelee)
+				{
+					Chance[eHit_Success]+=skAimBonus;
+					AimBonus*=Chance[eHit_Success]/100.0;
+					for (i = 0; i < eHit_Miss; ++i)	
+						Chance[i]*=float(HitChance)/float(skHitChance);
+					Chance[eHit_Miss]=100-HitChance;//Incase counters have set it to 0!
+					Chance[eHit_Success]-=AimBonus;
+				}
+
+				if (TH_ASSIST_BAR)
+				{
+					Chance[eHit_Success] += AimBonus; //Assist bonus directly adds to eHit_Success changes;
+					AimBonus=0; //Hide the seperate aimbonus bar;
+				}
+				offsetX = BAR_WIDTH_MULT * (-50) + BAR_OFFSET_X;
+				//Mr. Nice: offsetX is an out parameter, and is incremented in SetBox() as required.
+				switch(int(TH_AIM_LEFT_OF_CRIT) + 2* int(TH_ASSIST_BESIDE_HIT))
+				{
+					case 1+0:
+						SetBox(BarBoxes[0], Chance[eHit_Success], offsetX, BarOffsetY);
+						SetBox(BarBoxes[1], Chance[eHit_Crit], offsetX, BarOffsetY);
+						SetBox(BarBoxes[2], Chance[eHit_Graze], offsetX, BarOffsetY);
+						SetBox(BarBoxes[3], AimBonus, offsetX, BarOffsetY);
+					break;
+					case 1+2:
+						SetBox(BarBoxes[0], Chance[eHit_Success], offsetX, BarOffsetY);
+						SetBox(BarBoxes[3], AimBonus, offsetX, BarOffsetY);
+						SetBox(BarBoxes[1], Chance[eHit_Crit], offsetX, BarOffsetY);
+						SetBox(BarBoxes[2], Chance[eHit_Graze], offsetX, BarOffsetY);
+					break;
+					case 0+0:
+						SetBox(BarBoxes[1], Chance[eHit_Crit], offsetX, BarOffsetY);
+						SetBox(BarBoxes[0], Chance[eHit_Success], offsetX, BarOffsetY);
+						SetBox(BarBoxes[2], Chance[eHit_Graze], offsetX, BarOffsetY);
+						SetBox(BarBoxes[3], AimBonus, offsetX, BarOffsetY);
+					break;
+					case 0+2:
+						SetBox(BarBoxes[1], Chance[eHit_Crit], offsetX, BarOffsetY);
+						SetBox(BarBoxes[0], Chance[eHit_Success], offsetX, BarOffsetY);
+						SetBox(BarBoxes[3], AimBonus, offsetX, BarOffsetY);
+						SetBox(BarBoxes[2], Chance[eHit_Graze], offsetX, BarOffsetY);
+					break;
+				}
+				//Mr. Nice: No longer optional to call SetBox for miss, since SetBox is what hides it if needed
+				SetBox(BarBoxes[4], Chance[eHit_Miss], offsetX, BarOffsetY);
+			}
+			else for (i=0; i<arraycount(BarBoxes); i++) BarBoxes[i].Hide();
+		}
+		else HideAll();
         TacticalHUD.m_kShotInfoWings.Show();
  
         //Show preview points, must be negative
         UnitFlag = XComPresentationLayer(Owner.Owner).m_kUnitFlagManager.GetFlagForObjectID(Target.ObjectID);
         if(UnitFlag != none)
 		{
-            if (GetTH_PREVIEW_MINIMUM())
-                SetAbilityMinDamagePreview(UnitFlag, SelectedAbilityState, kTarget.PrimaryTarget);
-            else
-				XComPresentationLayer(Owner.Owner).m_kUnitFlagManager.SetAbilityDamagePreview(UnitFlag, SelectedAbilityState, kTarget.PrimaryTarget);
-        }
+			if (TH_PREVIEW_MINIMUM)
+				SetAbilityMinDamagePreview(UnitFlag, skAbilityState, Target);
+			else
+				XComPresentationLayer(Owner.Owner).m_kUnitFlagManager.SetAbilityDamagePreview(UnitFlag, skAbilityState, Target);
+		}
  
         //@TODO - jbouscher - ranges need to be implemented in a template friendly way.
         //Hide any current range meshes before we evaluate their visibility state
@@ -517,159 +638,77 @@ simulated function Update() {
         else HideShine();
     }
 	RefreshTooltips();
+	`TRACE_EXIT("");
 }
 
-simulated function DrawBox (int Chance, string colour, out int offsetX)
+/**
+ * Hides all shot HUD elements without removing them from memory.
+ * Clears hit bars, graze/crit labels, and damage values to prepare
+ * the HUD for a new shot display.
+ */
+simulated function HideAll()
+{
+	local int i;
+
+	`TRACE_ENTRY("");
+	AS_SetShotChance("", -1);
+	AS_SetCriticalChance("", -1);
+	for (i=0; i<arraycount(BarBoxes); i++) BarBoxes[i].Hide();
+	GrazeValue.Hide();
+	GrazeLabel.Hide();
+	CritDamValue.Hide();
+	CritDamLabel.Hide();
+	`TRACE_EXIT("");
+}
+
+/**
+ * Removes all shot HUD elements permanently, freeing memory.
+ * This includes bar boxes and labels for graze and critical damage.
+ *
+ * @return self Returns the HUD object for method chaining
+ */
+simulated function ExtendedInformationRedux3_UITacticalHUD_ShotHUD RemoveAll()
+{
+	local int i;
+	`TRACE_ENTRY("");
+	for (i=0; i<arraycount(BarBoxes); i++) BarBoxes[i].Remove();
+	GrazeValue.Remove();
+	GrazeLabel.Remove();
+	CritDamValue.Remove();
+	CritDamLabel.Remove();
+	`TRACE_EXIT("");
+	return self;
+}
+
+/**
+ * Configures a single hit/crit/graze bar box in the HUD.
+ *
+ * @param BarBox The UI bar box to configure
+ * @param Chance Hit chance (0-100) for this bar
+ * @param offsetX Horizontal offset, updated after placing the bar
+ * @param offsetY Vertical offset for the bar
+ */
+simulated function SetBox (UIBGBox BarBox, int Chance, out int offsetX, int offsetY)
 {
 	local int bWidth;
-	local UIBGBox BarBox;
 
-	if (Chance <=0) return;
+	`TRACE_ENTRY("");
+	if (Chance <=0)
+	{
+		BarBox.Hide();
+		return;
+	}
 
 	bWidth=Chance*BAR_WIDTH_MULT;
-	
-	BarBox=Spawn(class'UIBGBox', self)
-		.InitBG(, offsetX, BAR_OFFSET_Y, bWidth, BAR_HEIGHT)
-		.SetBGColor("gray_highlight");
-	BarBox.SetColor(colour)
-		.AnchorBottomCenter()
-		.SetAlpha(BAR_ALPHA);
+	BarBox.SetPosition(offsetX, offsetY);
+	BarBox.SetWidth(bWidth);
 	BarBox.Show();
 
-	BarBoxes.AddItem(BarBox);
 	offsetX += bWidth;
+	`TRACE_EXIT("");
 }
 
 `MCM_CH_VersionChecker(class'MCM_Defaults'.default.VERSION, class'ExtendedInformationRedux3_MCMScreen'.default.CONFIG_VERSION)
-
-
-// GRIMY - Added this function to calculate crit damage from a weapon.
-// It doesn't scan for abilities and ammo types though, those are unfortunately often stored in if conditions
-// 2017-12-09: For the time being with partial rewrite of base game files for WotC, Crit Damages from AMMO ARE BEING TAKEN into account :-)
-static function int GetCritDamage(XcomGameState_Ability AbilityState, StateObjectReference TargetRef, optional out array<UISummary_ItemStat> ItemsStat) {
-	local XComGameStateHistory History;
-	local XComGameState_Unit SourceUnit, TargetUnit;
-	local StateObjectReference EffectRef;
-	local XComGameState_Effect EffectState;
-	local XComGameState_Item ItemState;
-	local X2Effect_Persistent EffectTemplate;
-	local EffectAppliedData TestEffectParams;
-	local int CritDamage;
-	local WeaponDamageValue WeaponDamage;
-	local UISummary_ItemStat ItemStat;
-	local int eState, Value_Crit, Value_Success, EffectDmg;
-	local string strPrefix, strLabel;
-	local X2Effect_ApplyWeaponDamage WepDamEffect;
-	local int iContinue;
-
-	
-	History = `XCOMHISTORY;
-	SourceUnit = XComGameState_Unit(History.GetGameStateForObjectID(AbilityState.OwnerStateObject.ObjectID));
-	TargetUnit = XComGameState_Unit(History.GetGameStateForObjectID(TargetRef.ObjectID));
-
-	TestEffectParams.AbilityInputContext.AbilityRef = AbilityState.GetReference();
-	TestEffectParams.AbilityInputContext.AbilityTemplateName = AbilityState.GetMyTemplateName();
-	TestEffectParams.ItemStateObjectRef = AbilityState.SourceWeapon;
-	TestEffectParams.AbilityStateObjectRef = AbilityState.GetReference();
-	TestEffectParams.SourceStateObjectRef = SourceUnit.GetReference();
-	TestEffectParams.PlayerStateObjectRef = SourceUnit.ControllingPlayer;
-	TestEffectParams.TargetStateObjectRef = TargetRef;
-	//TestEffectParams.AbilityResultContext.HitResult = eHit_Crit;
-
-	ItemState = AbilityState.GetSourceWeapon();
-	ItemState.GetBaseWeaponDamageValue(ItemState, WeaponDamage);
-
-	ItemsStat.Length = 0;
-
-	// Add in the Weapon Base Crit Damage
-	//ItemStat.Label = class'UIUtilities_Text'.static.GetColoredText(class'XLocalizedData'.default.WeaponCritBonus, eUIState_Good);
-	//ItemStat.Value = class'UIUtilities_Text'.static.GetColoredText("+" $ CritDamage, eUIState_Good);
-	//ItemsStat.AddItem(ItemStat);
-	ItemsStat=class'ExtendedInformationRedux3_UITacticalHUD_ShotWings'.static.GetWeaponBreakdown(TargetRef, AbilityState, true, CritDamage, iContinue, WepDamEffect);
-	if(!bool(iContinue)) return CritDamage;
-
-	foreach SourceUnit.AffectedByEffects(EffectRef)
-	{
-		EffectState = XComGameState_Effect(History.GetGameStateForObjectID(EffectRef.ObjectID));
-		EffectTemplate = EffectState.GetX2Effect();
-
-		TestEffectParams.AbilityResultContext.HitResult = eHit_Crit;
-		Value_Crit = EffectTemplate.GetAttackingDamageModifier(EffectState, SourceUnit, Damageable(TargetUnit), AbilityState, TestEffectParams, WeaponDamage.Damage);
-
-		TestEffectParams.AbilityResultContext.HitResult = eHit_Success;
-		Value_Success = EffectTemplate.GetAttackingDamageModifier(EffectState, SourceUnit, Damageable(TargetUnit), AbilityState, TestEffectParams, WeaponDamage.Damage);
-
-		if (Value_Crit - Value_Success != 0)
-		{
-			CritDamage+=Value_Crit;
-			if (Value_Crit<0)
-			{
-				eState=eUIState_Bad;
-				strPrefix="";
-			}
-			else 
-			{
-				eState = eUIState_Good; 
-				strPrefix = "+";
-			}
-			strLabel = EffectTemplate.GetSpecialDamageMessageName();
-			ItemStat.Label = class'UIUtilities_Text'.static.GetColoredText(strLabel, eState);
-			ItemStat.Value = class'UIUtilities_Text'.static.GetColoredText(strPrefix $ Value_Crit, eState );
-			ItemsStat.AddItem(ItemStat);	
-		}
-	}
-
-	TestEffectParams.AbilityResultContext.HitResult = eHit_Crit;
-	
-	if (TargetUnit != none)
-	{
-		foreach TargetUnit.AffectedByEffects(EffectRef)
-		{
-			EffectState = XComGameState_Effect(History.GetGameStateForObjectID(EffectRef.ObjectID));
-			EffectTemplate = EffectState.GetX2Effect();
-			EffectDmg = EffectTemplate.GetBaseDefendingDamageModifier (EffectState, SourceUnit, Damageable(TargetUnit), AbilityState, TestEffectParams, WeaponDamage.Damage, WepDamEffect);
-			EffectDmg += EffectTemplate.GetDefendingDamageModifier(EffectState, SourceUnit, Damageable(TargetUnit), AbilityState, TestEffectParams, WeaponDamage.Damage, WepDamEffect);
-			if (EffectDmg != 0)
-			{
-				CritDamage+=EffectDmg;
-				if (EffectDmg<0)
-				{
-					eState=eUIState_Bad;
-					strPrefix="";
-				}
-				else 
-				{
-					eState = eUIState_Good; 
-					strPrefix = "+";
-				}
-				strLabel = EffectTemplate.GetSpecialDamageMessageName();
-				ItemStat.Label = class'UIUtilities_Text'.static.GetColoredText(strLabel, eState);
-				ItemStat.Value = class'UIUtilities_Text'.static.GetColoredText(strPrefix $ EffectDmg, eState );
-				ItemsStat.AddItem(ItemStat);	
-			}
-		}
-	}
-
-
-	// When it checks for extra damage for eHit_Crit, it includes extra damage which applies to all hits.
-	// To correctly get bonus damage just for crits, you have to total and take away extra damage for normal hits, ie eHit_Success (Mr. Nice, thank you ^^)
-	/*TestEffectParams.AbilityResultContext.HitResult = eHit_Success;
-	foreach SourceUnit.AffectedByEffects(EffectRef) {
-		EffectState = XComGameState_Effect(History.GetGameStateForObjectID(EffectRef.ObjectID));
-		EffectTemplate = EffectState.GetX2Effect();
-
-		CritDamage -= EffectTemplate.GetAttackingDamageModifier(EffectState, SourceUnit, Damageable(TargetUnit), AbilityState, TestEffectParams, WeaponDamage.Damage);
-
-		// Added this loop afterwards to remove unwanted items (passives abilites / Etc...) from the array
-		for (i = 0; i < ItemsStat.Length; ++i)
-		{
-			if ( string(EffectTemplate.EffectName) == UISummary_ItemStat(ItemsStat[--i]).Label ) ItemsStat.remove(--i);
-		}
-	}*/
-
-	
-    return CritDamage;
-}
  
 // GRIMY - Added this to do a minimum damage preview.
 // Recreated the preview function in order to minimize # of files edited, and thus conflicts
@@ -680,6 +719,7 @@ static function SetAbilityMinDamagePreview(UIUnitFlag kFlag, XComGameState_Abili
     local WeaponDamageValue MinDamageValue;
     local WeaponDamageValue MaxDamageValue;
  
+	`TRACE_ENTRY("");
     if(kFlag == none || AbilityState == none) {
         return;
     }
@@ -705,131 +745,51 @@ static function SetAbilityMinDamagePreview(UIUnitFlag kFlag, XComGameState_Abili
     kFlag.SetShieldPointsPreview( possibleShieldDamage );
     kFlag.SetHitPointsPreview( possibleHPDamage );
     kFlag.SetArmorPointsPreview(MinDamageValue.Shred, MinDamageValue.Pierce);
+	`TRACE_EXIT("");
 }
  
-function string UpdateHackDescription( X2AbilityTemplate SelectedAbilityTemplate, XComGameState_Ability SelectedAbilityState, AvailableTarget kTarget, string ShotDescription, StateObjectReference Shooter) {
-    local string FontString;
-    local XComGameState_InteractiveObject HackObject;
-    local XComGameState_Unit HackUnit;
-    local X2HackRewardTemplateManager HackManager;
-    local array<name> HackRewards;
-    local int HackOffense, HackDefense;
-    local array<X2HackRewardTemplate> HackRewardTemplates;
-    local X2HackRewardTemplate HackRewardInterator;
-    local array<int> HackRollMods;
- 
-    if (GetTH_PREVIEW_HACKING()) {
-        if (SelectedAbilityTemplate.DataName == 'Hack' || SelectedAbilityTemplate.DataName == 'Hack_Chest' || SelectedAbilityTemplate.DataName == 'Hack_Workstation' || SelectedAbilityTemplate.DataName == 'Hack_ObjectiveChest' || SelectedAbilityTemplate.DataName == 'Hack_ElevatorControl' || SelectedAbilityTemplate.DataName == 'IntrusionProtocol' || SelectedAbilityTemplate.DataName == 'IntrusionProtocol_Chest' || SelectedAbilityTemplate.DataName == 'IntrusionProtocol_Workstation' || SelectedAbilityTemplate.DataName == 'IntrusionProtocol_ObjectiveChest' || SelectedAbilityTemplate.DataName == 'SKULLJACKAbility' || SelectedAbilityTemplate.DataName == 'SKULLMINEAbility') {
-            HackObject = XComGameState_InteractiveObject(`XCOMHISTORY.GetGameStateForObjectID(kTarget.PrimaryTarget.ObjectID));
-            HackRewards = HackObject.GetHackRewards(SelectedAbilityTemplate.DataName);
-            if (HackRewards.Length > 0) {
-                HackManager = class'X2HackRewardTemplateManager'.static.GetHackRewardTemplateManager();
-                HackRewardTemplates.additem(HackManager.FindHackRewardTemplate(HackRewards[0]));
-                HackRewardTemplates.additem(HackManager.FindHackRewardTemplate(HackRewards[1]));
-                HackRewardTemplates.additem(HackManager.FindHackRewardTemplate(HackRewards[2]));
-               
-                HackOffense = class'X2AbilityToHitCalc_Hacking'.static.GetHackAttackForUnit(XComGameState_Unit(`XCOMHISTORY.GetGameStateForObjectID(Shooter.ObjectID)), SelectedAbilityState);
-                HackDefense = class'X2AbilityToHitCalc_Hacking'.static.GetHackDefenseForTarget(HackObject);
-               
-                HackRollMods = HackObject.GetHackRewardRollMods();
-                if (HackRollMods.length == 0) {
-                    foreach HackRewardTemplates(HackRewardInterator) {
-                        HackRollMods.AddItem(`SYNC_RAND_STATIC(HackRewardInterator.HackSuccessVariance * 2) - HackRewardInterator.HackSuccessVariance);
-                    }
-                    HackObject.SetHackRewardRollMods(HackRollMods);
-                }
-                   
-                FontString = ShotDescription;
-                FontString = FontString $ "\n" $ class'UIUtilities_Text'.static.GetColoredText(HackRewardTemplates[0].GetFriendlyName(),eUIState_Bad);
-                FontString = FontString $ " - " $ class'UIUtilities_Text'.static.GetColoredText(HackRewardTemplates[1].GetFriendlyName(),eUIState_Good);
-                FontString = FontString $ ": " $ class'UIUtilities_Text'.static.GetColoredText( string(Clamp((100.0 - (HackRewardTemplates[1].MinHackSuccess + HackObject.HackRollMods[1])) * HackOffense / HackDefense, 0.0, 100.0)) $ "%", eUIState_Good);
-                FontString = FontString $ ", " $ class'UIUtilities_Text'.static.GetColoredText(HackRewardTemplates[2].GetFriendlyName(),eUIState_Good);
-                FontString = FontString $ ": " $ class'UIUtilities_Text'.static.GetColoredText( string(Clamp((100.0 - (HackRewardTemplates[2].MinHackSuccess + HackObject.HackRollMods[2])) * HackOffense / HackDefense, 0.0, 100.0)) $ "%", eUIState_Good);
-                return FontString;
-            }
-        }
-        else if (SelectedAbilityTemplate.DataName == 'HaywireProtocol') {
-            HackUnit = XComGameState_Unit(`XCOMHISTORY.GetGameStateForObjectID(kTarget.PrimaryTarget.ObjectID));
-               
-            HackOffense = class'X2AbilityToHitCalc_Hacking'.static.GetHackAttackForUnit(XComGameState_Unit(`XCOMHISTORY.GetGameStateForObjectID(Shooter.ObjectID)), SelectedAbilityState);
-            HackDefense = class'X2AbilityToHitCalc_Hacking'.static.GetHackDefenseForTarget(HackUnit);
- 
-            HackManager = class'X2HackRewardTemplateManager'.static.GetHackRewardTemplateManager();
-           
-            if ( HackUnit.GetMyTemplate().bIsTurret ) {
-                HackRewardTemplates.AddItem(HackManager.FindHackRewardTemplate('BuffEnemy'));
-                HackRewardTemplates.AddItem(HackManager.FindHackRewardTemplate('ShutdownTurret'));
-                HackRewardTemplates.AddItem(HackManager.FindHackRewardTemplate('ControlTurret'));
- 
-                HackRollMods = HackObject.GetHackRewardRollMods();
-                if (HackRollMods.length == 0) {
-                    foreach HackRewardTemplates(HackRewardInterator)
-                    {
-                        HackRollMods.AddItem(`SYNC_RAND_STATIC(HackRewardInterator.HackSuccessVariance * 2) - HackRewardInterator.HackSuccessVariance);
-                    }
-                    HackObject.SetHackRewardRollMods(HackRollMods);
-                }
- 
-                FontString = ShotDescription;
-                FontString = FontString $ "\n" $ class'UIUtilities_Text'.static.GetColoredText(HackRewardTemplates[0].GetFriendlyName(),eUIState_Bad);
-                FontString = FontString $ " - " $ class'UIUtilities_Text'.static.GetColoredText(HackRewardTemplates[1].GetFriendlyName(),eUIState_Good);
-                FontString = FontString $ ": " $ class'UIUtilities_Text'.static.GetColoredText( string(Clamp((100.0 - (HackRewardTemplates[1].MinHackSuccess)) * HackOffense / HackDefense, 0.0, 100.0)) $ "%", eUIState_Good);
-                FontString = FontString $ ", " $ class'UIUtilities_Text'.static.GetColoredText(HackRewardTemplates[2].GetFriendlyName(),eUIState_Good);
-                FontString = FontString $ ": " $ class'UIUtilities_Text'.static.GetColoredText( string(Clamp((100.0 - (HackRewardTemplates[2].MinHackSuccess + HackObject.HackRollMods[2])) * HackOffense / HackDefense, 0.0, 100.0)) $ "%", eUIState_Good);
-                return FontString;
-            }
-            else {
-                HackRewardTemplates.AddItem(HackManager.FindHackRewardTemplate('BuffEnemy'));
-                HackRewardTemplates.AddItem(HackManager.FindHackRewardTemplate('ShutdownRobot'));
-                HackRewardTemplates.AddItem(HackManager.FindHackRewardTemplate('ControlRobot'));
- 
-                HackRollMods = HackObject.GetHackRewardRollMods();
-                if (HackRollMods.length == 0) {
-                    foreach HackRewardTemplates(HackRewardInterator) {
-                        HackRollMods.AddItem(`SYNC_RAND_STATIC(HackRewardInterator.HackSuccessVariance * 2) - HackRewardInterator.HackSuccessVariance);
-                    }
-                    HackObject.SetHackRewardRollMods(HackRollMods);
-                }
- 
-                FontString = ShotDescription;
-                FontString = FontString $ "\n" $ class'UIUtilities_Text'.static.GetColoredText(HackRewardTemplates[0].GetFriendlyName(),eUIState_Bad);
-                FontString = FontString $ " - " $ class'UIUtilities_Text'.static.GetColoredText(HackRewardTemplates[1].GetFriendlyName(),eUIState_Good);
-                FontString = FontString $ ": " $ class'UIUtilities_Text'.static.GetColoredText( string(Clamp((100.0 - (HackRewardTemplates[1].MinHackSuccess + HackObject.HackRollMods[1])) * HackOffense / HackDefense, 0.0, 100.0)) $ "%", eUIState_Good);
-                FontString = FontString $ ", " $ class'UIUtilities_Text'.static.GetColoredText(HackRewardTemplates[2].GetFriendlyName(),eUIState_Good);
-                FontString = FontString $ ": " $ class'UIUtilities_Text'.static.GetColoredText( string(Clamp((100.0 - (HackRewardTemplates[2].MinHackSuccess + HackObject.HackRollMods[2])) * HackOffense / HackDefense, 0.0, 100.0)) $ "%", eUIState_Good);
-                return FontString;
-            }
-        }
-    }
-    return ShotDescription;
+function string UpdateHackDescription( XComGameState_Ability AbilityState, StateObjectReference Target, string ShotDescription)
+{
+	local EIHackBreakdown HackBreakdown;
+	local HackRewardInfo RewardItem;
+
+	`TRACE_ENTRY("");
+	if(class'HackCalcLib'.static.GetHackBreakdown(AbilityState, Target, HackBreakdown))
+	{
+		RewardItem=HackBreakdown.RewardList[0];
+		ShotDescription $= "\n" $ class'UIUtilities_Text'.static.GetColoredText(RewardItem.RewardTemplate.GetFriendlyName(), RewardItem.RewardTemplate.bBadThing ? eUIState_Bad : eUIState_Good);
+		RewardItem=HackBreakdown.RewardList[1];
+		ShotDescription $= " - " $ class'UIUtilities_Text'.static.GetColoredText(RewardItem.RewardTemplate.GetFriendlyName() $ ": " $ Clamp(RewardItem.Chance, 0, 100) $ "%", eUIState_Good);
+		RewardItem=HackBreakdown.RewardList[2];
+		ShotDescription $= ", " $ class'UIUtilities_Text'.static.GetColoredText(RewardItem.RewardTemplate.GetFriendlyName() $ ": " $ Clamp(RewardItem.Chance, 0, 100) $ "%", eUIState_Good);
+	}
+	`TRACE_EXIT("ShotDescription:" @ ShotDescription);
+	return ShotDescription;
 }
 
-function bool GetTH_AIM_ASSIST() {
-	return `MCM_CH_GetValue(class'MCM_Defaults'.default.TH_AIM_ASSIST, class'ExtendedInformationRedux3_MCMScreen'.default.TH_AIM_ASSIST);
-}
-
-function bool GetDISPLAY_MISS_CHANCE() {
+function bool GetDISPLAY_MISS_CHANCE()
+{
 	return `MCM_CH_GetValue(class'MCM_Defaults'.default.DISPLAY_MISS_CHANCE, class'ExtendedInformationRedux3_MCMScreen'.default.DISPLAY_MISS_CHANCE);
 }
 
-function bool GetTH_SHOW_GRAZED() {
+function bool GetTH_SHOW_GRAZED()
+{
 	return `MCM_CH_GetValue(class'MCM_Defaults'.default.TH_SHOW_GRAZED, class'ExtendedInformationRedux3_MCMScreen'.default.TH_SHOW_GRAZED);
 }
 
-function bool GetTH_SHOW_CRIT_DMG() {
+function bool GetTH_SHOW_CRIT_DMG()
+{
 	return `MCM_CH_GetValue(class'MCM_Defaults'.default.TH_SHOW_CRIT_DMG, class'ExtendedInformationRedux3_MCMScreen'.default.TH_SHOW_CRIT_DMG);
 }
 
-function bool GetTH_AIM_LEFT_OF_CRIT() {
+function bool GetTH_AIM_LEFT_OF_CRIT()
+{
 	return `MCM_CH_GetValue(class'MCM_Defaults'.default.TH_AIM_LEFT_OF_CRIT, class'ExtendedInformationRedux3_MCMScreen'.default.TH_AIM_LEFT_OF_CRIT);
 }
 
-function bool GetTH_PREVIEW_MINIMUM() {
+function bool GetTH_PREVIEW_MINIMUM()
+{
 	return `MCM_CH_GetValue(class'MCM_Defaults'.default.TH_PREVIEW_MINIMUM, class'ExtendedInformationRedux3_MCMScreen'.default.TH_PREVIEW_MINIMUM);
-}
-
-function bool GetTH_PREVIEW_HACKING() {
-	return `MCM_CH_GetValue(class'MCM_Defaults'.default.TH_PREVIEW_HACKING, class'ExtendedInformationRedux3_MCMScreen'.default.TH_PREVIEW_HACKING);
 }
 
 function int getBAR_HEIGHT()
@@ -840,12 +800,12 @@ function int getBAR_HEIGHT()
 /*function int getBAR_OFFSET_X()
 {
 	return `MCM_CH_GetValue(class'MCM_Defaults'.default.BAR_OFFSET_X, class'ExtendedInformationRedux3_MCMScreen'.default.BAR_OFFSET_X);
-}
+}*/
 
 function int getBAR_OFFSET_Y()
 {
 	return `MCM_CH_GetValue(class'MCM_Defaults'.default.BAR_OFFSET_Y, class'ExtendedInformationRedux3_MCMScreen'.default.BAR_OFFSET_Y);
-}*/
+}
 
 function int getBAR_ALPHA()
 {
@@ -912,6 +872,11 @@ function bool getTH_ASSIST_BESIDE_HIT()
 	return `MCM_CH_GetValue(class'MCM_Defaults'.default.TH_ASSIST_BESIDE_HIT, class'ExtendedInformationRedux3_MCMScreen'.default.TH_ASSIST_BESIDE_HIT);
 }
 
+function bool getTH_ASSIST_BAR()
+{
+	return `MCM_CH_GetValue(class'MCM_Defaults'.default.TH_ASSIST_BAR, class'ExtendedInformationRedux3_MCMScreen'.default.TH_ASSIST_BAR);
+}
+
 
 //DEBUG
 /*function float getDODGE_OFFSET_Y()
@@ -923,19 +888,32 @@ function bool getTH_ASSIST_BESIDE_HIT()
 
 defaultproperties
 {
-	//TH_AIM_ASSIST=true;
 	//ASSIST_HEX_COLOR="b6b3e3" ; //PURPLE
 
 	// ShotBar position, size, and offset settings, should not be altered whatsoever
 	// so created those default values inside the class to not expose them in MCM any more
 	BAR_WIDTH_MULT = 3;
 	BAR_HEIGHT = 10;
-	BAR_OFFSET_X = 0;
-	BAR_OFFSET_Y = -122;
+	BAR_OFFSET_X = 3;
+	//BAR_OFFSET_Y = -122;
+	//BAR_POSITION_Y = -119;
+	BAR_POSITION_Y = -108;
 	GENERAL_OFFSET_Y = -32;
 	LabelsOffset = -23;
 	LabelFontSize = 18;
 	ValueFontSize = 28;
 	MAX_ABILITIES_PER_ROW = 15;
-	TEXTWIDTH=100;
+	//TEXTWIDTH=100;
+	TEXTWIDTH=150;
+
+	GRAZE_STATE_COLOUR=eUIState_Cash;
+	CRIT_STATE_COLOUR=eUIState_Warning;
+
+
+	HIT_SHOW_NonTRIVIAL=true;
+	GRAZE_SHOW_NonTRIVIAL=true;
+	CRIT_SHOW_NonTRIVIAL=true;
+	CRIT_HIDE_TRIVIAL=true;
+	BAR_HIDE_TRIVIAL=true;
+	//TH_ASSIST_BAR=true;
 }

@@ -1,11 +1,20 @@
-//-----------------------------------------------------------
-//	Class:	UITacticalHUD_SoldierInfoTooltip_HitChance
-//	Author: tjnome / Mr.Nice / Sebkulu
-//	
-//-----------------------------------------------------------
-//`define SL class'StatListLib'.static
-
+/**
+ * Extended soldier info tooltip that enhances the tactical HUD display.
+ *
+ * Responsibilities:
+ * - Displays detailed unit stats using StatListLib
+ * - Dynamically renders class and rank icons
+ * - Handles layout differences for soldiers, civilians, and enemies
+ * - Applies custom styling and transparency via MCM configuration
+ *
+ * Integrates into the tactical HUD tooltip system and replaces/extends
+ * the default soldier info tooltip behavior.
+ *
+ * @author tjnome / Mr.Nice / Sebkulu
+ */
 class UITacticalHUD_SoldierInfoTooltip_HitChance extends UITacticalHUD_SoldierInfoTooltip;
+
+`include(ExtendedInformationRedux3\Src\ExtendedInformationRedux3\EIR_LoggerMacros.uci)
 
 var	int TOOLTIP_ALPHA;
 
@@ -18,12 +27,15 @@ var UIIcon Icon, RankIcon;
 
 var int TITLE_PADDING, DeadHeight, PaddingForAbilityList, ICON_H_PADDING, ICON_V_PADDING, ICON_SIZE, TEXT_PADDING, RANK_ICON_SIZE, RANK_ICON_H_PADDING, RANK_ICON_V_PADDING;
 
-var localized string KILLS_LABEL;
-var localized string ASSIST_LABEL;
-var localized string FLANKING_CRIT_LABEL;
-
+/**
+ * Initializes the soldier stats tooltip UI.
+ *
+ * Sets up title, icons (class + rank), divider line, stat list,
+ * and applies layout + transparency settings.
+ */
 simulated function UIPanel InitSoldierStats(optional name InitName, optional name InitLibID)
 {
+	`TRACE_ENTRY("InitName:" @ InitName @ "InitLibID:" @ InitLibID);
 	Super.InitSoldierStats(InitName, InitLibID);
 
 	Title = Spawn(class'UIScrollingText', BodyArea).InitScrollingText('Title');
@@ -57,15 +69,26 @@ simulated function UIPanel InitSoldierStats(optional name InitName, optional nam
 	StatsHeight=StatList.Height;
 	BGBox.SetAlpha(getTOOLTIP_ALPHA()); // Setting transparency
 	BodyArea.Alpha=100; // Stupid fudge!
+	`TRACE_EXIT("");
 	return self;
 }
 
 `MCM_CH_VersionChecker(class'MCM_Defaults'.default.VERSION, class'ExtendedInformationRedux3_MCMScreen'.default.CONFIG_VERSION)
 
+/**
+ * Builds and returns soldier stats for display in the tooltip.
+ *
+ * Handles:
+ * - Special cases (Psi Witch, civilians, enemies)
+ * - Icon layout (class + rank)
+ * - Title formatting
+ * - Delegation to StatListLib for stat generation
+ */
 simulated function array<UISummary_ItemStat> GetSoldierStats(XComGameState_Unit kGameStateUnit)
 {
 	local X2SoldierClassTemplateManager SoldierTemplateManager;
 
+	`TRACE_ENTRY("UnitObjectID:" @ kGameStateUnit.ObjectID);
 	//Icon.SetForegroundColor(class'UIUtilities_Colors'.const.BLACK_HTML_COLOR);
 	//Icon.SetBGColorState(Visualizer.GetMyHUDIconColor());
 	if( kGameStateUnit.GetMyTemplateName() == 'AdvPsiWitchM2' )
@@ -101,14 +124,24 @@ simulated function array<UISummary_ItemStat> GetSoldierStats(XComGameState_Unit 
 	//Icon.SetBGShape(eDiamond);
 	//Icon.SetAlpha(85);
 
-
-	Title.SetHTMLText( class'UIUtilities_Text'.static.StyleText(kGameStateUnit.GetName(eNameType_FullNick), eUITextStyle_Tooltip_Title) );
+	//Mr. Nice: just doing eNameType_FullNick worked fine for soldiers & alien/advent, but made vips/civs/resistance fighters show as rookie...
+	Title.SetHTMLText( class'UIUtilities_Text'.static.StyleText(kGameStateUnit.GetName(kGameStateUnit.IsSoldier() ? eNameType_FullNick : eNameType_Full), eUITextStyle_Tooltip_Title) );
+	`TRACE_EXIT("");
 	return class'StatListLib'.static.GetStats(kGameStateUnit, true);
 }
 
+/**
+ * Draws class and rank icons with configurable sizes and positions.
+ *
+ * Supports:
+ * - Class icon only
+ * - Rank icon only
+ * - Both icons
+ * - Hiding icons if not provided
+ */
 simulated function DrawIcons(optional int iClassIconSize, optional int iClassIconHPadding, optional int iClassIconVPadding, optional string sClassIcon, optional int iRankIconSize, optional int iRankIconHPadding, optional int iRankIconVPadding, optional string sRankIcon)
 {
-
+	`TRACE_ENTRY("ClassIconSize:" @ iClassIconSize @ "RankIconSize:" @ iRankIconSize);
 	Icon.Hide();
 	RankIcon.Hide();
 
@@ -131,10 +164,21 @@ simulated function DrawIcons(optional int iClassIconSize, optional int iClassIco
 		RankIcon.HideBG();
 		RankIcon.Show();
 	}
+	`TRACE_EXIT("");
 }
 
+/**
+ * Callback triggered when the stat list size changes.
+ *
+ * Updates:
+ * - Tooltip height
+ * - Background size
+ * - Scroll mask
+ * - Tooltip vertical positioning
+ */
 simulated function OnStatsListSizeRealized()
 {
+	`TRACE_ENTRY("");
 	StatsHeight=StatList.Height;
 	Height=StatsHeight	+ StatList.Y + PADDING_BOTTOM;
 	BGBox.SetHeight(Height);
@@ -142,6 +186,7 @@ simulated function OnStatsListSizeRealized()
 	SetY( -180 - height);
 	StatList.SetHeight(StatsHeight);
 	BodyMask.SetHeight(StatsHeight);
+	`TRACE_EXIT("");
 }
 
 

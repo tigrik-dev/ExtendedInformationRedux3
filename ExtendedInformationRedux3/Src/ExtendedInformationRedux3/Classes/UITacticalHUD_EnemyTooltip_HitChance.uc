@@ -1,13 +1,17 @@
-//-----------------------------------------------------------
-//	Class:	UITacticalHUD_EnemyTooltip_HitChance
-//	Author: tjnome / Mr.Nice / Sebkulu
-//	
-//-----------------------------------------------------------
-
-//`define SL class'StatListLib'.static
-
+/**
+ * Tooltip for displaying enemy stats with hit chance enhancements.
+ *
+ * Extends the default enemy tooltip to:
+ * - Show detailed stat list using StatListLib
+ * - Display unit icon and dynamic coloring (e.g. flanking)
+ * - Support scrolling title and masked stat list
+ * - Adjust layout dynamically based on content size
+ *
+ * @author tjnome / Mr.Nice / Sebkulu
+ */
 class UITacticalHUD_EnemyTooltip_HitChance extends UITacticalHUD_EnemyTooltip;
 
+`include(ExtendedInformationRedux3\Src\ExtendedInformationRedux3\EIR_LoggerMacros.uci)
 `include(ExtendedInformationRedux3\Src\ModConfigMenuAPI\MCM_API_CfgHelpers.uci)
 
 var UIMask BodyMask, TitleMask;
@@ -24,8 +28,22 @@ var int TOOLTIP_ALPHA, ICON_H_PADDING, ICON_V_PADDING, ICON_SIZE, PADDING_TEXT;
 					   
 var localized string PrimaryBase;//, PrimarySpread, PrimaryPlusOne, EnemyStatsTitle;
 
+/**
+ * Initializes the enemy stats tooltip UI.
+ *
+ * Configures:
+ * - Title (scrolling text)
+ * - Icon and divider line
+ * - Stat list and masks
+ * - Layout and padding
+ *
+ * @param InitName Name of the panel
+ * @param InitLibID Library identifier
+ * @return Initialized UIPanel instance
+ */
 simulated function UIPanel InitEnemyStats(optional name InitName, optional name InitLibID)
 {
+	`TRACE_ENTRY("InitName:" @ InitName @ "InitLibID:" @ InitLibID);
 	Super.InitEnemyStats(InitName, InitLibID);
 
 	BodyArea.SetX(-width);
@@ -34,7 +52,7 @@ simulated function UIPanel InitEnemyStats(optional name InitName, optional name 
 	//Title.SetPosition(PADDING_LEFT + TITLE_PADDING + ICON_H_PADDING + ICON_SIZE, PADDING_TOP);
 	StatsTitle.SetPosition( 2 * ICON_H_PADDING + ICON_SIZE, PADDING_TOP);
 	StatsTitle.SetWidth(width - PADDING_LEFT - TITLE_PADDING - PADDING_RIGHT - ICON_SIZE - class'UIStatList'.default.PADDING_RIGHT - PADDING_TEXT);
-	StatsTitle.SetHeight(StatsTitle.height);
+	//StatsTitle.SetHeight(StatsTitle.height);
 	TitleMask= Spawn(class'UIMask', BodyArea).InitMask('TitleMask', StatsTitle).FitMask(StatsTitle);
 
 	Icon = Spawn(class'UIIcon', BodyArea);
@@ -60,12 +78,19 @@ simulated function UIPanel InitEnemyStats(optional name InitName, optional name 
 	StatsHeight=StatList.Height;
 	BGBox.SetAlpha(getTOOLTIP_ALPHA()); // Setting transparency
 	BodyArea.Alpha=100; // Stupid fudge!
+	`TRACE_EXIT("");
 	return self; 
 }
 
-
+/**
+ * Displays the tooltip if valid data is available.
+ *
+ * Calls RefreshData and only shows the tooltip if data exists.
+ * Handles grouped tooltip behavior.
+ */
 simulated function ShowTooltip()
 {
+	`TRACE_ENTRY("");
 	if (!RefreshData()) return;
 	if ((TooltipGroup) == none) super(UIToolTip).ShowTooltip();
 	else
@@ -73,15 +98,28 @@ simulated function ShowTooltip()
 		bIsVisible=true;
 		ClearTimer(nameof(Hide));
 	}
+	`TRACE_EXIT("");
 }
 
 `MCM_CH_VersionChecker(class'MCM_Defaults'.default.VERSION, class'ExtendedInformationRedux3_MCMScreen'.default.CONFIG_VERSION)
 
+/**
+ * Builds the stat list for a given unit.
+ *
+ * Handles:
+ * - Icon setup and coloring (including flanking detection)
+ * - Title text update
+ * - Delegates stat generation to StatListLib
+ *
+ * @param kGameStateUnit Unit to generate stats for
+ * @return Array of UISummary_ItemStat entries
+ */
 simulated function array<UISummary_ItemStat> GetStats(XComGameState_Unit kGameStateUnit)
 {
 	local XComGameState_BaseObject TargetedObject;
 	local X2VisualizerInterface Visualizer;
 	local XComTacticalController LocalController;
+	`TRACE_ENTRY("UnitID:" @ kGameStateUnit.ObjectID);
 
 	TargetedObject = `XCOMHISTORY.GetGameStateForObjectID(kGameStateUnit.ObjectID, , );
 	Visualizer = X2VisualizerInterface(TargetedObject.GetVisualizer());
@@ -110,11 +148,22 @@ simulated function array<UISummary_ItemStat> GetStats(XComGameState_Unit kGameSt
 	Icon.Show();
 	//Hack!
 	StatsTitle.SetHTMLText( class'UIUtilities_Text'.static.StyleText(kGameStateUnit.GetName(eNameType_FullNick), eUITextStyle_Tooltip_Title) );
+	`TRACE_EXIT("");
 	return class'StatListLib'.static.GetStats(kGameStateUnit);
 }
 
+/**
+ * Handles layout updates when the stat list size changes.
+ *
+ * Adjusts:
+ * - Tooltip height
+ * - Background size
+ * - Mask height
+ * - Tooltip group positioning
+ */
 simulated function OnStatsListSizeRealized()
 {
+	`TRACE_ENTRY("");
 	StatsHeight=StatList.Height;
 	Height=StatsHeight	+ StatList.Y + PADDING_BOTTOM;
 	BGBox.SetHeight(Height);
@@ -127,8 +176,16 @@ simulated function OnStatsListSizeRealized()
 			UITooltipGroup_Stacking(TooltipGroup).UpdateRestingYPosition(self, Y);
 		TooltipGroup.SignalNotify();
 	}
+	`TRACE_EXIT("");
 }
 
+/**
+ * Overrides height setting behavior.
+ *
+ * Prevents resizing and triggers a redscreen warning if called.
+ *
+ * @param NewHeight Requested height value
+ */
 simulated function SetHeight(float NewHeight)
 {
 	`redscreen("RESIZE ATTEMPT ON STATS LIST!!!!");

@@ -1,11 +1,20 @@
-//-----------------------------------------------------------
-//	Class:	UIAbilityList_HitChance
-//	Author: Mr.Nice / Sebkulu
-//	
-//-----------------------------------------------------------
-
-
+/**
+ * Custom tooltip stacking group that dynamically distributes vertical space.
+ *
+ * Responsibilities:
+ * - Manages multiple tooltips sharing a constrained vertical range
+ * - Splits tooltips into top and bottom stacks
+ * - Dynamically resizes scrollable areas based on weight
+ * - Ensures non-scrollable regions (headers, padding) remain intact
+ * - Applies proportional shrinking when space is limited
+ *
+ * Extends UITooltipGroup_Stacking with advanced layout logic.
+ *
+ * @author Mr.Nice / Sebkulu
+ */
 class UITooltipGroup_Share extends UITooltipGroup_Stacking;
+
+`include(ExtendedInformationRedux3\Src\ExtendedInformationRedux3\EIR_LoggerMacros.uci)
 
 var int TopY, BottomY, Range;
 
@@ -20,25 +29,42 @@ struct GroupStruct
 
 var array <GroupStruct> GroupSt;
 
+/**
+ * Adds a tooltip to the shared group with layout metadata.
+ *
+ * @param Tooltip      Tooltip instance to add
+ * @param Top          Whether tooltip belongs to top stack (true) or bottom stack (false)
+ * @param Weight       Weight used for proportional resizing when space is constrained
+ * @param DeadHeight   Non-scrollable height (header, padding, etc.)
+ * @return             Index of the tooltip in the base group
+ */
 function int AddDetail(UITooltip Tooltip, bool Top, int Weight, int DeadHeight)
 {
 	local GroupStruct GpSt;
+	`TRACE_ENTRY("Top:" @ Top @ "Weight:" @ Weight @ "DeadHeight:" @ DeadHeight);
 	GpSt.Tooltip=Tooltip;
 	GpSt.Top=Top;
 	GpSt.Weight=Weight;
 	GpSt.Height=0;//Tooltip.Height; Really used for loop, shouldn't suggest can trust it to contain real height.
 	GpSt.DeadHeight=DeadHeight;
 	GroupSt.additem(GpSt);
+	`TRACE_EXIT("");
 	return Super.Add(Tooltip);
 }
 
-//Intended to be overwritten in child classes. 
-
+/**
+ * NOTE: Intended to be overwritten in child classes
+ * Stacks tooltips vertically either from top or bottom.
+ *
+ * @param Top  If true, stacks from TopY downward; otherwise from BottomY upward
+ * @param Gap  Optional spacing between tooltips
+ */
 simulated function Stack(bool Top, optional float Gap=0)
 {
 	local int i, Direction;
 	local float CurrentOffset;
 
+	`TRACE_ENTRY("Top:" @ Top @ "Gap:" @ Gap);
 	if (Top)
 	{
 		CurrentOffset = TopY;
@@ -62,9 +88,19 @@ simulated function Stack(bool Top, optional float Gap=0)
 			CurrentOffset+=Gap;
 		}
 	}
-
+	`TRACE_EXIT("");
 }
 
+/**
+ * Recalculates layout and distributes available vertical space.
+ *
+ * Logic:
+ * - Removes invisible tooltips
+ * - Deducts fixed (non-scrollable) height
+ * - Distributes remaining space proportionally using weights
+ * - Shrinks scrollable regions if needed
+ * - Applies final stacking with optional gaps
+ */
 simulated function Notify()
 {
 	local int i, WeightTotal;
@@ -73,6 +109,7 @@ simulated function Notify()
 	local int Gap;
 	local bool NoRemove;
 
+	`TRACE_ENTRY("");
 	//Stack(true);
 	//Stack(false);
 	//return;
@@ -167,6 +204,7 @@ simulated function Notify()
 
 	Stack(true, Gap);
 	Stack(false);
+	`TRACE_EXIT("");
 }
 
 defaultproperties

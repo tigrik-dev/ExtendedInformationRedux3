@@ -1,0 +1,1 @@
+`define LOCFALLBACK(LOCTEXT, FALLBACKTEXT) ((GetLanguage()!="INT" && class'HitChance_Localization'.default.`LOCTEXT==class'HitChance_Localization'.default.INT`LOCTEXT) ? `FALLBACKTEXT : class'HitChance_Localization'.default.`LOCTEXT)

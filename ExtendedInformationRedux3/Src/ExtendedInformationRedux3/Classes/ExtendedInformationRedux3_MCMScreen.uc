@@ -3,9 +3,19 @@
 //	Author: Mr.Nice / Sebkulu
 //	
 //-----------------------------------------------------------
-
+/**
+ * Mod Configuration Menu (MCM) screen implementation for ExtendedInformationRedux3.
+ *
+ * Handles registration, rendering, and persistence of all configurable settings
+ * related to hit chance display, shot HUD behavior, tooltip customization, and
+ * visual styling. Integrates with the MCM API to expose user-adjustable options
+ * and applies them at runtime.
+ *
+ * @author Mr.Nice / Sebkulu
+ */
 class ExtendedInformationRedux3_MCMScreen extends Object config(ExtendedInformationRedux3);
 
+`include(ExtendedInformationRedux3\Src\ExtendedInformationRedux3\EIR_LoggerMacros.uci)
 `include(ExtendedInformationRedux3\Src\ModConfigMenuAPI\MCM_API_Includes.uci)
 `include(ExtendedInformationRedux3\Src\ModConfigMenuAPI\MCM_API_CfgHelpers.uci)
 
@@ -19,12 +29,12 @@ var config bool				SHOW_TEMPLAR_MSG;
 //var config float			FLYOVER_DURATION;
 var config bool				SHOW_GUARANTEED_HIT;
 
-//var config int				BAR_HEIGHT, BAR_OFFSET_X, BAR_OFFSET_Y, BAR_WIDTH_MULT, GENERAL_OFFSET_Y;
+//var config int				BAR_HEIGHT, BAR_OFFSET_X, BAR_WIDTH_MULT, GENERAL_OFFSET_Y;
 //var config int				DODGE_OFFSET_X, DODGE_OFFSET_Y, CRIT_OFFSET_X, CRIT_OFFSET_Y;
-var config int				BAR_ALPHA, BAR_HEIGHT;
+var config int				BAR_ALPHA, BAR_HEIGHT, BAR_OFFSET_Y;
 var config string			HIT_HEX_COLOR, CRIT_HEX_COLOR, DODGE_HEX_COLOR, MISS_HEX_COLOR, ASSIST_HEX_COLOR;
 var config int				GRAZE_CRIT_LAYOUT;
-var config string			GRAZE_CRIT_LAYOUT_MCM;
+//var config string			GRAZE_CRIT_LAYOUT_MCM;
 
 var config bool				TH_SHOW_GRAZED;
 var config bool				TH_SHOW_CRIT_DMG;
@@ -32,6 +42,7 @@ var config bool				TH_AIM_LEFT_OF_CRIT;
 var config bool				TH_ASSIST_BESIDE_HIT;
 var config bool				TH_PREVIEW_MINIMUM;
 var config bool				TH_PREVIEW_HACKING;
+var config bool				TH_ASSIST_BAR;
 
 //var config bool				SHOW_ALWAYS_SHOT_BREAKDOWN_HUD;
 
@@ -56,9 +67,13 @@ var localized string			sOrangeEngineering;
 var localized string			sBlueScience;
 var localized string			sObjIconBackground;
 
-var localized string			sLayoutLeft;
-var localized string			sLayoutBalanced;
-var localized string			sLayoutRight;
+var array<string>			ColorArray;
+
+//var localized string			sLayoutLeft;
+//var localized string			sLayoutBalanced;
+//var localized string			sLayoutRight;
+var localized array<string>		LayoutArray;
+var localized string			sLayoutCustom;
 
 var localized string			sSettingsPage_MCMText;
 var localized string			sPageTitle_MCMText;
@@ -68,15 +83,17 @@ var localized string			sShowHitChance_MCMText;
 var localized string			sVerboseText_MCMText;
 var localized string			sDisplayMissChance_MCMText;
 var localized string			sShowTemplarMessages_MCMText;
+var localized string			sShowTemplarMessages_MCMTip;
 var localized string			sShowAimAssist_MCMText;
 //var localized string			sFlyoverDuration_MCMText;
 var localized string			sShowGuaranteedHit_MCMText;
 
 var localized string			sGroupShotBar_MCMText;
 var localized string			sBarHeight_MCMText;
-/*var localized string			sBarOffsetX_MCMText;
-var localized string			sBarOffsetY_MCMText;*/
+//var localized string			sBarOffsetX_MCMText;
+var localized string			sBarOffsetY_MCMText;
 var localized string			sBarAlpha_MCMText;
+var localized string			sAssistBar_MCMText;
 /*var localized string			sBarWidthMult_MCMText;
 var localized string			sGeneralOffsetY_MCMText;
 var localized string			sDodgeOffsetX_MCMText;
@@ -122,10 +139,11 @@ var MCM_API_Checkbox			AimLeftOfCrit_MCMUI;
 var MCM_API_Checkbox			AssistBesideHit_MCMUI;
 var MCM_API_Checkbox			PreviewMinimum_MCMUI;
 var MCM_API_Checkbox			PreviewHacking_MCMUI;
+var MCM_API_Checkbox			AssistBar_MCMUI;
 
 var MCM_API_Slider			BarHeight_MCMUI;
-/*var MCM_API_Slider			BarOffsetX_MCMUI;
-var MCM_API_Slider			BarOffsetY_MCMUI;*/
+//var MCM_API_Slider			BarOffsetX_MCMUI;
+var MCM_API_Slider			BarOffsetY_MCMUI;
 var MCM_API_Slider			BarAlpha_MCMUI;
 /*var MCM_API_Slider			BarWidthMult_MCMUI;
 var MCM_API_Slider			GeneralOffsetY_MCMUI;
@@ -148,7 +166,6 @@ var MCM_API_Checkbox			ShowExtraWeaponStats_MCMUI;
 
 
 var string					HIT_HEX_COLOR_MCM, CRIT_HEX_COLOR_MCM, DODGE_HEX_COLOR_MCM, MISS_HEX_COLOR_MCM, ASSIST_HEX_COLOR_MCM;
-var array<string>			ColorArray, LayoutArray;
 
 
 //DEBUG
@@ -158,11 +175,17 @@ var MCM_API_Slider			DodgeOffsetY_MCMUI;
 `MCM_API_BasicSliderSaveHandler(DodgeOffsetYHandler,		DODGE_OFFSET_Y)*/
 //DEBUG
 
-
+/**
+ * Initializes the MCM screen and registers it with the MCM API.
+ *
+ * @param Screen The UI screen instance being initialized.
+ */
 event OnInit(UIScreen Screen)
 {
+	`TRACE_ENTRY("");
 	// Everything in here runs only when you need to touch MCM.
 	`MCM_API_Register(Screen, ClientModCallback);
+	`TRACE_EXIT("");
 }
 
 `MCM_CH_VersionChecker(class'MCM_Defaults'.default.VERSION,CONFIG_VERSION)
@@ -178,19 +201,22 @@ event OnInit(UIScreen Screen)
 `MCM_API_BasicCheckboxSaveHandler(ShowCritHandler,			TH_SHOW_CRIT_DMG)
 `MCM_API_BasicCheckboxSaveHandler(AimLeftOfCritHandler,		TH_AIM_LEFT_OF_CRIT)
 `MCM_API_BasicCheckboxSaveHandler(AssistBesideHitHandler,		TH_ASSIST_BESIDE_HIT)
+`MCM_API_BasicCheckboxSaveHandler(AssistBarHandler,			TH_ASSIST_BAR)
 `MCM_API_BasicCheckboxSaveHandler(PreviewMinimumHandler,		TH_PREVIEW_MINIMUM)
 `MCM_API_BasicCheckboxSaveHandler(PreviewHackingHandler,		TH_PREVIEW_HACKING)
 
 `MCM_API_BasicSliderSaveHandler(BarHeightHandler,		BAR_HEIGHT)
-/*`MCM_API_BasicSliderSaveHandler(BarOffsetXHandler,		BAR_OFFSET_X)
-`MCM_API_BasicSliderSaveHandler(BarOffsetYHandler,		BAR_OFFSET_Y)*/
+//`MCM_API_BasicSliderSaveHandler(BarOffsetXHandler,		BAR_OFFSET_X)
+`MCM_API_BasicSliderSaveHandler(BarOffsetYHandler,		BAR_OFFSET_Y)
 `MCM_API_BasicSliderSaveHandler(BarAlphaHandler,			BAR_ALPHA)
+
 /*`MCM_API_BasicSliderSaveHandler(BarWidthMultHandler,		BAR_WIDTH_MULT)
 `MCM_API_BasicSliderSaveHandler(GeneralOffsetYHandler,	GENERAL_OFFSET_Y)
 `MCM_API_BasicSliderSaveHandler(DodgeOffsetXHandler,		DODGE_OFFSET_X)
 `MCM_API_BasicSliderSaveHandler(CritOffsetXHandler,		CRIT_OFFSET_X)
 `MCM_API_BasicSliderSaveHandler(CritOffsetYHandler,		CRIT_OFFSET_Y)*/
-`MCM_API_BasicDropdownSaveHandler(GrazeCritLayoutHandler,	GRAZE_CRIT_LAYOUT_MCM)
+`MCM_API_BasicIndexSaveHandler(GrazeCritLayoutHandler,	GRAZE_CRIT_LAYOUT, LayoutArray)
+//`MCM_API_BasicDropdownSaveHandler(GrazeCritLayoutHandler,	GRAZE_CRIT_LAYOUT_MCM)
 
 `MCM_API_BasicDropdownSaveHandler(HitHexColorHandler,	HIT_HEX_COLOR_MCM)
 `MCM_API_BasicDropdownSaveHandler(CritHexColorHandler,	CRIT_HEX_COLOR_MCM)
@@ -205,9 +231,16 @@ event OnInit(UIScreen Screen)
 `MCM_API_BasicCheckboxSaveHandler(ShowEnemyToolTipHandler,		ES_TOOLTIP)
 `MCM_API_BasicCheckboxSaveHandler(ShowExtraWeaponStatsHandler,		SHOW_EXTRA_WEAPONSTATS)
 
+/**
+ * Handles checkbox value changes and updates dependent UI elements and config values.
+ *
+ * @param _Setting The setting that triggered the change.
+ * @param _SettingValue The new value of the setting.
+ */
 simulated function CheckBoxChangeHandler(MCM_API_Setting _Setting, bool _SettingValue)
 {
 	local name	SettingName;
+	`TRACE_ENTRY("_SettingValue:" @ _SettingValue);
 	SettingName = _Setting.GetName();
 	switch (SettingName)
 	{
@@ -221,12 +254,20 @@ simulated function CheckBoxChangeHandler(MCM_API_Setting _Setting, bool _Setting
 		case	 'ShowAimAssist':
 			AssistBesideHit_MCMUI.SetEditable(_SettingValue);
 			AssistHexColor_MCMUI.SetEditable(_SettingValue);
+			AssistBar_MCMUI.SetEditable(_SettingValue);
 			TH_AIM_ASSIST = _SettingValue;
 			break;
 		default					: assert(false);
 	}
+	`TRACE_EXIT("");
 }
 
+/**
+ * Builds and initializes the MCM configuration UI, including all groups and controls.
+ *
+ * @param ConfigAPI The MCM API instance used to construct the UI.
+ * @param GameMode The current game mode.
+ */
 simulated function ClientModCallback(MCM_API_Instance ConfigAPI, int GameMode)
 {
 	// Code goes here.
@@ -238,6 +279,9 @@ simulated function ClientModCallback(MCM_API_Instance ConfigAPI, int GameMode)
 	local MCM_API_SettingsGroup Group4;
 	//local MCM_API_SettingsGroup Group5;
 	local MCM_API_SettingsGroup Group6;
+	local int i;
+
+	`TRACE_ENTRY("GameMode:" @ GameMode);
 
 	ColorArray.AddItem(sBlack);
 	ColorArray.AddItem(sWhite);
@@ -256,9 +300,14 @@ simulated function ClientModCallback(MCM_API_Instance ConfigAPI, int GameMode)
 	ColorArray.AddItem(sBlueScience);
 	ColorArray.AddItem(sObjIconBackground);
 
-	LayoutArray.AddItem(sLayoutLeft);
-	LayoutArray.AddItem(	sLayoutBalanced);
-	LayoutArray.AddItem(	sLayoutRight);
+	//LayoutArray.AddItem(sLayoutLeft);
+	//LayoutArray.AddItem(	sLayoutBalanced);
+	//LayoutArray.AddItem(	sLayoutRight);
+
+	for (i=LayoutArray.Length;i<class'ExtendedInformationRedux3_UITacticalHUD_ShotHUD'.default.Offsets.Length;i++)
+	{
+		LayoutArray.AddItem(Repl(sLayoutCustom, "<index>", i));
+	}
 
 	LoadSavedSettings();
 
@@ -275,7 +324,7 @@ simulated function ClientModCallback(MCM_API_Instance ConfigAPI, int GameMode)
 	Group1 = Page.AddGroup('Group1', sGroupFlyoverSettings_MCMText);
 	ShowHitChance_MCMUI				= Group1.AddCheckbox('ShowHitChance', sShowHitChance_MCMText, sShowHitChance_MCMText, HIT_CHANCE_ENABLED, , CheckBoxChangeHandler);
 	VerboseText_MCMUI				= Group1.AddCheckbox('VerboseText', sVerboseText_MCMText, sVerboseText_MCMText, VERBOSE_TEXT, VerboseTextHandler, );
-	ShowTemplarMessages_MCMUI		= Group1.AddCheckbox('ShowTemplarMessages', sShowTemplarMessages_MCMText, sShowTemplarMessages_MCMText, SHOW_TEMPLAR_MSG, ShowTemplarMessagesHandler, );
+	ShowTemplarMessages_MCMUI		= Group1.AddCheckbox('ShowTemplarMessages', sShowTemplarMessages_MCMText, sShowTemplarMessages_MCMTip, SHOW_TEMPLAR_MSG, ShowTemplarMessagesHandler, );
 	//FlyoverDuration_MCMUI			= Group1.AddSlider('FlyoverDuration', sFlyoverDuration_MCMText, sFlyoverDuration_MCMText, 1, 25, 1, FLYOVER_DURATION, FlyoverDurationHandler, );
 	ShowGuaranteedHit_MCMUI			= Group1.AddCheckbox('ShowGuaranteedHit', sShowGuaranteedHit_MCMText, sShowGuaranteedHit_MCMText, SHOW_GUARANTEED_HIT, ShowGuaranteedHitHandler, );
 	VerboseText_MCMUI.SetEditable(HIT_CHANCE_ENABLED);
@@ -289,17 +338,18 @@ simulated function ClientModCallback(MCM_API_Instance ConfigAPI, int GameMode)
 	ShowCrit_MCMUI					= Group2.AddCheckbox('ShowCrit', sShowCrit_MCMText, sShowCrit_MCMText, TH_SHOW_CRIT_DMG, ShowCritHandler, );
 	PreviewMinimum_MCMUI				= Group2.AddCheckbox('PreviewMinimum', sPreviewMinimum_MCMText, sPreviewMinimum_MCMText, TH_PREVIEW_MINIMUM, PreviewMinimumHandler, );
 	PreviewHacking_MCMUI				= Group2.AddCheckbox('PreviewHacking', sPreviewHacking_MCMText, sPreviewHacking_MCMText, TH_PREVIEW_HACKING, PreviewHackingHandler, );
-	GrazeCritLayout_MCMUI				= Group2.AddDropdown('GrazeCritLayout', sGrazeCritLayout_MCMText, sGrazeCritLayout_MCMText, LayoutArray, GRAZE_CRIT_LAYOUT_MCM, GrazeCritLayoutHandler, );
+	GrazeCritLayout_MCMUI				= Group2.AddDropdown('GrazeCritLayout', sGrazeCritLayout_MCMText, sGrazeCritLayout_MCMText, LayoutArray, LayoutArray[GRAZE_CRIT_LAYOUT], GrazeCritLayoutHandler, );
 	Group2.AddLabel('empty_line',"","");
 
 	Group3 = Page.AddGroup('Group3', sGroupShotBar_MCMText);
 	/*Group3.AddLabel('Warning1',sWarningMessage_MCMText,"");*/
 	BarHeight_MCMUI					= Group3.AddSlider('BarHeight', sBarHeight_MCMText, sBarHeight_MCMText, 0, 20, 1, BAR_HEIGHT, BarHeightHandler, );
-	/*BarOffsetX_MCMUI					= Group3.AddSlider('BarOffsetX', sBarOffsetX_MCMText, sBarOffsetX_MCMText, -200, 200, 1, BAR_OFFSET_X, BarOffsetXHandler, );
-	BarOffsetY_MCMUI					= Group3.AddSlider('BarOffsetY', sBarOffsetY_MCMText, sBarOffsetY_MCMText, -200, 0, 1, BAR_OFFSET_Y, BarOffsetYHandler, );*/
+	//BarOffsetX_MCMUI					= Group3.AddSlider('BarOffsetX', sBarOffsetX_MCMText, sBarOffsetX_MCMText, -200, 200, 1, BAR_OFFSET_X, BarOffsetXHandler, );
+	BarOffsetY_MCMUI					= Group3.AddSlider('BarOffsetY', sBarOffsetY_MCMText, sBarOffsetY_MCMText, -20, 20, 1, BAR_OFFSET_Y, BarOffsetYHandler, );
 	BarAlpha_MCMUI					= Group3.AddSlider('BarAlpha', sBarAlpha_MCMText, sBarAlpha_MCMText, 0, 100, 1, BAR_ALPHA, BarAlphaHandler, );
 	AimLeftOfCrit_MCMUI				= Group3.AddCheckbox('AimLeftOfCrit', sAimLeftOfCrit_MCMText, sAimLeftOfCrit_MCMText, TH_AIM_LEFT_OF_CRIT, AimLeftOfCritHandler, );
 	AssistBesideHit_MCMUI			= Group3.AddCheckbox('AssistBesideHit', sAssistBesideHit_MCMText, sAssistBesideHit_MCMText, TH_ASSIST_BESIDE_HIT, AssistBesideHitHandler, );
+	AssistBar_MCMUI					= Group3.AddCheckbox('AssistBar', sAssistBar_MCMText, sAssistBar_MCMText, TH_ASSIST_BAR, AssistBarHandler, );
 	
 	//DEBUG
 	//DodgeOffsetY_MCMUI				= Group3.AddSlider('DodgeOffsetY', sDodgeOffsetY_MCMText, sDodgeOffsetY_MCMText, -30, -20, 0.01, DODGE_OFFSET_Y, DodgeOffsetYHandler, );
@@ -312,6 +362,7 @@ simulated function ClientModCallback(MCM_API_Instance ConfigAPI, int GameMode)
 	CritOffsetY_MCMUI				= Group3.AddSlider('CritOffsetY', sCritOffsetY_MCMText, sCritOffsetY_MCMText, -200, 200, 1, CRIT_OFFSET_Y, CritOffsetYHandler, );*/
 	AssistBesideHit_MCMUI.SetEditable(TH_AIM_ASSIST);
 	AssistHexColor_MCMUI.SetEditable(TH_AIM_ASSIST);
+	AssistBar_MCMUI.SetEditable(TH_AIM_ASSIST);
 	Group3.AddLabel('empty_line',"","");
 
 	Group4 = Page.AddGroup('Group4', sGroupBarColors_MCMText);
@@ -333,18 +384,23 @@ simulated function ClientModCallback(MCM_API_Instance ConfigAPI, int GameMode)
 	Group6.AddLabel('empty_line',"","");
 
 	Page.ShowSettings();
+	`TRACE_EXIT("");
 }
 
+/**
+ * Loads saved configuration values from MCM and applies them to runtime variables.
+ */
 simulated function LoadSavedSettings()
 {
+	`TRACE_ENTRY("");
     HIT_CHANCE_ENABLED =		`MCM_CH_GetValue(class'MCM_Defaults'.default.HIT_CHANCE_ENABLED,HIT_CHANCE_ENABLED);
     TH_AIM_ASSIST =			`MCM_CH_GetValue(class'MCM_Defaults'.default.TH_AIM_ASSIST,TH_AIM_ASSIST);
 	VERBOSE_TEXT =			`MCM_CH_GetValue(class'MCM_Defaults'.default.VERBOSE_TEXT,VERBOSE_TEXT);
 	DISPLAY_MISS_CHANCE =	`MCM_CH_GetValue(class'MCM_Defaults'.default.DISPLAY_MISS_CHANCE,DISPLAY_MISS_CHANCE);
 	SHOW_TEMPLAR_MSG =		`MCM_CH_GetValue(class'MCM_Defaults'.default.SHOW_TEMPLAR_MSG,SHOW_TEMPLAR_MSG);
 	BAR_HEIGHT =				`MCM_CH_GetValue(class'MCM_Defaults'.default.BAR_HEIGHT,BAR_HEIGHT);
-	/*BAR_OFFSET_X =			`MCM_CH_GetValue(class'MCM_Defaults'.default.BAR_OFFSET_X,BAR_OFFSET_X);
-	BAR_OFFSET_Y =			`MCM_CH_GetValue(class'MCM_Defaults'.default.BAR_OFFSET_Y,BAR_OFFSET_Y);*/
+	//BAR_OFFSET_X =			`MCM_CH_GetValue(class'MCM_Defaults'.default.BAR_OFFSET_X,BAR_OFFSET_X);
+	BAR_OFFSET_Y =			`MCM_CH_GetValue(class'MCM_Defaults'.default.BAR_OFFSET_Y,BAR_OFFSET_Y);
 	BAR_ALPHA =				`MCM_CH_GetValue(class'MCM_Defaults'.default.BAR_ALPHA,BAR_ALPHA);
 	/*BAR_WIDTH_MULT =			`MCM_CH_GetValue(class'MCM_Defaults'.default.BAR_WIDTH_MULT,BAR_WIDTH_MULT);
 	GENERAL_OFFSET_Y =		`MCM_CH_GetValue(class'MCM_Defaults'.default.GENERAL_OFFSET_Y,GENERAL_OFFSET_Y);
@@ -360,6 +416,7 @@ simulated function LoadSavedSettings()
 	TH_SHOW_CRIT_DMG =		`MCM_CH_GetValue(class'MCM_Defaults'.default.TH_SHOW_CRIT_DMG,TH_SHOW_CRIT_DMG);
 	TH_AIM_LEFT_OF_CRIT =	`MCM_CH_GetValue(class'MCM_Defaults'.default.TH_AIM_LEFT_OF_CRIT,TH_AIM_LEFT_OF_CRIT);
 	TH_ASSIST_BESIDE_HIT =	`MCM_CH_GetValue(class'MCM_Defaults'.default.TH_ASSIST_BESIDE_HIT,TH_ASSIST_BESIDE_HIT);
+	TH_ASSIST_BAR		 =	`MCM_CH_GetValue(class'MCM_Defaults'.default.TH_ASSIST_BAR,TH_ASSIST_BAR);
 	TH_PREVIEW_MINIMUM =		`MCM_CH_GetValue(class'MCM_Defaults'.default.TH_PREVIEW_MINIMUM,TH_PREVIEW_MINIMUM);
 	TH_PREVIEW_HACKING =		`MCM_CH_GetValue(class'MCM_Defaults'.default.TH_PREVIEW_HACKING,TH_PREVIEW_HACKING);
 	HIT_HEX_COLOR_MCM = getStringColorFromHex(HIT_HEX_COLOR);
@@ -373,22 +430,28 @@ simulated function LoadSavedSettings()
 	//FLYOVER_DURATION = `MCM_CH_GetValue(class'MCM_Defaults'.default.FLYOVER_DURATION,FLYOVER_DURATION);
 	SHOW_GUARANTEED_HIT =	`MCM_CH_GetValue(class'MCM_Defaults'.default.SHOW_GUARANTEED_HIT,SHOW_GUARANTEED_HIT);
 	GRAZE_CRIT_LAYOUT =		`MCM_CH_GetValue(class'MCM_Defaults'.default.GRAZE_CRIT_LAYOUT,GRAZE_CRIT_LAYOUT);
-	GRAZE_CRIT_LAYOUT_MCM = getLayoutTextFromIndex(GRAZE_CRIT_LAYOUT);
 
 	//DEBUG
 	//DODGE_OFFSET_Y =			`MCM_CH_GetValue(class'MCM_Defaults'.default.DODGE_OFFSET_Y,DODGE_OFFSET_Y);
 	//DEBUG
+	`TRACE_EXIT("");
 }
 
+/**
+ * Resets all MCM settings to their default values.
+ *
+ * @param Page The settings page being reset.
+ */
 simulated function ResetButtonClicked(MCM_API_SettingsPage Page)
 {
+	`TRACE_ENTRY("");
 	ShowHitChance_MCMUI.SetValue(	class'MCM_Defaults'.default.HIT_CHANCE_ENABLED, true);
 	VerboseText_MCMUI.SetValue(	class'MCM_Defaults'.default.VERBOSE_TEXT, false);
 	DisplayMissChance_MCMUI.SetValue(	class'MCM_Defaults'.default.DISPLAY_MISS_CHANCE, false);
 	ShowTemplarMessages_MCMUI.SetValue(	class'MCM_Defaults'.default.SHOW_TEMPLAR_MSG, false);
 	BarHeight_MCMUI.SetValue(	class'MCM_Defaults'.default.BAR_HEIGHT, false);
-	/*BarOffsetX_MCMUI.SetValue(	class'MCM_Defaults'.default.BAR_OFFSET_X, false);
-	BarOffsetY_MCMUI.SetValue(	class'MCM_Defaults'.default.BAR_OFFSET_Y, false);*/
+	//BarOffsetX_MCMUI.SetValue(	class'MCM_Defaults'.default.BAR_OFFSET_X, false);
+	BarOffsetY_MCMUI.SetValue(	class'MCM_Defaults'.default.BAR_OFFSET_Y, false);
 	BarAlpha_MCMUI.SetValue(	class'MCM_Defaults'.default.BAR_ALPHA, false);
 	/*BarWidthMult_MCMUI.SetValue(	class'MCM_Defaults'.default.BAR_WIDTH_MULT, false);
 	GeneralOffsetY_MCMUI.SetValue(	class'MCM_Defaults'.default.GENERAL_OFFSET_Y, false);
@@ -400,6 +463,7 @@ simulated function ResetButtonClicked(MCM_API_SettingsPage Page)
 	ShowCrit_MCMUI.SetValue(	class'MCM_Defaults'.default.TH_SHOW_CRIT_DMG, false);
 	AimLeftOfCrit_MCMUI.SetValue(	class'MCM_Defaults'.default.TH_AIM_LEFT_OF_CRIT, false);
 	AssistBesideHit_MCMUI.SetValue(	class'MCM_Defaults'.default.TH_ASSIST_BESIDE_HIT, false);
+	AssistBar_MCMUI.SetValue( class'MCM_Defaults'.default.TH_ASSIST_BAR, false);
 	PreviewMinimum_MCMUI.SetValue(	class'MCM_Defaults'.default.TH_PREVIEW_MINIMUM, false);
 	PreviewHacking_MCMUI.SetValue(	class'MCM_Defaults'.default.TH_PREVIEW_HACKING, false);
 	HitHexColor_MCMUI.SetValue(	getStringColorFromHex(class'MCM_Defaults'.default.HIT_HEX_COLOR), false);
@@ -413,23 +477,48 @@ simulated function ResetButtonClicked(MCM_API_SettingsPage Page)
 	ShowExtraWeaponStats_MCMUI.SetValue(	class'MCM_Defaults'.default.SHOW_EXTRA_WEAPONSTATS, false);
 	//FlyoverDuration_MCMUI.SetValue (class'MCM_Defaults'.default.FLYOVER_DURATION, false);
 	ShowGuaranteedHit_MCMUI.SetValue(class'MCM_Defaults'.default.SHOW_GUARANTEED_HIT, false);
-	GrazeCritLayout_MCMUI.SetValue(getLayoutTextFromIndex(class'MCM_Defaults'.default.GRAZE_CRIT_LAYOUT), false);
+	GrazeCritLayout_MCMUI.SetValue(LayoutArray[class'MCM_Defaults'.default.GRAZE_CRIT_LAYOUT], false);
+	`TRACE_EXIT("");
 }
 
+/**
+ * Saves current MCM settings and applies them to the active Tactical HUD.
+ *
+ * @param Page The settings page being saved.
+ */
 simulated function SaveButtonClicked(MCM_API_SettingsPage Page)
 {
+	local UITacticalHUD TacticalHUD;
+
+	`TRACE_ENTRY("");
  	HIT_HEX_COLOR = getHexColorByString(HIT_HEX_COLOR_MCM);
 	CRIT_HEX_COLOR = getHexColorByString(CRIT_HEX_COLOR_MCM);
 	DODGE_HEX_COLOR = getHexColorByString(DODGE_HEX_COLOR_MCM);
 	MISS_HEX_COLOR = getHexColorByString(MISS_HEX_COLOR_MCM);
 	ASSIST_HEX_COLOR = getHexColorByString(ASSIST_HEX_COLOR_MCM);
-	GRAZE_CRIT_LAYOUT = getIndexFromLayoutText(GRAZE_CRIT_LAYOUT_MCM);
 	self.CONFIG_VERSION = `MCM_CH_GetCompositeVersion();
 	self.SaveConfig();
+
+	TacticalHUD = UITacticalHUD(`PRESBASE.ScreenStack.GetScreen(class'UITacticalHUD'));
+	if (TacticalHUD!=none)
+	{
+		ExtendedInformationRedux3_UITacticalHUD_ShotHUD(TacticalHUD.m_kShotHUD).RemoveAll().InitLayout();
+
+		TacticalHUD.m_kTooltips.Remove();
+		TacticalHUD.m_kTooltips = TacticalHUD.Spawn(class'UITacticalHUD_Tooltips', TacticalHUD).InitTooltips();
+	}
+	`TRACE_EXIT("");
 }
 
+/**
+ * Converts a color name string into its corresponding hex value.
+ *
+ * @param ColorString The localized color name.
+ * @return The corresponding hex color string.
+ */
 function string getHexColorByString(string ColorString)
 {
+	`TRACE_ENTRY("ColorString:" @ ColorString);
 	switch (ColorString)
 	{
 		case		sBlack:					return "FFFFFF";
@@ -452,8 +541,15 @@ function string getHexColorByString(string ColorString)
 	}
 }
 
+/**
+ * Converts a hex color string into its corresponding localized color name.
+ *
+ * @param ColorString The hex color string.
+ * @return The corresponding localized color name.
+ */
 function string getStringColorFromHex(string ColorString)
 {
+	`TRACE_ENTRY("ColorString:" @ ColorString);
 	switch (ColorString)
 	{
 		case		"FFFFFF"	 : return sBlack;				
@@ -475,7 +571,7 @@ function string getStringColorFromHex(string ColorString)
 		default : return sGray;
 	}
 }
-
+/*
 function int getIndexFromLayoutText(string LayoutText)
 {
 	switch (LayoutText)
@@ -505,3 +601,4 @@ function string getLayoutTextFromindex(int Index)
 			return sLayoutBalanced;
 	}
 }
+*/

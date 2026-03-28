@@ -1,106 +1,203 @@
-// This is an Unreal Script
+/**
+ * HitCalcLib
+ *
+ * Utility class responsible for calculating hit chance adjustments
+ * based on difficulty modifiers, aim assist, and gameplay conditions.
+ *
+ * Responsibilities:
+ * - Compute shot breakdown with optional difficulty adjustment
+ * - Apply aim assist logic for XCOM and AI units
+ * - Replicate and extend vanilla hit chance modification logic
+ *
+ * @author Mr. Nice
+ */
+class HitCalcLib extends Object;
 
-//Mr. Nice: Only reason subclassing X2AbilityToHitCalc_RollStatTiers is to stop bleating about protected function/variable access!!
-class HitCalcLib extends X2AbilityToHitCalc_RollStatTiers;
+`include(ExtendedInformationRedux3\Src\ExtendedInformationRedux3\EIR_LoggerMacros.uci)
 
-static function int GetShotBreakdownPast(XComGameState_Ability AbilityState, AvailableTarget kTarget, optional out ShotBreakdown kBreakdown, optional int HistoryIndex=-1)
+var localized string LOWER_DIFFICULTY_MSG;
+var localized string MISS_STREAK_MSG;
+var localized string SOLDIER_LOST_BONUS;
+
+/**
+ * Calculates shot hit chance with optional difficulty adjustment applied.
+ *
+ * @param kAbility     Ability used for the shot
+ * @param kTarget      Target information for the shot
+ * @param kBreakdown   (out) Detailed shot breakdown information
+ * @param DiffAdjust   (out) Calculated difficulty adjustment applied to hit chance
+ *
+ * @return int         Final hit chance after adjustments
+ */
+static function int GetShotBreakdownDiffAdjust(XComGameState_Ability kAbility, AvailableTarget kTarget, optional out ShotBreakdown kBreakdown, optional out int DiffAdjust)
 {
-	local X2AbilityTemplate AbilityTemplate;
+	local int HitChance;
+	local X2AbilityToHitCalc_StandardAim HitCalcStandard;
+	local XComGameStateHistory History;
+	local XComGameState_Unit UnitState, TargetState;
+
+	`TRACE_ENTRY("");
+
+	HitChance = kAbility.GetShotBreakdown(kTarget, kBreakdown);
 	
-	AbilityTemplate=AbilityState.GetMyTemplate();
-	if (AbilityTemplate != None && AbilityTemplate.AbilityToHitCalc != none)
-		return GetShotBreakdownH(AbilityTemplate.AbilityToHitCalc, AbilityState, kTarget, kBreakdown, HistoryIndex);
+	HitCalcStandard=X2AbilityToHitCalc_StandardAim(kAbility.GetMyTemplate().AbilityToHitCalc);
+	History=`XCOMHISTORY;
+	UnitState = XComGameState_Unit(History.GetGameStateForObjectID(kAbility.OwnerStateObject.ObjectID));
 
-	//If there's no AbilityToHitCalc, don't show a breakdown. (Example: doors.)
-	kBreakdown.HideShotBreakdown = true;
-	return 0;
-}
-
-static function int GetShotBreakdownH(X2AbilityToHitCalc HitCalc, XComGameState_Ability kAbility, AvailableTarget kTarget, optional out ShotBreakdown m_ShotBreakdown, optional int HistoryIndex=-1)
-{
-	if ( X2AbilityToHitCalc_DeadEye(HitCalc)!=none
-		|| X2AbilityToHitCalc_PercentChance(HitCalc)!=none && X2AbilityToHitCalc_PercentChancePlusFocus(HitCalc)==none
-		|| X2AbilityToHitCalc_SeeMovement(HitCalc)!=none )
-		return HitCalc.GetShotBreakDown(kAbility, kTarget, m_ShotBreakdown);
-
-	return GetHitChanceH(HitCalc, kAbility, kTarget, m_ShotBreakdown, HistoryIndex);
-}
-
-static function int GetHitChanceH(X2AbilityToHitCalc HitCalc, XComGameState_Ability kAbility, AvailableTarget kTarget, optional out ShotBreakdown m_ShotBreakdown, optional int HistoryIndex=-1)
-{
-	local X2AbilityToHitCalc_RollStat HitCalcStat;
-	local X2AbilityToHitCalc_RollStatTiers HitCalcTier;
-	local X2AbilityToHitCalc_PercentChancePlusFocus HitCalcFocus;
-	local X2AbilityToHitCalc_StasisLance HitCalcLance;
-	local X2AbilityToHitCalc_StandardAim HItCalcStandard;
-
-	local XComGameState_Unit UnitState;
-	local ShotBreakdown EmptyShotBreakdown;
-	local int FinalHitChance;
-
-
-	//Want to get subclasses (espeically of standard aim!) so can't just switch on .classname
-	HitCalcStat=X2AbilityToHitCalc_RollStat(HitCalc);
-	if (HitCalcStat!=none)
+	if( HitCalcStandard != none &&
+		getTH_AIM_ASSIST() &&
+		//  reaction  fire shots and guaranteed hits do not get adjusted for difficulty
+		UnitState != None &&
+		!HitCalcStandard.bReactionFire &&
+		!HitCalcStandard.bGuaranteedHit && 
+		kBreakdown.SpecialGuaranteedHit == '')
 	{
-		m_ShotBreakdown = EmptyShotBreakdown;
-	
-		HitCalcStat.AddModifier(HitCalcStat.BaseChance, class'XLocalizedData'.default.BaseChance, m_ShotBreakdown, eHit_Success);
+		TargetState = XComGameState_Unit(History.GetGameStateForObjectID(kTarget.PrimaryTarget.ObjectID));
+		DiffAdjust = GetModifiedHitChance(HitCalcStandard, Unitstate, TargetState, kBreakdown.FinalHitChance, kBreakdown.Modifiers);
+		kBreakdown.FinalHitChance+= DiffAdjust;
+		HitChance = kBreakdown.FinalHitChance;
+	}
+	`TRACE_EXIT("HitChance:" @ HitChance $ ", DiffAdjust:" @ DiffAdjust);
+	return HitChance;
+}
 
-		UnitState = XComGameState_Unit(`XCOMHISTORY.GetGameStateForObjectID(kAbility.OwnerStateObject.ObjectID,, HistoryIndex));
-		if (UnitState != None)
+/**
+ * Computes modified hit chance based on difficulty, aim assist,
+ * miss streaks, and squad status.
+ *
+ * Mirrors and extends vanilla XCOM logic for hit chance adjustment.
+ *
+ * Mr. Nice: Basicly same function as GetModifiedHitChanceForCurrentDifficulty() from X2AbilityToHitCalc_StandardAim
+ *
+ * @param HitCalc        Hit calculation template
+ * @param UnitState      Attacking unit
+ * @param TargetState    Target unit
+ * @param BaseHitChance  Base hit chance before adjustments
+ * @param Modifiers      (out) List of applied modifiers for UI breakdown
+ *
+ * @return int           Total difficulty adjustment applied
+ */
+static function int GetModifiedHitChance(X2AbilityToHitCalc_StandardAim HitCalc, XComGameState_Unit UnitState, XComGameState_Unit TargetState, int BaseHitChance, optional out array<ShotModifierInfo> Modifiers)
+{
+	local int  DiffAdjust, CurrentLivingSoldiers, SoldiersLost, AssistHeadRoom;
+	local ShotModifierInfo Modifier;
+	local XComGameStateHistory History;
+	local XComGameState_Unit Unit;
+	local ETeam TargetTeam;
+
+	local XComGameState_Player Instigator;
+
+	`TRACE_ENTRY("BaseHitChance:" @ BaseHitChance);
+
+	History = `XCOMHISTORY;
+
+	foreach History.IterateByClassType(class'XComGameState_Unit', Unit)
+	{
+		if( Unit.GetTeam() == eTeam_XCom && !Unit.bRemovedFromPlay && Unit.IsAlive() && !Unit.GetMyTemplate().bIsCosmetic )
 		{
-			HitCalcStat.AddModifier(UnitState.GetCurrentStat(HitCalcStat.StatToRoll), class'X2TacticalGameRulesetDataStructures'.default.m_aCharStatLabels[HitCalcStat.StatToRoll], m_ShotBreakdown, eHit_Success);
+			++CurrentLivingSoldiers;
 		}
-		return m_ShotBreakdown.FinalHitChance;		
+	}
+	SoldiersLost = Max(0, HitCalc.NormalSquadSize - CurrentLivingSoldiers);
+
+	if (TargetState != none)
+	{
+		TargetTeam = Unit.GetTeam( );
 	}
 
-	HitCalcTier=X2AbilityToHitCalc_RollStatTiers(HitCalc);
-	if (HitCalcTier!=none)
+	Instigator = XComGameState_Player(History.GetGameStateForObjectID(UnitState.GetAssociatedPlayerID()));
+
+	// XCom gets 20% bonus to hit for each consecutive miss made already this turn
+	if(Instigator.TeamFlag == eTeam_XCom )
 	{
-		FinalHitChance = 0;
+		AssistHeadRoom=HitCalc.MaxAimAssistScore-BaseHitChance;
+		if (AssistHeadRoom<=0) return 0;
 
-		if (HitCalcTier.StatContestTiers.Length > 0)
+		//Difficulty multiplier
+		Modifier.Value = BaseHitChance * `ScaleTacticalArrayFloat(HitCalc.BaseXComHitChanceModifier) - BaseHitChance; // 1.2
+		Modifier.Value = Clamp(Modifier.Value, 0, AssistHeadRoom);
+
+		// DifficultyBonus
+		// Fixing name issue later with localization
+		if (Modifier.Value > 0)
 		{
-			FinalHitChance = HitCalcTier.StatContestTiers[HitCalcTier.StatContestTiers.Length - 1].BasePercentChance;
+			// Add to Stats (ProcessBreakDown)
+			Modifier.Reason =default.LOWER_DIFFICULTY_MSG;
+			Modifiers.AddItem(Modifier);
+			DiffAdjust+=Modifier.Value;
+			AssistHeadRoom-=Modifier.Value;
+		}
 
-			UnitState = XComGameState_Unit(`XCOMHISTORY.GetGameStateForObjectID(kTarget.PrimaryTarget.ObjectID,, HistoryIndex));
-			if ((UnitState != None) && HitCalcTier.StatContestTiers[HitCalcTier.StatContestTiers.Length - 1].bUseStatInCheck)
+		if(BaseHitChance >= HitCalc.ReasonableShotMinimumToEnableAimAssist) // 50
+		{ 
+			Modifier.Value = Min(AssistHeadRoom, Instigator.MissStreak * `ScaleTacticalArrayInt(HitCalc.MissStreakChanceAdjustment)); // 20
+			//Miss Bonus!
+			// Fixing name issue later with localization
+			if (Modifier.Value > 0)
 			{
-				FinalHitChance -= UnitState.GetCurrentStat(HitCalcTier.StatToRoll);
+				// Add to Stats (ProcessBreakDown)
+				Modifier.Reason = default.MISS_STREAK_MSG;
+				Modifiers.AddItem(Modifier);
+				DiffAdjust+=Modifier.Value;
+				AssistHeadRoom-=Modifier.Value;
+			}
+
+			Modifier.Value = Min(AssistHeadRoom, SoldiersLost * `ScaleTacticalArrayInt(HitCalc.SoldiersLostXComHitChanceAdjustment));
+			// Squady lost bonus
+			// Fixing name issue later with localization
+			if (Modifier.Value > 0)
+			{
+				// Add to Stats (ProcessBreakDown)
+				Modifier.Reason = default.SOLDIER_LOST_BONUS;
+				Modifiers.AddItem(Modifier);
+				DiffAdjust+=Modifier.Value;
+				AssistHeadRoom-=Modifier.Value;
 			}
 		}
-		return FinalHitChance;
 	}
-
-	HitCalcFocus=X2AbilityToHitCalc_PercentChancePlusFocus(HitCalc);
-	if (HitCalcFocus!=none)
+	// Aliens get -10% chance to hit for each consecutive hit made already this turn; this only applies if the XCom currently has less than 5 units alive
+	else if( Instigator.TeamFlag == eTeam_Alien || Instigator.TeamFlag == eTeam_TheLost )
 	{
-		UnitState = XComGameState_Unit(`XCOMHISTORY.GetGameStateForObjectID(kAbility.OwnerStateObject.ObjectID,, HistoryIndex));
-		m_ShotBreakdown.FinalHitChance = HitCalcFocus.PercentToHit + (UnitState.GetTemplarFocusLevel() * HitCalcFocus.FocusMultiplier);
-		return m_ShotBreakdown.FinalHitChance;
-	}
-
-	HitCalcLance=X2AbilityToHitCalc_StasisLance(HitCalc);
-	if (HitCalcLance!=none)
-	{
-		UnitState = XComGameState_Unit(`XCOMHISTORY.GetGameStateForObjectID(kTarget.PrimaryTarget.ObjectID,, HistoryIndex));
-		m_ShotBreakdown = EmptyShotBreakdown;
-
-		if (UNitState != none && !`XENGINE.IsMultiplayerGame())
+		if( CurrentLivingSoldiers <= HitCalc.NormalSquadSize ) // 4
 		{
-			HitCalcLance.AddModifier(HitCalcLance.default.BASE_CHANCE, class'XLocalizedData'.default.BaseChance, m_ShotBreakdown, eHit_Success);
-			HitCalcLance.FinalizeHitChance(m_ShotBreakdown);
+			DiffAdjust =
+				Instigator.HitStreak * `ScaleTacticalArrayInt(HitCalc.HitStreakChanceAdjustment) + // -10
+				SoldiersLost * `ScaleTacticalArrayInt(HitCalc.SoldiersLostAlienHitChanceAdjustment); // -25
 		}
-		return m_ShotBreakdown.FinalHitChance;
-	}
 
-	//Standard Aim is a big enough beast to get its own function call
-	HitCalcStandard=X2AbilityToHitCalc_StandardAim(HitCalc);
-	if (HitCalcStandard!=none)
-		return class'HitCalcLib2'.static.GetHitChanceStandardAim(HitCalcStandard, kAbility, kTarget, m_ShotBreakdown, HistoryIndex);
-	
-	//Not one of the cases we are considering, so let it do its thing
-	return HitCalc.GetHitChance(kAbility, kTarget, m_ShotBreakdown);
+		if( Instigator.TeamFlag == eTeam_Alien && TargetTeam == eTeam_TheLost )
+		{
+			DiffAdjust += `ScaleTacticalArrayFloat(HitCalc.AlienVsTheLostHitChanceAdjustment);
+		}
+		else if( Instigator.TeamFlag == eTeam_TheLost && TargetTeam == eTeam_Alien )
+		{
+			DiffAdjust += `ScaleTacticalArrayFloat(HitCalc.TheLostVsAlienHitChanceAdjustment);
+		}
+		DiffAdjust=Min(DiffAdjust, HitCalc.MaxAimAssistScore - BaseHitChance);
+		Modifier.Value= DiffAdjust;
+		if (Modifier.Value < 0) //Remember, aliens only get negative adjustments!
+		{
+			// Add to Stats (ProcessBreakDown)
+			Modifier.Reason = default.LOWER_DIFFICULTY_MSG;
+			Modifiers.AddItem(Modifier);
+		}
+	}
+	`TRACE_EXIT("DiffAdjust:" @ DiffAdjust);
+	return DiffAdjust;
 }
 
+`include(ExtendedInformationRedux3\Src\ModConfigMenuAPI\MCM_API_CfgHelpers.uci)
+
+/**
+ * Retrieves configuration value for aim assist feature toggle.
+ *
+ * @return bool     True if aim assist is enabled, false otherwise
+ */
+simulated static function bool getTH_AIM_ASSIST()
+{	
+	return `MCM_CH_GetValue(class'MCM_Defaults'.default.TH_AIM_ASSIST, class'ExtendedInformationRedux3_MCMScreen'.default.TH_AIM_ASSIST);
+}
+
+
+
+`MCM_CH_StaticVersionChecker(class'MCM_Defaults'.default.VERSION, class'ExtendedInformationRedux3_MCMScreen'.default.CONFIG_VERSION)
