@@ -52,14 +52,17 @@ static event OnPostTemplatesCreated()
 	StandardMCVis.FlyoverMessages.additem(class'X2StatusEffects'.default.ResistedMindControlText);//Miss
 	StandardMCVis.FlyoverMessages.additem(class'X2StatusEffects'.default.MindControlFriendlyName);//Hit
 
-	`IFGETAB(GetOverHere)
+	// Tigrik: This code block displays the "Grabbed!" flyover on the Viper tongue pull ability
+	// that causes a visual bug - cinematic of a tongue grab gets skipped together with the subsequent bind animation
+	// making the binded person appear not wrapped by Viper 
+	/*`IFGETAB(GetOverHere)
 	{
 		NewVis=class'HitChanceBuildVisualization'.static.CreateFlyoverVisualization();
 		Ability.BuildVisualizationFn = NewVis.BuildVisualization;
 		Ability.LocHitMessage=`LOCFALLBACK(TongueGrabHit, Ability.LocFlyOverText);
 		NewVis.FlyoverMessages.additem(Ability.LocHitMessage);
 		NewVis.FlyoverMessages.additem(Ability.LocMissMessage);
-	}
+	}*/
 
 	`IFGETAB(Justice)
 	{
