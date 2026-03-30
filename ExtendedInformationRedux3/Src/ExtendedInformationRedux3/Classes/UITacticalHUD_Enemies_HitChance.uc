@@ -41,8 +41,10 @@ simulated function int GetHitChanceForObjectRef(StateObjectReference TargetRef)
 	local XComGameState_Ability AbilityState;
 	local int HitChance;
 	local int clamped;
+	local ShotModifierInfo Modifier;
 
 	`TRACE_ENTRY("");
+
 	//If a targeting action is active and we're hoving over the enemy that matches this action, then use action percentage for the hover  
 	TargetingMethod = XComPresentationLayer(screen.Owner).GetTacticalHUD().GetTargetingMethod();
 
@@ -63,8 +65,27 @@ simulated function int GetHitChanceForObjectRef(StateObjectReference TargetRef)
 	if(AbilityState != none)
 	{
 		kTarget.PrimaryTarget=TargetRef;
+
+		`TRACE("===Before GetShotBreakdownDiffAdjust===");
+		`TRACE("TargetRef.ObjectID:" @ TargetRef.ObjectID);
+		`TRACE("Breakdown.FinalHitChance:" @ Breakdown.FinalHitChance);
+		foreach Breakdown.Modifiers(Modifier)
+		{
+			`TRACE("Modifier. Reason:" @ Modifier.Reason $ "," @ "ModType:" @ Modifier.ModType $ "," @ "Value:" @ Modifier.Value);
+		}
+		`TRACE("=================================");
+
 		class'HitCalcLib'.static.GetShotBreakdownDiffAdjust(AbilityState, kTarget, Breakdown);
 		
+		`TRACE("===After GetShotBreakdownDiffAdjust===");
+		`TRACE("TargetRef.ObjectID:" @ TargetRef.ObjectID);
+		`TRACE("Breakdown.FinalHitChance:" @ Breakdown.FinalHitChance);
+		foreach Breakdown.Modifiers(Modifier)
+		{
+			`TRACE("Modifier. Reason:" @ Modifier.Reason $ "," @ "ModType:" @ Modifier.ModType $ "," @ "Value:" @ Modifier.Value);
+		}
+		`TRACE("=================================");
+
 		if(!Breakdown.HideShotBreakdown)
 		{
 			HitChance = Breakdown.bIsMultishot ? Breakdown.MultiShotHitChance : Breakdown.FinalHitChance;
