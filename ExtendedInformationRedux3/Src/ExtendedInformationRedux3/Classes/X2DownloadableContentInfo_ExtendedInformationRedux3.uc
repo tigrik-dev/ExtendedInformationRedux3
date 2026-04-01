@@ -55,14 +55,19 @@ static event OnPostTemplatesCreated()
 	// Tigrik: This code block displays the "Grabbed!" flyover on the Viper tongue pull ability
 	// that causes a visual bug - cinematic of a tongue grab gets skipped together with the subsequent bind animation
 	// making the binded person appear not wrapped by Viper 
-	/*`IFGETAB(GetOverHere)
+	`IFGETAB(GetOverHere)
 	{
-		NewVis=class'HitChanceBuildVisualization'.static.CreateFlyoverVisualization();
-		Ability.BuildVisualizationFn = NewVis.BuildVisualization;
+		//NewVis=class'HitChanceBuildVisualization'.static.CreateFlyoverVisualization(Ability.BuildVisualizationFn);
+		//Ability.BuildVisualizationFn = NewVis.BuildVisualization;
+		//Ability.LocHitMessage=`LOCFALLBACK(TongueGrabHit, Ability.LocFlyOverText);
+		//Ability.LocMissMessage=class'XLocalizedData'.default.MissedMessage;
+		//NewVis.FlyoverMessages.additem(Ability.LocHitMessage);
+		//NewVis.FlyoverMessages.additem(Ability.LocMissMessage);
+
+		Ability.BuildVisualizationFn = static.GetOverhere_BuildVisualization;
 		Ability.LocHitMessage=`LOCFALLBACK(TongueGrabHit, Ability.LocFlyOverText);
-		NewVis.FlyoverMessages.additem(Ability.LocHitMessage);
-		NewVis.FlyoverMessages.additem(Ability.LocMissMessage);
-	}*/
+		Ability.LocMissMessage=class'XLocalizedData'.default.MissedMessage;
+	}
 
 	`IFGETAB(Justice)
 	{
@@ -380,6 +385,247 @@ static function Vengeance_BuildVisualization(XComGameState VisualizeGameState)
 		class'X2Action_EnterCover'.static.AddToVisualizationTree(ActionMetadata, AbilityContext, false, FireMissAction);
 	}
 	`TRACE_EXIT("");
+}
+
+// Tigrik: To fix the Viper's tongue pull bug:
+// 1. Copy this function from game's X2Ability_Viper.uc
+// 2. Add the Observer and flyover code, similarly to Vengeance_BuildVisualization
+static function GetOverhere_BuildVisualization(XComGameState VisualizeGameState)
+{
+	local XComGameStateHistory			History;
+	local XComGameStateContext_Ability  Context;
+	local X2AbilityTemplate             AbilityTemplate, BindAbilityTemplate;
+	local StateObjectReference          InteractingUnitRef;
+	local X2Action_ViperGetOverHere		GetOverHereAction;
+	local X2Action_PlaySoundAndFlyOver	SoundAndFlyover;
+	local X2VisualizerInterface			Visualizer;
+	local XComGameState_Unit            TargetUnit;
+
+	local VisualizationActionMetadata        EmptyTrack;
+	local VisualizationActionMetadata        ActionMetadata;
+	local VisualizationActionMetadata        SourceMetadata;
+
+	local int							EffectIndex;
+
+	//Support for finding and visualizing a bind attack that is part of the grab attack
+	local int							SearchHistoryIndex;
+	local XComGameState					ApplyBindState;
+	local XComGameStateContext_Ability	BindAbilityContext;
+	local bool							bGrabWasHit;
+	local bool							bBindWasHit;
+	local bool                          bDoBindVisuals;
+	local X2Action_ExitCover			ExitCoverAction;
+
+	local X2Action_PlaySoundAndFlyOver CharSpeechAction;
+	local X2TacticalGameRuleset_BreakdownObserver BreakdownObserver;
+	local X2GameRulesetEventObserverInterface Observer;
+
+	local int HitChance;
+	local string hittext;
+
+	`TRACE_ENTRY("");
+
+	History = `XCOMHISTORY;
+
+	Context = XComGameStateContext_Ability(VisualizeGameState.GetContext());
+	AbilityTemplate = class'XComGameState_Ability'.static.GetMyTemplateManager().FindAbilityTemplate(Context.InputContext.AbilityTemplateName);
+
+	bGrabWasHit = class'XComGameStateContext_Ability'.static.IsHitResultHit(Context.ResultContext.HitResult);
+	
+	//If we hit the target, then there should be a game state where we apply our free bind attack to the target. Collect visualization track actions
+	//for this bind attack so we can sequence them into the grab + pull visualization
+	bBindWasHit = false;
+	bDoBindVisuals = false;
+
+	// Tigrik: Add the Observer code
+	Observer = `GAMERULES.GetEventObserverOfType(class'X2TacticalGameRuleset_BreakdownObserver');
+	BreakdownObserver = X2TacticalGameRuleset_BreakdownObserver(Observer);
+	HitChance = BreakdownObserver.FindBreakdown(Context, ActionMetadata.StateObject_OldState);
+	if (HitChance != -1)
+	{
+		if(getDISPLAY_MISS_CHANCE()) HitChance = 100 - HitChance;
+
+		HitText = " -" @ `GETHITTEXT $ ":" @ HitChance $ "%";
+	}
+
+	if( bGrabWasHit )
+	{	
+		// Tigrik: Add a hit flyover
+		CharSpeechAction = X2Action_PlaySoundAndFlyOver(class'X2Action_PlaySoundAndFlyOver'.static.AddToVisualizationTree(ActionMetadata, Context));
+		CharSpeechAction.SetSoundAndFlyOverParameters(None, `LOCFALLBACK(TongueGrabHit, AbilityTemplate.LocFlyOverText) $ HitText, '', eColor_Bad);
+
+		//Search forward in the history for the bind that we are going to apply to the target
+		for( SearchHistoryIndex = VisualizeGameState.HistoryIndex + 1; SearchHistoryIndex < History.GetNumGameStates(); ++SearchHistoryIndex )
+		{
+			ApplyBindState = History.GetGameStateFromHistory(SearchHistoryIndex);
+			BindAbilityContext = XComGameStateContext_Ability(ApplyBindState.GetContext());
+			bBindWasHit = BindAbilityContext != none &&
+						  class'XComGameStateContext_Ability'.static.IsHitResultHit(BindAbilityContext.ResultContext.HitResult) &&
+						  //default.BIND_ABILITY_ALIASES.Find(BindAbilityContext.InputContext.AbilityTemplateName) != INDEX_NONE &&
+						  BindAbilityContext.InputContext.SourceObject.ObjectID == Context.InputContext.SourceObject.ObjectID;
+				
+			if( bBindWasHit )
+			{
+				bDoBindVisuals = BindAbilityContext.InterruptionStatus == eInterruptionStatus_None;
+				BindAbilityTemplate = class'XComGameState_Ability'.static.GetMyTemplateManager().FindAbilityTemplate(BindAbilityContext.InputContext.AbilityTemplateName);
+				break;
+			}
+		}
+	} else {
+		// Tigrik: Add a miss flyover
+		CharSpeechAction = X2Action_PlaySoundAndFlyOver(class'X2Action_PlaySoundAndFlyOver'.static.AddToVisualizationTree(ActionMetadata, Context));
+		CharSpeechAction.SetSoundAndFlyOverParameters(None, class'XLocalizedData'.default.MissedMessage $ HitText, '', eColor_Bad);
+	}
+
+	//Configure the visualization track for the shooter
+	//****************************************************************************************
+	InteractingUnitRef = Context.InputContext.SourceObject;
+	SourceMetadata = EmptyTrack;
+	SourceMetadata.StateObject_OldState = History.GetGameStateForObjectID(InteractingUnitRef.ObjectID, eReturnType_Reference, VisualizeGameState.HistoryIndex - 1);
+	SourceMetadata.StateObject_NewState = VisualizeGameState.GetGameStateForObjectID(InteractingUnitRef.ObjectID);
+	SourceMetadata.VisualizeActor = History.GetVisualizer(InteractingUnitRef.ObjectID);
+
+	ExitCoverAction = X2Action_ExitCover(class'X2Action_ExitCover'.static.AddToVisualizationTree(SourceMetadata, Context, false, SourceMetadata.LastActionAdded));
+	ExitCoverAction.bUsePreviousGameState = true;
+	GetOverHereAction = X2Action_ViperGetOverHere(class'X2Action_ViperGetOverHere'.static.AddToVisualizationTree(SourceMetadata, Context, false, SourceMetadata.LastActionAdded));
+	GetOverHereAction.SetFireParameters(Context.IsResultContextHit());
+
+	Visualizer = X2VisualizerInterface(SourceMetadata.VisualizeActor);
+	if(Visualizer != none)
+	{
+		Visualizer.BuildAbilityEffectsVisualization(VisualizeGameState, SourceMetadata);
+	}
+
+	//Don't perform an enter cover if we hit with bind, we need to stay in the bind position
+	if(!bBindWasHit)
+	{
+		class'X2Action_EnterCover'.static.AddToVisualizationTree(SourceMetadata, Context, false, SourceMetadata.LastActionAdded);
+	}
+
+	//****************************************************************************************
+	//Configure the visualization track for the target
+	//****************************************************************************************
+	InteractingUnitRef = Context.InputContext.PrimaryTarget;
+	ActionMetadata = EmptyTrack;
+	ActionMetadata.StateObject_OldState = History.GetGameStateForObjectID(InteractingUnitRef.ObjectID, eReturnType_Reference, VisualizeGameState.HistoryIndex - 1);
+	ActionMetadata.StateObject_NewState = VisualizeGameState.GetGameStateForObjectID(InteractingUnitRef.ObjectID);
+	ActionMetadata.VisualizeActor = History.GetVisualizer(InteractingUnitRef.ObjectID);
+
+	TargetUnit = XComGameState_Unit(ActionMetadata.StateObject_OldState);
+	if( (TargetUnit != none) && (TargetUnit.IsUnitApplyingEffectName('Suppression')))
+	{
+		class'X2Action_StopSuppression'.static.AddToVisualizationTree(ActionMetadata, Context, false, ActionMetadata.LastActionAdded);
+	}
+
+	for (EffectIndex = 0; EffectIndex < AbilityTemplate.AbilityTargetEffects.Length; ++EffectIndex)
+	{
+		AbilityTemplate.AbilityTargetEffects[EffectIndex].AddX2ActionsForVisualization(VisualizeGameState, ActionMetadata, Context.FindTargetEffectApplyResult(AbilityTemplate.AbilityTargetEffects[EffectIndex]));
+	}
+
+	if (Context.IsResultContextMiss() && AbilityTemplate.LocMissMessage != "")
+	{
+		SoundAndFlyOver = X2Action_PlaySoundAndFlyOver(class'X2Action_PlaySoundAndFlyover'.static.AddToVisualizationTree(ActionMetadata, Context, false, ActionMetadata.LastActionAdded));
+		SoundAndFlyOver.SetSoundAndFlyOverParameters(None, AbilityTemplate.LocMissMessage, '', eColor_Good);
+	}
+
+	//Add any actions that we get from our free bind attack if we hit and the Bind was not interrupted
+	if( bDoBindVisuals )
+	{		
+		SourceMetadata.LastActionAdded = ActionMetadata.LastActionAdded;
+		BindSourceAnimationVisualization(SourceMetadata, BindAbilityContext);
+		ActionMetadata.LastActionAdded = SourceMetadata.LastActionAdded;
+		BindTargetAnimationVisualization(ActionMetadata, BindAbilityContext);
+		BindEnvironmentDamageVisualization(Context, BindAbilityContext, BindAbilityTemplate);
+	}
+}
+
+// Tigrik: To fix the Viper's tongue pull bug:
+// 1. Copy this function from game's X2Ability_Viper.uc
+static function BindSourceAnimationVisualization(out VisualizationActionMetadata ActionMetadata, XComGameStateContext Context, bool bSyncAction = false)
+{
+	local X2Action_PersistentEffect PersistentEffectAction;
+	local XComGameStateContext_Ability AbilityContext;
+	local XComGameStateHistory History;
+	local XComGameState_Unit BindSourceUnit;
+	local XComGameState_Effect BindEffectState;
+	local Actor PartnerVisualizer;
+	local XComGameStateVisualizationMgr VisMgr;
+	local X2Action_ViperGetOverHereTarget GetOverHereTarget;
+	local Array<X2Action> ParentActions;
+
+	History = `XCOMHISTORY;
+	VisMgr = `XCOMVISUALIZATIONMGR;
+
+	AbilityContext = XComGameStateContext_Ability(Context);
+	if( AbilityContext != none )
+	{
+		PartnerVisualizer = History.GetGameStateForObjectID(AbilityContext.InputContext.PrimaryTarget.ObjectID).GetVisualizer();
+	}
+	else
+	{
+		// The StateChangeContext is not a XComGameStateContext_Ability, so we need to get the primary target's ID another way
+		BindSourceUnit = XComGameState_Unit(ActionMetadata.StateObject_NewState);
+		BindEffectState = BindSourceUnit.GetUnitAffectedByEffectState(class'X2AbilityTemplateManager'.default.BoundName);
+
+		PartnerVisualizer = History.GetGameStateForObjectID(BindEffectState.ApplyEffectParameters.AbilityInputContext.PrimaryTarget.ObjectID).GetVisualizer();
+	}
+
+	if( PartnerVisualizer != None && ActionMetadata.AdditionalVisualizeActors.Length == 0 )
+	{
+		ActionMetadata.AdditionalVisualizeActors.AddItem(PartnerVisualizer);
+		
+	}
+	
+	if( PartnerVisualizer != None )
+	{
+		GetOverHereTarget = X2Action_ViperGetOverHereTarget(VisMgr.GetNodeOfType(VisMgr.BuildVisTree, class'X2Action_ViperGetOverHereTarget', PartnerVisualizer));
+		if( GetOverHereTarget != none )
+			ParentActions.AddItem(GetOverHereTarget);
+	}
+	 
+	if(ActionMetadata.LastActionAdded != none)
+		ParentActions.AddItem(ActionMetadata.LastActionAdded);
+
+	class'X2Action_ViperBind'.static.AddToVisualizationTree(ActionMetadata, Context, false, None, ParentActions);
+
+	PersistentEffectAction = X2Action_PersistentEffect(class'X2Action_PersistentEffect'.static.AddToVisualizationTree(ActionMetadata, Context, false, ActionMetadata.LastActionAdded));
+	PersistentEffectAction.IdleAnimName = 'NO_BindLoop';
+}
+
+// Tigrik: To fix the Viper's tongue pull bug:
+// 1. Copy this function from game's X2Ability_Viper.uc
+static function BindTargetAnimationVisualization(out VisualizationActionMetadata ActionMetadata, XComGameStateContext Context)
+{
+	local X2Action_PersistentEffect		PersistentEffectAction;
+
+	PersistentEffectAction = X2Action_PersistentEffect(class'X2Action_PersistentEffect'.static.AddToVisualizationTree(ActionMetadata, Context, false, ActionMetadata.LastActionAdded));
+	PersistentEffectAction.IdleAnimName = 'NO_BindLoop';
+}
+
+// Tigrik: To fix the Viper's tongue pull bug:
+// 1. Copy this function from game's X2Ability_Viper.uc
+static function BindEnvironmentDamageVisualization(XComGameStateContext Context, XComGameStateContext_Ability BindContext, X2AbilityTemplate AbilityTemplate)
+{
+	local XComGameState_EnvironmentDamage EnvironmentDamageEvent;
+	local int EffectIndex;
+	local XComGameState VisualizeGameState;
+	local VisualizationActionMetadata EmptyTrack;
+	local VisualizationActionMetadata ActionMetadata;
+
+	VisualizeGameState = BindContext.AssociatedState;
+
+	foreach VisualizeGameState.IterateByClassType(class'XComGameState_EnvironmentDamage', EnvironmentDamageEvent)
+	{
+		ActionMetadata = EmptyTrack;
+		ActionMetadata.VisualizeActor = none;
+		ActionMetadata.StateObject_NewState = EnvironmentDamageEvent;
+		ActionMetadata.StateObject_OldState = EnvironmentDamageEvent;
+
+		for( EffectIndex = 0; EffectIndex < AbilityTemplate.AbilityTargetEffects.Length; ++EffectIndex )
+		{
+			AbilityTemplate.AbilityTargetEffects[EffectIndex].AddX2ActionsForVisualization(VisualizeGameState, ActionMetadata, 'AA_Success');
+		}
+	}
 }
 
 `MCM_CH_STATICVersionChecker(class'MCM_Defaults'.default.VERSION, class'ExtendedInformationRedux3_MCMScreen'.default.CONFIG_VERSION)
