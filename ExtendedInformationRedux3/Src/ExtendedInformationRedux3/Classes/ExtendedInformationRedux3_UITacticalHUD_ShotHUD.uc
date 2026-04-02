@@ -260,7 +260,7 @@ simulated function Update()
 {
     local bool isValidShot, IsSkPostMelee;
     local string ShotName, ShotDescription, ShotDamage;
-    local int HitChance, skHitChance, CritChance, GrazeChance, TargetIndex, AimBonus, skAimBonus, BarOffsetY, DodgeOffsetY, CritOffsetY;
+    local int MinDamage, MaxDamage, AllowsShield, HitChance, skHitChance, CritChance, GrazeChance, TargetIndex, AimBonus, skAimBonus, BarOffsetY, DodgeOffsetY, CritOffsetY;
     local ShotBreakdown kBreakdown;
     local StateObjectReference Target, EmptyRef;
     local XComGameState_Ability SelectedAbilityState, skAbilityState;
@@ -270,15 +270,16 @@ simulated function Update()
     local XGUnit ActionUnit;
     local UITacticalHUD TacticalHUD;
     local UIUnitFlag UnitFlag;
-    //local WeaponDamageValue MinDamageValue, MaxDamageValue;
+    local WeaponDamageValue MinDamageValue, MaxDamageValue;
     local X2TargetingMethod TargetingMethod;
     local bool WillBreakConcealment, WillEndTurn, bHide, bCounter;
-	local DamageBreakdown NormalDamage, CritDamage;
 	local X2AbilityToHitCalc_StandardAim StandardHitCalc;
 	local UnitValue CounterattackCheck;
 	local XComGameState_Unit UnitState, TargetUnitState;
 	local XComGameStateHistory History;
+
 	// New from Grimy Shot Bar
+	local int GrimyCritDmg;
 	local string FontString;
    	local int offsetX, Current, i, CounterGraze, CounterCrit, CounterHit, CounterBonus;
 	local float Chance[4];
@@ -370,30 +371,31 @@ simulated function Update()
 			&& SelectedAbilityTemplate.AbilityMultiTargetStyle != none
 			&& SelectedAbilityTemplate.AbilityMultiTargetEffects.Length > 0 )
 		{
-			class'DamagePreviewLib'.static.GetDamagePreview(skAbilityState, EmptyRef, NormalDamage, CritDamage);
+			SelectedAbilityState.GetDamagePreview(EmptyRef, MinDamageValue, MaxDamageValue, AllowsShield);
 		}
-		else class'DamagePreviewLib'.static.GetDamagePreview(skAbilityState, Target, NormalDamage, CritDamage);
-       
-        if (NormalDamage.Min > 0 || NormalDamage.Max > 0)
-		{
-			ShotDamage=`RANGESTRING(NormalDamage.Min, NormalDamage.Max);
-			// [TODO] Tigrik: ExpectedDamage
-			/*ShotDamage $= " (" $ class'ExpectedDamageLib'.static.GetExpectedDamageString(
-				kBreakdown,
-				MinDamage,
-				MaxDamage,
-				GrimyCritDmg
-			) $ ")";*/
+        else SelectedAbilityState.GetDamagePreview(kTarget.PrimaryTarget, MinDamageValue, MaxDamageValue, AllowsShield);
 
-            if(NormalDamage.Bonus>0)
-			{
-				AddDamage(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, eUIState_Warning2, 38), true);
-			}
-			else
-			{
-				AddDamage(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, eUIState_Good, 36), true);
-			}
-        }
+        MinDamage = MinDamageValue.Damage;
+        MaxDamage = MaxDamageValue.Damage;
+       
+        if (MinDamage > 0 && MaxDamage > 0)
+		{
+            if (MinDamage == MaxDamage)
+                ShotDamage = String(MinDamage);
+            else
+                ShotDamage = MinDamage $ "-" $ MaxDamage;
+
+			// Tigrik: ExpectedDamage. Delay the display of damage until Expected Damage can be calculated
+			AddDamage(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, eUIState_Good, 36), true);
+		}
+       
+		// [TODO] Tigrik: ExpectedDamage
+		/*ShotDamage $= " (" $ class'ExpectedDamageLib'.static.GetExpectedDamageString(
+			kBreakdown,
+			MinDamage,
+			MaxDamage,
+			GrimyCritDmg
+		) $ ")";*/
  
         //Set up percent to hit / crit values
         //*********************************************************************************
@@ -458,13 +460,15 @@ simulated function Update()
 				TacticalHUD.SetReticleAimPercentages(-1, -1);
 			}
 			
+			// Generate a display for Crit Damage
+            GrimyCritDmg = GetCritDamage(SelectedAbilityState, Target);
 			if( CritChance>-1 &&(
-				(!bHide && !(CRIT_HIDE_TRIVIAL && CritDamage.InfoList.Length==0 && CritChance<=0))
-				|| (bHide && CRIT_SHOW_NonTRIVIAL &&(CritDamage.Min>0 || CritDamage.Max>0))) )
+				(!bHide && !(CRIT_HIDE_TRIVIAL && CritChance<=0))
+				|| (bHide && CRIT_SHOW_NonTRIVIAL && (GrimyCritDmg > 0))) )
 			{
 				if(TH_SHOW_CRIT_DMG)
 				{
-					FontString = "+" $ `RANGESTRING(CritDamage.Min, CritDamage.Max);
+					FontString = "+" $ string(GrimyCritDmg);
 					FontString = class'UIUtilities_Text'.static.GetColoredText(FontString, CRIT_STATE_COLOUR, , Offsets[GRAZE_CRIT_LAYOUT].CritDTextAlign);
 					FontString = class'UIUtilities_Text'.static.AddFontInfo(FontString,false,true, , ValueFontSize);
 					CritDamValue.SetPosition(CRIT_OFFSET_X-TEXTWIDTH*int(Offsets[GRAZE_CRIT_LAYOUT].CritDTextAlign=="right"),CritOffsetY - 0.8);
@@ -544,7 +548,7 @@ simulated function Update()
 				
 			// Generate the shot breakdown bar
 			if ( BAR_HEIGHT > 0 && !bHide &&
-			!(BAR_HIDE_TRIVIAL && CritDamage.InfoList.Length==0 && CritChance<=0 && GrazeChance<=0) )
+			!(BAR_HIDE_TRIVIAL && CritChance<=0 && GrazeChance<=0) )
 			{	   //Mr. Nice: If you're going to replicate the % results from RollforAbilityHit, then copy it's code structure!
 					// Note RollforabilityHit() is an empty function is the basic X2AbilitytoHitCalc class, below is _StandardAim drived
 					// In principle, other X2AbilitytoHitCalc implementations could use shotbreakdown differently, or even not use it at all!
@@ -765,6 +769,133 @@ function string UpdateHackDescription( XComGameState_Ability AbilityState, State
 	}
 	`TRACE_EXIT("ShotDescription:" @ ShotDescription);
 	return ShotDescription;
+}
+
+// GRIMY - Added this function to calculate crit damage from a weapon.
+// It doesn't scan for abilities and ammo types though, those are unfortunately often stored in if conditions
+// 2017-12-09: For the time being with partial rewrite of base game files for WotC, Crit Damages from AMMO ARE BEING TAKEN into account :-)
+static function int GetCritDamage(XcomGameState_Ability AbilityState, StateObjectReference TargetRef, optional out array<UISummary_ItemStat> ItemsStat) {
+	local XComGameStateHistory History;
+	local XComGameState_Unit SourceUnit, TargetUnit;
+	local StateObjectReference EffectRef;
+	local XComGameState_Effect EffectState;
+	local XComGameState_Item ItemState;
+	local X2Effect_Persistent EffectTemplate;
+	local EffectAppliedData TestEffectParams;
+	local int CritDamage;
+	local WeaponDamageValue WeaponDamage;
+	local UISummary_ItemStat ItemStat;
+	local int eState, Value_Crit, Value_Success, EffectDmg;
+	local string strPrefix, strLabel;
+	local X2Effect_ApplyWeaponDamage WepDamEffect;
+	local int iContinue;
+
+	
+	History = `XCOMHISTORY;
+	SourceUnit = XComGameState_Unit(History.GetGameStateForObjectID(AbilityState.OwnerStateObject.ObjectID));
+	TargetUnit = XComGameState_Unit(History.GetGameStateForObjectID(TargetRef.ObjectID));
+
+	TestEffectParams.AbilityInputContext.AbilityRef = AbilityState.GetReference();
+	TestEffectParams.AbilityInputContext.AbilityTemplateName = AbilityState.GetMyTemplateName();
+	TestEffectParams.ItemStateObjectRef = AbilityState.SourceWeapon;
+	TestEffectParams.AbilityStateObjectRef = AbilityState.GetReference();
+	TestEffectParams.SourceStateObjectRef = SourceUnit.GetReference();
+	TestEffectParams.PlayerStateObjectRef = SourceUnit.ControllingPlayer;
+	TestEffectParams.TargetStateObjectRef = TargetRef;
+	//TestEffectParams.AbilityResultContext.HitResult = eHit_Crit;
+
+	ItemState = AbilityState.GetSourceWeapon();
+	ItemState.GetBaseWeaponDamageValue(ItemState, WeaponDamage);
+
+	ItemsStat.Length = 0;
+
+	// Add in the Weapon Base Crit Damage
+	//ItemStat.Label = class'UIUtilities_Text'.static.GetColoredText(class'XLocalizedData'.default.WeaponCritBonus, eUIState_Good);
+	//ItemStat.Value = class'UIUtilities_Text'.static.GetColoredText("+" $ CritDamage, eUIState_Good);
+	//ItemsStat.AddItem(ItemStat);
+	ItemsStat=class'ExtendedInformationRedux3_UITacticalHUD_ShotWings'.static.GetWeaponBreakdown(TargetRef, AbilityState, true, CritDamage, iContinue, WepDamEffect);
+	if(!bool(iContinue)) return CritDamage;
+
+	foreach SourceUnit.AffectedByEffects(EffectRef)
+	{
+		EffectState = XComGameState_Effect(History.GetGameStateForObjectID(EffectRef.ObjectID));
+		EffectTemplate = EffectState.GetX2Effect();
+
+		TestEffectParams.AbilityResultContext.HitResult = eHit_Crit;
+		Value_Crit = EffectTemplate.GetAttackingDamageModifier(EffectState, SourceUnit, Damageable(TargetUnit), AbilityState, TestEffectParams, WeaponDamage.Damage);
+
+		TestEffectParams.AbilityResultContext.HitResult = eHit_Success;
+		Value_Success = EffectTemplate.GetAttackingDamageModifier(EffectState, SourceUnit, Damageable(TargetUnit), AbilityState, TestEffectParams, WeaponDamage.Damage);
+
+		if (Value_Crit - Value_Success != 0)
+		{
+			CritDamage+=Value_Crit;
+			if (Value_Crit<0)
+			{
+				eState=eUIState_Bad;
+				strPrefix="";
+			}
+			else 
+			{
+				eState = eUIState_Good; 
+				strPrefix = "+";
+			}
+			strLabel = EffectTemplate.GetSpecialDamageMessageName();
+			ItemStat.Label = class'UIUtilities_Text'.static.GetColoredText(strLabel, eState);
+			ItemStat.Value = class'UIUtilities_Text'.static.GetColoredText(strPrefix $ Value_Crit, eState );
+			ItemsStat.AddItem(ItemStat);	
+		}
+	}
+
+	TestEffectParams.AbilityResultContext.HitResult = eHit_Crit;
+	
+	if (TargetUnit != none)
+	{
+		foreach TargetUnit.AffectedByEffects(EffectRef)
+		{
+			EffectState = XComGameState_Effect(History.GetGameStateForObjectID(EffectRef.ObjectID));
+			EffectTemplate = EffectState.GetX2Effect();
+			EffectDmg = EffectTemplate.GetBaseDefendingDamageModifier (EffectState, SourceUnit, Damageable(TargetUnit), AbilityState, TestEffectParams, WeaponDamage.Damage, WepDamEffect);
+			EffectDmg += EffectTemplate.GetDefendingDamageModifier(EffectState, SourceUnit, Damageable(TargetUnit), AbilityState, TestEffectParams, WeaponDamage.Damage, WepDamEffect);
+			if (EffectDmg != 0)
+			{
+				CritDamage+=EffectDmg;
+				if (EffectDmg<0)
+				{
+					eState=eUIState_Bad;
+					strPrefix="";
+				}
+				else 
+				{
+					eState = eUIState_Good; 
+					strPrefix = "+";
+				}
+				strLabel = EffectTemplate.GetSpecialDamageMessageName();
+				ItemStat.Label = class'UIUtilities_Text'.static.GetColoredText(strLabel, eState);
+				ItemStat.Value = class'UIUtilities_Text'.static.GetColoredText(strPrefix $ EffectDmg, eState );
+				ItemsStat.AddItem(ItemStat);	
+			}
+		}
+	}
+
+	// When it checks for extra damage for eHit_Crit, it includes extra damage which applies to all hits.
+	// To correctly get bonus damage just for crits, you have to total and take away extra damage for normal hits, ie eHit_Success (Mr. Nice, thank you ^^)
+	/*TestEffectParams.AbilityResultContext.HitResult = eHit_Success;
+	foreach SourceUnit.AffectedByEffects(EffectRef) {
+		EffectState = XComGameState_Effect(History.GetGameStateForObjectID(EffectRef.ObjectID));
+		EffectTemplate = EffectState.GetX2Effect();
+
+		CritDamage -= EffectTemplate.GetAttackingDamageModifier(EffectState, SourceUnit, Damageable(TargetUnit), AbilityState, TestEffectParams, WeaponDamage.Damage);
+
+		// Added this loop afterwards to remove unwanted items (passives abilites / Etc...) from the array
+		for (i = 0; i < ItemsStat.Length; ++i)
+		{
+			if ( string(EffectTemplate.EffectName) == UISummary_ItemStat(ItemsStat[--i]).Label ) ItemsStat.remove(--i);
+		}
+	}*/
+
+	
+    return CritDamage;
 }
 
 function bool GetDISPLAY_MISS_CHANCE()

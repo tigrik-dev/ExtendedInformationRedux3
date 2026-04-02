@@ -16,11 +16,13 @@
  */
 class ExtendedInformationRedux3_UITacticalHUD_ShotWings extends UITacticalHUD_ShotWings dependson(HackCalcLib);
 
+`define MINDAM(WEPDAM) ( `WEPDAM.Damage - `WEPDAM.Spread )
+`define MAXDAM(WEPDAM) ( `WEPDAM.Damage + `WEPDAM.Spread + int(bool(`WEPDAM.PlusOne)) )
 `define RANGESTRING(MIN, MAX)  ( `MIN == `MAX ? string(`MIN) : string(`MIN) $ "-" $ string(`MAX) )
-//`define RANGESTRINGO(WEPDAM) `RANGESTRING( `MINDAM(`WEPDAM), `MAXDAM(`WEPDAM) )
-//`define RANGESTRINGN(WEPITEM) `RANGESTRING(`WEPITEM.min, `WEPITEM.max)
-//`define SETCOLOR(VAL) IF(`VAL<0) {eState = eUIState_Bad;prefix="";}else {eState=eUIState_Good;prefix="+";}
-//`define COLORTEXT(OUTSTR, INSTR) `OUTSTR=class'UIUtilities_Text'.static.GetColoredText(`INSTR, eState)
+`define RANGESTRINGO(WEPDAM) `RANGESTRING( `MINDAM(`WEPDAM), `MAXDAM(`WEPDAM) )
+`define RANGESTRINGN(WEPITEM) `RANGESTRING(`WEPITEM.min, `WEPITEM.max)
+`define SETCOLOR(VAL) IF(`VAL<0) {eState = eUIState_Bad;prefix="";}else {eState=eUIState_Good;prefix="+";}
+`define COLORTEXT(OUTSTR, INSTR) `OUTSTR=class'UIUtilities_Text'.static.GetColoredText(`INSTR, eState)
 
 `include(ExtendedInformationRedux3\Src\ExtendedInformationRedux3\EIR_LoggerMacros.uci)
 `include(ExtendedInformationRedux3\Src\ModConfigMenuAPI\MCM_API_CfgHelpers.uci)
@@ -40,6 +42,12 @@ var public UIMask CritDamageMask;
 var public UIPanel CritDamageBodyArea;
 var public UIStatList CritDamageStatList;
 var public UIScrollingText  CritDamageLabel, DamageLabelsc, HitLabelsc, CritLabelsc;
+
+struct DamageModifier
+{
+	var string Label;
+	var int Value;
+};
 
 `MCM_CH_VersionChecker(class'MCM_Defaults'.default.VERSION, class'ExtendedInformationRedux3_MCMScreen'.default.CONFIG_VERSION)
 
@@ -281,15 +289,14 @@ simulated function RefreshData()
 	local XComGameState_Ability		AbilityState;
 	local ShotBreakdown				Breakdown, skBreakdown;
 	//local UIHackingBreakdown			kHackingBreakdown;
-	//local WeaponDamageValue			MinDamageValue, MaxDamageValue;
-	//local int						AllowsShield;
+	local WeaponDamageValue			MinDamageValue, MaxDamageValue;
+	local int						AllowsShield;
 	local int						i, TargetIndex, iShotBreakdown, HitChance, CritChance;//, AimBonus
 	local ShotModifierInfo			ShotInfo;
 	local bool						bMultiShots;
 	local string						TmpStr;
 	local X2TargetingMethod			TargetingMethod;
-	//local array<UISummary_ItemStat> Stats;
-	local DamageBreakdown NormalDamage, CritDamage;
+	local array<UISummary_ItemStat> Stats;
 	local EIHackBreakdown HackBreakdown;
 	local bool bHideLeft, bHideRight;
 	local XComGameStateHistory History;
@@ -367,7 +374,7 @@ simulated function RefreshData()
 		CritStatList.RefreshData(ProcessHackBreakdown(HackBreakdown, 2));
 
 		CritDamageLabel.SetHtmlText(class'UIUtilities_Text'.static.StyleText(HackBreakdown.TechLabel, eUITextStyle_Tooltip_StatLabel));
-		TmpStr = `RANGESTRING(CritDamage.Min, CritDamage.Max);
+		TmpStr = string(class'WOTC_DisplayHitChance_UITacticalHUD_ShotHUD'.static.GetCritDamage(AbilityState, Target, Stats));
 		CritDamageValue.SetHtmlText(class'UIUtilities_Text'.static.StyleText(HackBreakdown.TechValue, eUITextStyle_Tooltip_StatValue));
 		CritDamageStatList.RefreshData(HackBreakdown.RStats);
 		return;
@@ -391,15 +398,15 @@ simulated function RefreshData()
 	}
 	CritChance=Breakdown.ResultTable[eHit_Crit];
 	
-	class'DamagePreviewLib'.static.GetDamagePreview(AbilityState, kTarget.PrimaryTarget, NormalDamage, CritDamage);
+	//class'DamagePreviewLib'.static.GetDamagePreview(AbilityState, kTarget.PrimaryTarget, NormalDamage, CritDamage);
 
 	// Hide ifrequested -------------------------------------------------------
 	bHideLeft=Breakdown.HideShotBreakdown &&
 		!( HIT_SHOW_NonTRIVIAL && HitChance>0 && HitChance<100 && Breakdown.Modifiers.Length!=0 //If there's no Modifiers(aka, stuff to show in the list!), then the HUD will already show all we know
-		|| DAMAGE_SHOW_NonTRIVIAL && NormalDamage.InfoList.Length>1 ); //Larger than one since one entry means just the baseweapon/ability damage, to not interesting!
+		|| DAMAGE_SHOW_NonTRIVIAL); //Larger than one since one entry means just the baseweapon/ability damage, to not interesting!
 	bHideRight=CritChance<0
-		|| (Breakdown.HideShotBreakdown && !(CRIT_SHOW_NonTRIVIAL && (CritDamage.Min>0 || CritDamage.Max>0) && (CritDamage.InfoList.Length>1 || CritChance>0)) )
-		|| (!Breakdown.HideShotBreakdown && CRIT_HIDE_TRIVIAL && CritDamage.InfoList.Length==0 && CritChance<=0);
+		|| (Breakdown.HideShotBreakdown && !(CRIT_SHOW_NonTRIVIAL || CritChance>0) )
+		|| (!Breakdown.HideShotBreakdown && CRIT_HIDE_TRIVIAL && CritChance<=0);
 	if (bHideLeft && bHideRight)
 	{
 		HideState();
@@ -430,6 +437,9 @@ simulated function RefreshData()
 
 		// Now update the UI ------------------------------------------------------
 		Breakdown.Modifiers.Sort(SortModifiers);
+		// Smart way to do things -Credit: Sectoidfodder 
+		Stats = ProcessHitCritBreakdown(Breakdown, eHit_Success);
+		Stats.Sort(SortAfterValue);
 
 		if(bMultiShots)
 			HitLabelsc.SetHtmlText(class'UIUtilities_Text'.static.StyleText(class'XLocalizedData'.default.MultiHitLabel, eUITextStyle_Tooltip_StatLabel));
@@ -444,12 +454,15 @@ simulated function RefreshData()
 			TmpStr = HitChance $ "%";
 
 		HitPercent.SetHtmlText(class'UIUtilities_Text'.static.StyleText(TmpStr, eUITextStyle_Tooltip_StatValue));
-		HitStatList.RefreshData(ProcessHitCritBreakdown(Breakdown, eHit_Success));
+		HitStatList.RefreshData(Stats);
+
+		// Added from Vanilla file, seems like a WotC addition needed to display Damages Values on the Right Wing.
+		AbilityState.GetDamagePreview(Target, MinDamageValue, MaxDamageValue, AllowsShield);
 
 		DamageLabelsc.SetHtmlText(class'UIUtilities_Text'.static.StyleText(class'XLocalizedData'.default.DamageLabel, eUITextStyle_Tooltip_StatLabel));
-		TmpStr = `RANGESTRING(NormalDamage.Min, NormalDamage.Max);
+		TmpStr = string(MinDamageValue.Damage) $ "-" $ string(MaxDamageValue.Damage);
 		DamagePercent.SetHtmlText(class'UIUtilities_Text'.static.StyleText(TmpStr, eUITextStyle_Tooltip_StatValue));
-		DamageStatList.RefreshData(ProcessNeoDamageBreakdown(NormalDamage, true));
+		DamageStatList.RefreshData(ProcessNeoDamageBreakdown(MinDamageValue, GetWeaponBreakdown(Target, AbilityState), true));
 	}
 
 	if (bHideRight) HideRight();
@@ -471,9 +484,9 @@ simulated function RefreshData()
 		CritStatList.RefreshData(ProcessHitCritBreakdown(Breakdown, eHit_Crit));
 
 		CritDamageLabel.SetHtmlText(class'UIUtilities_Text'.static.StyleText(CRIT_DAMAGE_LABEL, eUITextStyle_Tooltip_StatLabel));
-		TmpStr = `RANGESTRING(CritDamage.Min, CritDamage.Max);
+		TmpStr = string(class'WOTC_DisplayHitChance_UITacticalHUD_ShotHUD'.static.GetCritDamage(AbilityState, Target, Stats));
 		CritDamageValue.SetHtmlText(class'UIUtilities_Text'.static.StyleText("+" $ TmpStr, eUITextStyle_Tooltip_StatValue));
-		CritDamageStatList.RefreshData(ProcessNeoDamageBreakdown(CritDamage));
+		CritDamageStatList.RefreshData(Stats);
 	}
 	`TRACE_EXIT("");
 }
@@ -587,34 +600,60 @@ simulated function array<UISummary_ItemStat> ProcessHackBreakdown(EIHackBreakdow
 	return Stats;
 }
 
-simulated function array<UISummary_ItemStat> ProcessNeoDamageBreakdown(const out DamageBreakdown DamageValue, optional bool bNoSignFirst=false)
+simulated function array<UISummary_ItemStat> ProcessNeoDamageBreakdown(const out WeaponDamageValue DamageValue, array<UISummary_ItemStat> StartingStats, optional bool bNoSignFirst=false)
 {
 	local array<UISummary_ItemStat> Stats;
 	local UISummary_ItemStat Item;
-	local int i;
-	local string Prefix;
+	local int i, index;
+	local array<DamageModifier> DamageModifiers;
+	local DamageModifier DmgModifier;
+	local string strLabel, strValue, strPrefix;
+	local EUIState eState;
 
-	`TRACE_ENTRY("");
-	for( i = 0; i < DamageValue.InfoList.Length; i++ )
+	Stats=StartingStats;
+	for( i = 0; i < DamageValue.BonusDamageInfo.Length; i++ )
 	{
-		if(DamageValue.InfoList[i].Min>=0)
+		if( DamageValue.BonusDamageInfo[i].Value < 0 )
 		{
-			Item.ValueState=eUIState_Good;
-			Item.LabelState=eUIState_Good;
-			if(!bNoSignFirst) prefix="+";
+			eState = eUIState_Bad;
+			strPrefix = "";
 		}
 		else
 		{
-			Item.ValueState=eUIState_Bad;
-			Item.LabelState=eUIState_Bad;
-			if(!bNoSignFirst) prefix="";
+			eState = eUIState_Good;
+			strPrefix = "+";
 		}
-		Item.Label=DamageValue.InfoList[i].Label;
-		Item.Value= prefix $ `RANGESTRING( DamageValue.InfoList[i].Min, DamageValue.InfoList[i].Max);
-		Stats.additem(Item);
-		bNoSignFirst=false;
+		DmgModifier.Label = class'Helpers'.static.GetMessageFromDamageModifierInfo(DamageValue.BonusDamageInfo[i]);
+		DmgModifier.Value = DamageValue.BonusDamageInfo[i].Value;
+
+		strLabel = class'UIUtilities_Text'.static.GetColoredText(DmgModifier.Label, eState);
+		strValue = class'UIUtilities_Text'.static.GetColoredText(strPrefix $ string(DamageValue.BonusDamageInfo[i].Value), eState);
+
+		index = DamageModifiers.Find('Label', DmgModifier.Label);
+		if(index != INDEX_NONE && DmgModifier.Label!="")
+		{
+			DamageModifiers[index].Value += DmgModifier.Value;
+			strValue = class'UIUtilities_Text'.static.GetColoredText(strPrefix $ string(DamageModifiers[index].Value), eState);
+			if(Stats.Find('Label', strLabel) != INDEX_NONE)
+			{
+				Stats[Stats.Find('Label', strLabel)].Value = strValue;
+			}
+		}
+		else
+		{
+			Item.Label = strLabel;
+			Item.Value = strValue;
+			Stats.AddItem(Item);
+			DamageModifiers.AddItem(DmgModifier);
+			bNoSignFirst=false;
+		}
 	}
-	`TRACE_EXIT("");
+	//for (i=i;i<4;i++)
+	//{
+		//Item.Label="Fluff";
+		//Item.Value="500";
+		//Stats.AddItem(Item);
+	//}
 	return Stats;
 }
 
@@ -670,6 +709,227 @@ simulated function array<UISummary_ItemStat> ProcessHitCritBreakdown(ShotBreakdo
 
 	`TRACE_EXIT("");
 	return Stats; 
+}
+
+simulated static function array<UISummary_ItemStat> GetWeaponBreakdown(StateObjectReference TargetRef, XComGameState_Ability AbilityState, optional bool bCrit=false, optional out int CritDamage, optional out int bShouldContinue, optional out X2Effect_ApplyWeaponDamage WepDamEffect)
+{
+	local XComGameStateHistory History;
+	local XComGameState_Unit TargetUnit, SourceUnit;
+	local XComGameState_Item SourceWeapon, LoadedAmmo;
+	local WeaponDamageValue BaseDamageValue, ExtraDamageValue, AmmoDamageValue, BonusEffectDamageValue, UpgradeDamageValue;
+	local X2Condition ConditionIter;
+	local name AvailableCode;
+	local X2AmmoTemplate AmmoTemplate;
+	local int AllowsShield;
+	local name DamageType;
+	local array<X2WeaponUpgradeTemplate> WeaponUpgradeTemplates;
+	local X2WeaponUpgradeTemplate WeaponUpgradeTemplate;
+	local array<Name> AppliedDamageTypes;
+	local bool bDoesDamageIgnoreShields;
+
+	local UISummary_ItemStat Item;
+	local array <UISummary_ItemStat> Stats;
+	//local X2Effect_ApplyWeaponDamage WepDamEffect;
+	local X2Effect Effect;
+	local array<X2Effect> TargetEffects;
+	local EUIState eState;
+	local string prefix;
+
+	local X2AbilityTemplate AbilityTemplate;
+	local WeaponDamageValue MinDamagePreview, MaxDamagePreview;
+
+	History = `XCOMHISTORY;
+	
+	AbilityTemplate = AbilityState.GetMyTemplate();
+	AllowsShield = 0;
+
+	if (AbilityTemplate.DamagePreviewFn != none)
+	{
+		bShouldContinue=int(!AbilityTemplate.DamagePreviewFn(AbilityState, TargetRef, MinDamagePreview, MaxDamagePreview, AllowsShield));
+		if (bCrit && MaxDamagePreview.Crit!=0)
+		{
+			CritDamage+=MaxDamagePreview.Crit;
+			Item.Value=string(MaxDamagePreview.Crit);
+			Item.Label=AbilityState.GetMyFriendlyName();
+			Stats.AddItem(Item);
+		}
+		if (bShouldContinue==0) return Stats;
+	}
+
+	bShouldContinue=0;
+
+	TargetEffects = AbilityState.GetMyTemplate().AbilityTargetEffects;
+	if (bCrit)
+	{
+		foreach TargetEffects(Effect)
+		{
+			if (X2Effect_ApplyWeaponDamage(Effect)==none)
+			{
+				MaxDamagePreview.Crit=0;
+				Effect.GetDamagePreview(TargetRef, AbilityState, true, MinDamagePreview , MaxDamagePreview, AllowsShield);
+				if ( MaxDamagePreview.Crit!=0 )
+				{
+					CritDamage+=MaxDamagePreview.Crit;
+					Item.Value=string(MaxDamagePreview.Crit);
+					Item.Label=AbilityState.GetMyFriendlyName();
+					Stats.AddItem(Item);
+				}
+			}
+			else
+			{
+				if (!WepDamEffect.bApplyOnHit) WepDamEffect=X2Effect_ApplyWeaponDamage(Effect);
+			}
+		}
+	}
+	else 
+	{
+		foreach TargetEffects(Effect)
+		{
+			WepDamEffect=X2Effect_ApplyWeaponDamage(Effect);
+			if (WepDamEffect.bApplyOnHit) break;
+		}
+	}
+
+	if (WepDamEffect==none) return Stats;
+
+	if (AbilityState.SourceAmmo.ObjectID > 0)
+		SourceWeapon = AbilityState.GetSourceAmmo();
+	else
+		SourceWeapon = AbilityState.GetSourceWeapon();
+
+	If (SourceWeapon==none) return Stats;
+
+	TargetUnit = XComGameState_Unit(History.GetGameStateForObjectID(TargetRef.ObjectID));
+	SourceUnit = XComGameState_Unit(History.GetGameStateForObjectID(AbilityState.OwnerStateObject.ObjectID));
+
+	if (TargetUnit != None)
+	{
+		foreach WepDamEffect.TargetConditions(ConditionIter)
+		{
+			AvailableCode = ConditionIter.AbilityMeetsCondition(AbilityState, TargetUnit);
+			if (AvailableCode != 'AA_Success')
+				return Stats;
+			AvailableCode = ConditionIter.MeetsCondition(TargetUnit);
+			if (AvailableCode != 'AA_Success')
+				return Stats;
+			AvailableCode = ConditionIter.MeetsConditionWithSource(TargetUnit, SourceUnit);
+			if (AvailableCode != 'AA_Success')
+				return Stats;
+		}
+		foreach WepDamEffect.DamageTypes(DamageType)
+		{
+			if (TargetUnit.IsImmuneToDamage(DamageType))
+				return Stats;
+		}
+	}
+	
+	if (WepDamEffect.bAlwaysKillsCivilians && TargetUnit != None && TargetUnit.GetTeam() == eTeam_Neutral)
+		return Stats;
+
+	if (!WepDamEffect.bIgnoreBaseDamage)
+	{
+		SourceWeapon.GetBaseWeaponDamageValue(TargetUnit, BaseDamageValue);
+		WepDamEffect.ModifyDamageValue(BaseDamageValue, TargetUnit, AppliedDamageTypes);
+	}
+	if (WepDamEffect.DamageTag != '')
+	{
+		SourceWeapon.GetWeaponDamageValue(TargetUnit, WepDamEffect.DamageTag, ExtraDamageValue);
+		WepDamEffect.ModifyDamageValue(ExtraDamageValue, TargetUnit, AppliedDamageTypes);
+	}
+	if (SourceWeapon.HasLoadedAmmo() && !WepDamEffect.bIgnoreBaseDamage)
+	{
+		LoadedAmmo = XComGameState_Item(History.GetGameStateForObjectID(SourceWeapon.LoadedAmmo.ObjectID));
+		AmmoTemplate = X2AmmoTemplate(LoadedAmmo.GetMyTemplate()); 
+		if (AmmoTemplate != None)
+		{
+			AmmoTemplate.GetTotalDamageModifier(LoadedAmmo, SourceUnit, TargetUnit, AmmoDamageValue);
+			bDoesDamageIgnoreShields = AmmoTemplate.bBypassShields || bDoesDamageIgnoreShields;
+		}
+		else
+		{
+			LoadedAmmo.GetBaseWeaponDamageValue(TargetUnit, AmmoDamageValue);
+		}
+		WepDamEffect.ModifyDamageValue(AmmoDamageValue, TargetUnit, AppliedDamageTypes);
+	}
+
+	eState=eUIState_Good;
+	if (bCrit)
+	{
+		Item.Value=string(BaseDamageValue.Crit+ExtradamageValue.Crit);
+		CritDamage+=BaseDamageValue.Crit+ExtradamageValue.Crit;
+	}
+	else Item.Value=`RANGESTRINGN( `MINDAM(BaseDamageValue) + `MINDAM(ExtraDamageValue), `MAXDAM(BaseDamageValue) + `MAXDAM(ExtraDamageValue) );
+	if (Item.Value!="0")
+	{
+		if (bCrit) `COLORTEXT( Item.Value, "+" $ Item.Value);
+		else `COLORTEXT( Item.Value, Item.Value);
+		`COLORTEXT( Item.Label, SourceWeapon.GetMyTemplate().GetItemFriendlyName(SourceWeapon.ObjectID));
+		Stats.additem(Item);
+	}
+
+	if (bCrit)
+	{
+		Item.Value=string(BonusEffectDamageValue.Crit);
+		CritDamage+=BonusEffectDamageValue.Crit;
+	}
+	else Item.Value=`RANGESTRING(BonusEffectDamageValue);
+	if (Item.Value!="0")
+	{
+		`SETCOLOR(BonusEffectDamageValue.Damage);
+		`COLORTEXT( Item.Value, prefix $ Item.Value);
+		`COLORTEXT(Item.Label, AbilityState.GetMyFriendlyName());
+		Stats.additem(Item);
+	}
+
+	if (bCrit)
+	{
+		Item.Value=string(AmmoDamageValue.Crit);
+		CritDamage+=AmmoDamageValue.Crit;
+	}
+	else Item.Value=`RANGESTRING(AmmoDamageValue);
+	if (Item.Value!="0")
+	{
+		`SETCOLOR(AmmoDamageValue.Damage);
+		`COLORTEXT( Item.Value, prefix $ Item.Value);
+		`COLORTEXT(Item.Label, LoadedAmmo.GetMyTemplate().GetItemFriendlyName(LoadedAmmo.ObjectID));
+		Stats.additem(Item);
+	}
+
+	if (WepDamEffect.bAllowWeaponUpgrade)
+	{
+		WeaponUpgradeTemplates = SourceWeapon.GetMyWeaponUpgradeTemplates();
+		foreach WeaponUpgradeTemplates(WeaponUpgradeTemplate)
+		{
+			if (WeaponUpgradeTemplate.BonusDamage.Tag == WepDamEffect.DamageTag)
+			{
+				UpgradeDamageValue = WeaponUpgradeTemplate.BonusDamage;
+
+				WepDamEffect.ModifyDamageValue(UpgradeDamageValue, TargetUnit, AppliedDamageTypes);
+
+				if (bCrit)
+				{
+					Item.Value=string(UpgradeDamageValue.Crit);
+					CritDamage+=UpgradeDamageValue.Crit;
+				}
+				else Item.Value=`RANGESTRING(UpgradeDamageValue);
+				if (Item.Value!="0")
+				{
+					`SETCOLOR(UpgradeDamageValue.Damage);
+					`COLORTEXT( Item.Value,prefix $ Item.Value);
+					`COLORTEXT(Item.Label, WeaponUpgradeTemplate.GetItemFriendlyName());
+					Stats.additem(Item);
+				}
+
+			}
+		}
+	}
+	bShouldContinue=1;
+	return Stats;
+}
+
+// Custom sort
+function int SortAfterValue(UISummary_ItemStat A, UISummary_ItemStat B) {
+    return (GetNumber(B.Value) > GetNumber(A.Value)) ? -1 : 0;
 }
 
 function bool getDISPLAY_MISS_CHANCE()
