@@ -135,7 +135,8 @@ static function GetDamagePreview(XComGameState_Ability AbilityState, StateObject
 		}
 	}
 	NormalAbilityDamagePreview(AbilityState, TargetRef, NormalDamage, CritDamage, AllowsShield);
-	`TRACE_EXIT("Fallback Used. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
+	`DEBUG("AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
+	`TRACE_EXIT("AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
 }
 
 /**
@@ -686,11 +687,10 @@ static function ApplyPreDefaultDamageModifierEffects(
 	local XComGameState_Effect EffectState;
 	local X2Effect_Persistent EffectTemplate;
 	local StateObjectReference EffectRef;
-	local DamageModifierInfo ModifierInfo;
-	local float OldDamageMin, OldDamageMax, OldDamageCritMin, OldDamageCritMax;
 	local float CurDamageMin, CurDamageMax, CurDamageCritMin, CurDamageCritMax;
+	local float NormalModMin, NormalModMax;
+	local float CritModMin, CritModMax;
 	local int InitDamageMin, InitDamageMax, InitDamageCritMin, InitDamageCritMax;
-	local int EffectDmg;
 	local int Difference;
 	local string AbilityName;
 	local int i;
@@ -714,12 +714,6 @@ static function ApplyPreDefaultDamageModifierEffects(
 	{
 		foreach SourceUnit.AffectedByEffects(EffectRef)
 		{
-			ModifierInfo.Value = 0;
-			OldDamageMin = CurDamageMin;
-			OldDamageMax = CurDamageMax;
-			OldDamageCritMin = CurDamageCritMin;
-			OldDamageCritMax = CurDamageCritMax;
-
 			EffectState = XComGameState_Effect(History.GetGameStateForObjectID(EffectRef.ObjectID));
 			EffectTemplate = EffectState.GetX2Effect();
 
@@ -727,18 +721,36 @@ static function ApplyPreDefaultDamageModifierEffects(
 			DamageItemCrit.Label=DamageItem.Label;
 
 			ApplyEffectParameters.AbilityResultContext.HitResult = eHit_Success;
-			CurDamageMin += EffectTemplate.GetPreDefaultAttackingDamageModifier_CH(EffectState, SourceUnit, Target, AbilityState, ApplyEffectParameters, NormalDamage.Min, WepDamEffect, NewGameState);
-			DamageItem.Min = Round(CurDamageMin) - Round(OldDamageMin);
-			
-			CurDamageMax += EffectTemplate.GetPreDefaultAttackingDamageModifier_CH(EffectState, SourceUnit, Target, AbilityState, ApplyEffectParameters, NormalDamage.Max, WepDamEffect, NewGameState);
-			DamageItem.Max = Round(CurDamageMax) - Round(OldDamageMax);
+
+			NormalModMin = EffectTemplate.GetPreDefaultAttackingDamageModifier_CH(
+				EffectState, SourceUnit, Target, AbilityState,
+				ApplyEffectParameters, NormalDamage.Min, WepDamEffect, NewGameState);
+
+			NormalModMax = EffectTemplate.GetPreDefaultAttackingDamageModifier_CH(
+				EffectState, SourceUnit, Target, AbilityState,
+				ApplyEffectParameters, NormalDamage.Max, WepDamEffect, NewGameState);
+
+			CurDamageMin += NormalModMin;
+			CurDamageMax += NormalModMax;
+
+			DamageItem.Min = int(NormalModMin);
+			DamageItem.Max = int(NormalModMax);
 
 			ApplyEffectParameters.AbilityResultContext.HitResult = eHit_Crit;
-			CurDamageCritMin += EffectTemplate.GetPreDefaultAttackingDamageModifier_CH(EffectState, SourceUnit, Target, AbilityState, ApplyEffectParameters, NormalDamage.Min+CritDamage.Min, WepDamEffect, NewGameState);
-			DamageItemCrit.Min = Round(CurDamageCritMin) - Round(OldDamageCritMin);
-			
-			CurDamageCritMax += EffectTemplate.GetPreDefaultAttackingDamageModifier_CH(EffectState, SourceUnit, Target, AbilityState, ApplyEffectParameters, NormalDamage.Max+CritDamage.Max, WepDamEffect, NewGameState);
-			DamageItemCrit.Max = Round(CurDamageCritMax) - Round(OldDamageCritMax);
+
+			CritModMin = EffectTemplate.GetPreDefaultAttackingDamageModifier_CH(
+				EffectState, SourceUnit, Target, AbilityState,
+				ApplyEffectParameters, NormalDamage.Min + CritDamage.Min, WepDamEffect, NewGameState);
+
+			CritModMax = EffectTemplate.GetPreDefaultAttackingDamageModifier_CH(
+				EffectState, SourceUnit, Target, AbilityState,
+				ApplyEffectParameters, NormalDamage.Max + CritDamage.Max, WepDamEffect, NewGameState);
+
+			DamageItemCrit.Min = int(CritModMin - NormalModMin);
+			DamageItemCrit.Max = int(CritModMax - NormalModMax);
+
+			CurDamageCritMin += CritModMin;
+			CurDamageCritMax += CritModMax;
 			
 			`ADDDAMITEM(Normal);
 			DamageItem=DamageItemCrit;
@@ -752,31 +764,43 @@ static function ApplyPreDefaultDamageModifierEffects(
 	{
 		foreach TargetUnit.AffectedByEffects(EffectRef)
 		{
-			ModifierInfo.Value = 0;
-			OldDamageMin = CurDamageMin;
-			OldDamageMax = CurDamageMax;
-			OldDamageCritMin = CurDamageCritMin;
-			OldDamageCritMax = CurDamageCritMax;
-
 			EffectState = XComGameState_Effect(History.GetGameStateForObjectID(EffectRef.ObjectID));
 			EffectTemplate = EffectState.GetX2Effect();
 			DamageItem.Label=EffectTemplate.GetSpecialDamageMessageName();
 			DamageItemCrit.Label=DamageItem.Label;
 			
 			ApplyEffectParameters.AbilityResultContext.HitResult = eHit_Success;
-			CurDamageMin += EffectTemplate.GetPreDefaultDefendingDamageModifier_CH(EffectState, SourceUnit, TargetUnit, AbilityState, ApplyEffectParameters, NormalDamage.Min, WepDamEffect, NewGameState);
-			DamageItem.Min = Round(CurDamageMin) - Round(OldDamageMin);
 
-			CurDamageMax += EffectTemplate.GetPreDefaultDefendingDamageModifier_CH(EffectState, SourceUnit, TargetUnit, AbilityState, ApplyEffectParameters, NormalDamage.Max, WepDamEffect, NewGameState);
-			DamageItem.Max = Round(CurDamageMax) - Round(OldDamageMax);
-		
+			NormalModMin = EffectTemplate.GetPreDefaultDefendingDamageModifier_CH(
+				EffectState, SourceUnit, TargetUnit, AbilityState,
+				ApplyEffectParameters, NormalDamage.Min, WepDamEffect, NewGameState);
+
+			NormalModMax = EffectTemplate.GetPreDefaultDefendingDamageModifier_CH(
+				EffectState, SourceUnit, TargetUnit, AbilityState,
+				ApplyEffectParameters, NormalDamage.Max, WepDamEffect, NewGameState);
+
+			CurDamageMin += NormalModMin;
+			CurDamageMax += NormalModMax;
+
+			DamageItem.Min = int(NormalModMin);
+			DamageItem.Max = int(NormalModMax);
+
 			ApplyEffectParameters.AbilityResultContext.HitResult = eHit_Crit;
-			CurDamageCritMin += EffectTemplate.GetPreDefaultDefendingDamageModifier_CH(EffectState, SourceUnit, TargetUnit, AbilityState, ApplyEffectParameters, NormalDamage.Min+CritDamage.Min, WepDamEffect, NewGameState);
-			DamageItemCrit.Min = Round(CurDamageCritMin) - Round(OldDamageCritMin);
 
-			CurDamageCritMax += EffectTemplate.GetPreDefaultDefendingDamageModifier_CH(EffectState, SourceUnit, TargetUnit, AbilityState, ApplyEffectParameters, NormalDamage.Max+CritDamage.Max, WepDamEffect, NewGameState);
-			DamageItemCrit.Max = Round(CurDamageCritMax) - Round(OldDamageCritMax);
-			
+			CritModMin = EffectTemplate.GetPreDefaultDefendingDamageModifier_CH(
+				EffectState, SourceUnit, TargetUnit, AbilityState,
+				ApplyEffectParameters, NormalDamage.Min + CritDamage.Min, WepDamEffect, NewGameState);
+
+			CritModMax = EffectTemplate.GetPreDefaultDefendingDamageModifier_CH(
+				EffectState, SourceUnit, TargetUnit, AbilityState,
+				ApplyEffectParameters, NormalDamage.Max + CritDamage.Max, WepDamEffect, NewGameState);
+
+			DamageItemCrit.Min = int(CritModMin - NormalModMin);
+			DamageItemCrit.Max = int(CritModMax - NormalModMax);
+
+			CurDamageCritMin += CritModMin;
+			CurDamageCritMax += CritModMax;
+
 			`ADDDAMITEM(Normal);
 			DamageItem=DamageItemCrit;
 			`ADDDAMITEM(Crit);
@@ -863,11 +887,10 @@ static function ApplyPostDefaultDamageModifierEffects(
 	local XComGameState_Effect EffectState;
 	local X2Effect_Persistent EffectTemplate;
 	local StateObjectReference EffectRef;
-	local DamageModifierInfo ModifierInfo;
-	local float OldDamageMin, OldDamageMax, OldDamageCritMin, OldDamageCritMax;
 	local float CurDamageMin, CurDamageMax, CurDamageCritMin, CurDamageCritMax;
+	local float NormalModMin, NormalModMax;
+	local float CritModMin, CritModMax;
 	local int InitDamageMin, InitDamageMax, InitDamageCritMin, InitDamageCritMax;
-	local int EffectDmg;
 	local int Difference;
 	local string AbilityName;
 	local int i;
@@ -891,12 +914,6 @@ static function ApplyPostDefaultDamageModifierEffects(
 	{
 		foreach SourceUnit.AffectedByEffects(EffectRef)
 		{
-			ModifierInfo.Value = 0;
-			OldDamageMin = CurDamageMin;
-			OldDamageMax = CurDamageMax;
-			OldDamageCritMin = CurDamageCritMin;
-			OldDamageCritMax = CurDamageCritMax;
-
 			EffectState = XComGameState_Effect(History.GetGameStateForObjectID(EffectRef.ObjectID));
 			EffectTemplate = EffectState.GetX2Effect();
 
@@ -904,18 +921,36 @@ static function ApplyPostDefaultDamageModifierEffects(
 			DamageItemCrit.Label=DamageItem.Label;
 
 			ApplyEffectParameters.AbilityResultContext.HitResult = eHit_Success;
-			CurDamageMin += EffectTemplate.GetPostDefaultAttackingDamageModifier_CH(EffectState, SourceUnit, Target, AbilityState, ApplyEffectParameters, NormalDamage.Min, WepDamEffect, NewGameState);
-			DamageItem.Min = Round(CurDamageMin) - Round(OldDamageMin);
-			
-			CurDamageMax += EffectTemplate.GetPostDefaultAttackingDamageModifier_CH(EffectState, SourceUnit, Target, AbilityState, ApplyEffectParameters, NormalDamage.Max, WepDamEffect, NewGameState);
-			DamageItem.Max = Round(CurDamageMax) - Round(OldDamageMax);
+
+			NormalModMin = EffectTemplate.GetPostDefaultAttackingDamageModifier_CH(
+				EffectState, SourceUnit, Target, AbilityState,
+				ApplyEffectParameters, NormalDamage.Min, WepDamEffect, NewGameState);
+
+			NormalModMax = EffectTemplate.GetPostDefaultAttackingDamageModifier_CH(
+				EffectState, SourceUnit, Target, AbilityState,
+				ApplyEffectParameters, NormalDamage.Max, WepDamEffect, NewGameState);
+
+			CurDamageMin += NormalModMin;
+			CurDamageMax += NormalModMax;
+
+			DamageItem.Min = int(NormalModMin);
+			DamageItem.Max = int(NormalModMax);
 
 			ApplyEffectParameters.AbilityResultContext.HitResult = eHit_Crit;
-			CurDamageCritMin += EffectTemplate.GetPostDefaultAttackingDamageModifier_CH(EffectState, SourceUnit, Target, AbilityState, ApplyEffectParameters, NormalDamage.Min+CritDamage.Min, WepDamEffect, NewGameState);
-			DamageItemCrit.Min = Round(CurDamageCritMin) - Round(OldDamageCritMin);
-			
-			CurDamageCritMax += EffectTemplate.GetPostDefaultAttackingDamageModifier_CH(EffectState, SourceUnit, Target, AbilityState, ApplyEffectParameters, NormalDamage.Max+CritDamage.Max, WepDamEffect, NewGameState);
-			DamageItemCrit.Max = Round(CurDamageCritMax) - Round(OldDamageCritMax);
+
+			CritModMin = EffectTemplate.GetPostDefaultAttackingDamageModifier_CH(
+				EffectState, SourceUnit, Target, AbilityState,
+				ApplyEffectParameters, NormalDamage.Min + CritDamage.Min, WepDamEffect, NewGameState);
+
+			CritModMax = EffectTemplate.GetPostDefaultAttackingDamageModifier_CH(
+				EffectState, SourceUnit, Target, AbilityState,
+				ApplyEffectParameters, NormalDamage.Max + CritDamage.Max, WepDamEffect, NewGameState);
+
+			DamageItemCrit.Min = int(CritModMin - NormalModMin);
+			DamageItemCrit.Max = int(CritModMax - NormalModMax);
+
+			CurDamageCritMin += CritModMin;
+			CurDamageCritMax += CritModMax;
 			
 			`ADDDAMITEM(Normal);
 			DamageItem=DamageItemCrit;
@@ -929,31 +964,43 @@ static function ApplyPostDefaultDamageModifierEffects(
 	{
 		foreach TargetUnit.AffectedByEffects(EffectRef)
 		{
-			ModifierInfo.Value = 0;
-			OldDamageMin = CurDamageMin;
-			OldDamageMax = CurDamageMax;
-			OldDamageCritMin = CurDamageCritMin;
-			OldDamageCritMax = CurDamageCritMax;
-
 			EffectState = XComGameState_Effect(History.GetGameStateForObjectID(EffectRef.ObjectID));
 			EffectTemplate = EffectState.GetX2Effect();
 			DamageItem.Label=EffectTemplate.GetSpecialDamageMessageName();
 			DamageItemCrit.Label=DamageItem.Label;
 			
 			ApplyEffectParameters.AbilityResultContext.HitResult = eHit_Success;
-			CurDamageMin += EffectTemplate.GetPostDefaultDefendingDamageModifier_CH(EffectState, SourceUnit, TargetUnit, AbilityState, ApplyEffectParameters, NormalDamage.Min, WepDamEffect, NewGameState);
-			DamageItem.Min = Round(CurDamageMin) - Round(OldDamageMin);
 
-			CurDamageMax += EffectTemplate.GetPostDefaultDefendingDamageModifier_CH(EffectState, SourceUnit, TargetUnit, AbilityState, ApplyEffectParameters, NormalDamage.Max, WepDamEffect, NewGameState);
-			DamageItem.Max = Round(CurDamageMax) - Round(OldDamageMax);
-		
+			NormalModMin = EffectTemplate.GetPostDefaultDefendingDamageModifier_CH(
+				EffectState, SourceUnit, TargetUnit, AbilityState,
+				ApplyEffectParameters, NormalDamage.Min, WepDamEffect, NewGameState);
+
+			NormalModMax = EffectTemplate.GetPostDefaultDefendingDamageModifier_CH(
+				EffectState, SourceUnit, TargetUnit, AbilityState,
+				ApplyEffectParameters, NormalDamage.Max, WepDamEffect, NewGameState);
+
+			CurDamageMin += NormalModMin;
+			CurDamageMax += NormalModMax;
+
+			DamageItem.Min = int(NormalModMin);
+			DamageItem.Max = int(NormalModMax);
+
 			ApplyEffectParameters.AbilityResultContext.HitResult = eHit_Crit;
-			CurDamageCritMin += EffectTemplate.GetPostDefaultDefendingDamageModifier_CH(EffectState, SourceUnit, TargetUnit, AbilityState, ApplyEffectParameters, NormalDamage.Min+CritDamage.Min, WepDamEffect, NewGameState);
-			DamageItemCrit.Min = Round(CurDamageCritMin) - Round(OldDamageCritMin);
 
-			CurDamageCritMax += EffectTemplate.GetPostDefaultDefendingDamageModifier_CH(EffectState, SourceUnit, TargetUnit, AbilityState, ApplyEffectParameters, NormalDamage.Max+CritDamage.Max, WepDamEffect, NewGameState);
-			DamageItemCrit.Max = Round(CurDamageCritMax) - Round(OldDamageCritMax);
-			
+			CritModMin = EffectTemplate.GetPostDefaultDefendingDamageModifier_CH(
+				EffectState, SourceUnit, TargetUnit, AbilityState,
+				ApplyEffectParameters, NormalDamage.Min + CritDamage.Min, WepDamEffect, NewGameState);
+
+			CritModMax = EffectTemplate.GetPostDefaultDefendingDamageModifier_CH(
+				EffectState, SourceUnit, TargetUnit, AbilityState,
+				ApplyEffectParameters, NormalDamage.Max + CritDamage.Max, WepDamEffect, NewGameState);
+
+			DamageItemCrit.Min = int(CritModMin - NormalModMin);
+			DamageItemCrit.Max = int(CritModMax - NormalModMax);
+
+			CurDamageCritMin += CritModMin;
+			CurDamageCritMax += CritModMax;
+
 			`ADDDAMITEM(Normal);
 			DamageItem=DamageItemCrit;
 			`ADDDAMITEM(Crit);
