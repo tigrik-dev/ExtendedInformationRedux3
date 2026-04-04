@@ -100,6 +100,7 @@ static function GetDamagePreview(XComGameState_Ability AbilityState, StateObject
 	local X2AbilityTemplate AbilityTemplate;
 	local EI_DamagePreviewTemplateAPI EIPreview;
 	local int AllowsShield;
+	local string AbilityName;
 
 	`TRACE_ENTRY("TargetRef.ObjectID:" @ TargetRef.ObjectID);
 
@@ -110,28 +111,31 @@ static function GetDamagePreview(XComGameState_Ability AbilityState, StateObject
 		return;
 	}
 
+	AbilityName = AbilityState.GetMyFriendlyName();
+	`TRACE("AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
+
 	AbilityTemplate = AbilityState.GetMyTemplate();
 	EIPreview = EI_DamagePreviewTemplateAPI(AbilityTemplate);
 	if (EIPreview!=none)
 	{
-		`TRACE_IF("EIPreview != none");
+		`TRACE_IF("EIPreview != none. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
 		if (EIPreview.EIDamagePreviewFn(EI_DamagePreviewHelperAPI(class'XComEngine'.static.GetClassDefaultObject(default.class)), AbilityState, TargetRef, NormalDamage, CritDamage, AllowsShield))
 		{
-			`TRACE_EXIT("Used EIPreview");
+			`TRACE_EXIT("Used EIPreview. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
 			return;
 		}
 	}
 	if (AbilityTemplate.DamagePreviewFn != none)
 	{
-		`TRACE_IF("AbilityTemplate.DamagePreviewFn != none");
+		`TRACE_IF("AbilityTemplate.DamagePreviewFn != none. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
 		if (DamagePreviewFnHandler(AbilityState, AbilityTemplate, TargetRef, NormalDamage, CritDamage, AllowsShield))
 		{
-			`TRACE_EXIT("Used Template Fn");
+			`TRACE_EXIT("Used Template Fn. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
 			return;
 		}
 	}
 	NormalAbilityDamagePreview(AbilityState, TargetRef, NormalDamage, CritDamage, AllowsShield);
-	`TRACE_EXIT("Fallback Used");
+	`TRACE_EXIT("Fallback Used. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
 }
 
 /**
@@ -144,24 +148,29 @@ static function bool DamagePreviewFnHandler(XComGameState_Ability AbilityState, 
 	local bool ReturnVal;
 	local DamageModifierInfo DamageModInfo;
 	local DamageInfo DamageItem, BalanceItem;
+	local string AbilityName;
 
-	`TRACE_ENTRY("TargetRef.ObjectID:" @ TargetRef.ObjectID);
+	`TRACE_ENTRY("TargetRef.ObjectID:" @ TargetRef.ObjectID );
+	AbilityName = AbilityState.GetMyFriendlyName();
+	`TRACE("Before AbilityTemplate.DamagePreviewFn. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
 
-	ReturnVal=AbilityTemplate.DamagePreviewFn(AbilityState, TargetRef, MinDamagePreview, MaxDamagePreview, AllowsShield);
+	ReturnVal = AbilityTemplate.DamagePreviewFn(AbilityState, TargetRef, MinDamagePreview, MaxDamagePreview, AllowsShield);
 
-	BalanceItem.Label=AbilityState.GetMyFriendlyName();
-	BalanceItem.Min=MinDamagePreview.Damage;
-	BalanceItem.Max=MaxDamagePreview.Damage;
+	`TRACE("After AbilityTemplate.DamagePreviewFn. ReturnVal:" @ ReturnVal $ ", AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
 
-	`TRACE("BaseMin:" @ BalanceItem.Min $ ", BaseMax:" @ BalanceItem.Max);
+	BalanceItem.Label = AbilityName;
+	BalanceItem.Min = MinDamagePreview.Damage;
+	BalanceItem.Max = MaxDamagePreview.Damage;
+
+	`TRACE("AbilityState.GetMyFriendlyName():" @ AbilityName $ ", BalanceItem:" @ DamageInfoToString(BalanceItem));
 
 	foreach MinDamagePreview.BonusDamageInfo(DamageModInfo)
 	{
 		DamageItem.Min = DamageModInfo.Value;
 		BalanceItem.Min -= DamageItem.Min;
 		DamageItem.Label = `LABELFROMMOD(DamageModInfo);
-		`TRACE("MinBonus:" @ DamageItem.Min);
 		`ADDDAMITEM(Normal);
+		`TRACE("Added Damage Item. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", BalanceItem:" @ DamageInfoToString(BalanceItem));
 	}
 
 	DamageItem.Min=0;
@@ -170,8 +179,8 @@ static function bool DamagePreviewFnHandler(XComGameState_Ability AbilityState, 
 		DamageItem.Max=DamageModInfo.Value;
 		BalanceItem.Max-=DamageItem.Max;
 		DamageItem.Label=`LABELFROMMOD(DamageModInfo);
-		`TRACE("MaxBonus:" @ DamageItem.Max);
 		`ADDDAMITEM(Normal);
+		`TRACE("Added Damage Item. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", BalanceItem:" @ DamageInfoToString(BalanceItem));
 	}
 
 	DamageItem=BalanceItem;
@@ -179,10 +188,9 @@ static function bool DamagePreviewFnHandler(XComGameState_Ability AbilityState, 
 	
 	DamageItem.Min = MinDamagePreview.Crit;
 	DamageItem.Max = MaxDamagePreview.Crit;
-	`TRACE("CritMin:" @ DamageItem.Min $ ", CritMax:" @ DamageItem.Max);
 	`ADDDAMITEM(Crit, true);
 	
-	`TRACE_EXIT("ReturnVal:" @ ReturnVal);
+	`TRACE_EXIT("ReturnVal:" @ ReturnVal $ ", AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
 	return ReturnVal;
 }
 
@@ -202,8 +210,9 @@ static function NormalAbilityDamagePreview(XComGameState_Ability AbilityState, S
 	local DamageModifierInfo DamageModInfo;
 	local X2Effect Effect;
 	local DamageInfo DamageItem, BalanceItem;
+	local string AbilityName;
 
-	`TRACE_ENTRY("TargetRef.ObjectID:" @ TargetRef.ObjectID);
+	`TRACE_ENTRY("TargetRef.ObjectID:" @ TargetRef.ObjectID );
 
 	if (AbilityState==none)
 	{
@@ -211,8 +220,11 @@ static function NormalAbilityDamagePreview(XComGameState_Ability AbilityState, S
 		`TRACE_EXIT("");
 		return;
 	}
+	AbilityName = AbilityState.GetMyFriendlyName();
+	`TRACE("AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
+
 	AbilityTemplate = AbilityState.GetMyTemplate();
-	BalanceItem.Label=AbilityState.GetMyFriendlyName();
+	BalanceItem.Label = AbilityName;
 
 	if (TargetRef.ObjectID > 0)
 	{
@@ -266,6 +278,7 @@ static function NormalAbilityDamagePreview(XComGameState_Ability AbilityState, S
 				BalanceItem.Min -= DamageItem.Min;
 				DamageItem.Label = `LABELFROMMOD(DamageModInfo);
 				`ADDDAMITEM(Normal);
+				`TRACE("Added Damage Item. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", BalanceItem:" @ DamageInfoToString(BalanceItem));
 			}
 
 			DamageItem.Min=0;
@@ -275,6 +288,7 @@ static function NormalAbilityDamagePreview(XComGameState_Ability AbilityState, S
 				BalanceItem.Max-=DamageItem.Max;
 				DamageItem.Label=`LABELFROMMOD(DamageModInfo);
 				`ADDDAMITEM(Normal);
+				`TRACE("Added Damage Item. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", BalanceItem:" @ DamageInfoToString(BalanceItem));
 			}
 
 			DamageItem=BalanceItem;
@@ -289,6 +303,8 @@ static function NormalAbilityDamagePreview(XComGameState_Ability AbilityState, S
 			GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage(Effect), TargetRef, AbilityState, bAsPrimaryTarget, NormalDamage, CritDamage, AllowsShield);
 	}
 
+	`TRACE("After foreach TargetEffects(Effect). AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
+
 	if (AbilityTemplate.AbilityMultiTargetStyle != none)
 	{
 		`TRACE_IF("AbilityTemplate.AbilityMultiTargetStyle != none");
@@ -300,6 +316,7 @@ static function NormalAbilityDamagePreview(XComGameState_Ability AbilityState, S
 			NormalDamage.Max += NormalDamage.Max * BurstFire.NumExtraShots;
 			CritDamage.Min += CritDamage.Min * BurstFire.NumExtraShots;
 			CritDamage.Max += CritDamage.Max * BurstFire.NumExtraShots;
+			`TRACE("Adjusted damage based on BurstFire. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", DamageItem:" @ DamageInfoToString(DamageItem));
 		}
 	}
 	if (Rupture > 0)
@@ -309,7 +326,9 @@ static function NormalAbilityDamagePreview(XComGameState_Ability AbilityState, S
 		DamageItem.Max = Rupture;
 		DamageItem.Label = class'X2StatusEffects'.default.RupturedFriendlyName;
 		`ADDDAMITEM(Normal);
-	}	
+		`TRACE("Added Damage Item. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", DamageItem:" @ DamageInfoToString(DamageItem));
+	}
+	`TRACE_EXIT("AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
 }
 
 /**
@@ -351,6 +370,9 @@ static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, 
 	else
 		SourceWeapon = AbilityState.GetSourceWeapon();
 
+	AbilityName=AbilityState.GetMyFriendlyName();
+
+	`TRACE("AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
 	
 	TargetUnit = XComGameState_Unit(History.GetGameStateForObjectID(TargetRef.ObjectID));
 	SourceUnit = XComGameState_Unit(History.GetGameStateForObjectID(AbilityState.OwnerStateObject.ObjectID));
@@ -391,8 +413,6 @@ static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, 
 		}
 	}
 
-	AbilityName=AbilityState.GetMyFriendlyName();
-
 	if (WepDamEffect.bAlwaysKillsCivilians && TargetUnit != None && TargetUnit.GetTeam() == eTeam_Neutral)
 	{
 		`TRACE_IF("WepDamEffect.bAlwaysKillsCivilians && TargetUnit != None && TargetUnit.GetTeam() == eTeam_Neutral");
@@ -400,6 +420,8 @@ static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, 
 		DamageItem.Min=TargetUnit.GetCurrentStat(eStat_HP) + TargetUnit.GetCurrentStat(eStat_ShieldHP) - NormalDamage.Min;
 		DamageItem.Max=TargetUnit.GetCurrentStat(eStat_HP) + TargetUnit.GetCurrentStat(eStat_ShieldHP) - NormalDamage.Max;
 		`ADDDAMITEM(Normal);
+		`TRACE("Added Damage Item. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", DamageItem:" @ DamageInfoToString(DamageItem));
+		`TRACE_EXIT("AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
 		return;
 	}
 
@@ -407,6 +429,7 @@ static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, 
 	WepDamEffect.ModifyDamageValue(BonusEffectDamageValue, TargetUnit, AppliedDamageTypes);
 	DamageItem.Label=AbilityName;
 	`INSERTTOBOTH(BonusEffectDamageValue);
+	`TRACE("Added BonusEffectDamageValue. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
 
 	if (SourceWeapon != None)
 	{
@@ -427,6 +450,7 @@ static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, 
 					UpgradeDamageValue.PlusOne=0;
 					DamageItem.Label=WeaponUpgradeTemplate.GetItemFriendlyName();
 					`INSERTTOBOTH(UpgradeDamageValue);
+					`TRACE("Added UpgradeDamageValue. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
 				}
 			}
 		}
@@ -454,6 +478,7 @@ static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, 
 						UpgradeDamageValue.PlusOne=0;
 						DamageItem.Label=WeaponUpgradeTemplate.GetItemFriendlyName();
 						`INSERTTOBOTH(UpgradeDamageValue);
+						`TRACE("Added UpgradeDamageValue. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
 					}
 				}
 				break;
@@ -480,6 +505,7 @@ static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, 
 			WepDamEffect.ModifyDamageValue(AmmoDamageValue, TargetUnit, AppliedDamageTypes);
 			DamageItem.Label=LoadedAmmo.GetMyTemplate().GetItemFriendlyName(LoadedAmmo.ObjectID);
 			`INSERTTOBOTH(AmmoDamageValue);
+			`TRACE("Added AmmoDamageValue. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
 		}
 
 		if (!WepDamEffect.bIgnoreBaseDamage)
@@ -489,6 +515,7 @@ static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, 
 			WepDamEffect.ModifyDamageValue(BaseDamageValue, TargetUnit, AppliedDamageTypes);
 			DamageItem.Label=SourceWeapon.GetMyTemplate().GetItemFriendlyName(SourceWeapon.ObjectID);
 			`INSERTTOBOTH(BaseDamageValue);
+			`TRACE("Added BaseDamageValue. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
 		}
 		if (WepDamEffect.DamageTag != '')
 		{
@@ -497,6 +524,7 @@ static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, 
 			WepDamEffect.ModifyDamageValue(ExtraDamageValue, TargetUnit, AppliedDamageTypes);
 			DamageItem.Label=SourceWeapon.GetMyTemplate().GetItemFriendlyName(SourceWeapon.ObjectID);
 			`INSERTTOBOTH(ExtraDamageValue);
+			`TRACE("Added ExtraDamageValue. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
 		}
 	}
 
@@ -512,6 +540,10 @@ static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, 
 		`TRACE_IF("bAsPrimaryTarget");
 		TestEffectParams.AbilityInputContext.PrimaryTarget = TargetRef;
 	}
+
+	// Tigrik: Add missing damage modifiers. Account for CHL #923
+	ApplyPreDefaultDamageModifierEffects(History, SourceUnit, TargetUnit, AbilityState, TestEffectParams, DamageItem, DamageItemCrit, NormalDamage, CritDamage, WepDamEffect);
+
 	if (TargetUnit != none)
 	{
 		`TRACE_IF("TargetUnit != none");
@@ -534,6 +566,7 @@ static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, 
 			`ADDDAMITEM(Normal);
 			DamageItem=DamageItemCrit;
 			`ADDDAMITEM(Crit);
+			`TRACE("Adjusted for TargetUnit.AffectedByEffects. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
 		}
 	}
 
@@ -546,17 +579,18 @@ static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, 
 		DamageItemCrit.Label=DamageItem.Label;
 
 		TestEffectParams.AbilityResultContext.HitResult = eHit_Success;
-		DamageItem.Min = EffectTemplate.GetAttackingDamageModifier(EffectState, SourceUnit, Damageable(TargetUnit), AbilityState, TestEffectParams, NormalDamage.Min);
-		DamageItem.Max = EffectTemplate.GetAttackingDamageModifier(EffectState, SourceUnit, Damageable(TargetUnit), AbilityState, TestEffectParams, NormalDamage.Max);
+		DamageItem.Min = EffectTemplate.GetAttackingDamageModifier_CH(EffectState, SourceUnit, Damageable(TargetUnit), AbilityState, TestEffectParams, NormalDamage.Min, WepDamEffect);
+		DamageItem.Max = EffectTemplate.GetAttackingDamageModifier_CH(EffectState, SourceUnit, Damageable(TargetUnit), AbilityState, TestEffectParams, NormalDamage.Max, WepDamEffect);
 			
 		DamageItemCrit.Min=-DamageItem.Min;
 		DamageItemCrit.Max=-DamageItem.Max;
 		TestEffectParams.AbilityResultContext.HitResult = eHit_Crit;
-		DamageItemCrit.Min += EffectTemplate.GetAttackingDamageModifier(EffectState, SourceUnit, Damageable(TargetUnit), AbilityState, TestEffectParams, NormalDamage.Min+CritDamage.Min);
-		DamageItemCrit.Max += EffectTemplate.GetAttackingDamageModifier(EffectState, SourceUnit, Damageable(TargetUnit), AbilityState, TestEffectParams, NormalDamage.Max+CritDamage.Max);
+		DamageItemCrit.Min += EffectTemplate.GetAttackingDamageModifier_CH(EffectState, SourceUnit, Damageable(TargetUnit), AbilityState, TestEffectParams, NormalDamage.Min+CritDamage.Min, WepDamEffect);
+		DamageItemCrit.Max += EffectTemplate.GetAttackingDamageModifier_CH(EffectState, SourceUnit, Damageable(TargetUnit), AbilityState, TestEffectParams, NormalDamage.Max+CritDamage.Max, WepDamEffect);
 		`ADDDAMITEM(Normal);
 		DamageItem=DamageItemCrit;
 		`ADDDAMITEM(Crit);
+		`TRACE("Adjusted for SourceUnit.AffectedByEffects. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
 	}
 
 	if (TargetUnit != none)
@@ -570,6 +604,7 @@ static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, 
 			DamageItemCrit.Label=DamageItem.Label;
 
 			TestEffectParams.AbilityResultContext.HitResult = eHit_Success;
+
 			DamageItem.Min = EffectTemplate.GetDefendingDamageModifier(EffectState, SourceUnit, Damageable(TargetUnit), AbilityState, TestEffectParams, NormalDamage.Min, WepDamEffect);
 			DamageItem.Max = EffectTemplate.GetDefendingDamageModifier(EffectState, SourceUnit, Damageable(TargetUnit), AbilityState, TestEffectParams, NormalDamage.Max, WepDamEffect);
 			
@@ -581,11 +616,433 @@ static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, 
 			`ADDDAMITEM(Normal);
 			DamageItem=DamageItemCrit;
 			`ADDDAMITEM(Crit);
+			`TRACE("Adjusted for TargetUnit.AffectedByEffects. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
 		}
 	}
+
+	// Tigrik: Add missing damage modifiers. Account for CHL #923
+	ApplyPostDefaultDamageModifierEffects(History, SourceUnit, TargetUnit, AbilityState, TestEffectParams, DamageItem, DamageItemCrit, NormalDamage, CritDamage, WepDamEffect);
+	
 	if (!bDoesDamageIgnoreShields)
 	{
 		`TRACE_IF("!bDoesDamageIgnoreShields");
 		AllowsShield += NormalDamage.Max;
 	}
+	`TRACE_EXIT("AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
+}
+
+/**
+ * Tigrik: Add missing damage modifiers. Account for CHL #923
+ * 
+ * Applies pre-default (Highlander) damage modifier effects to both attacking and defending units,
+ * updating the provided damage breakdown structures for normal and critical damage.
+ *
+ * This function mirrors the behavior of the Community Highlander damage pipeline by executing
+ * {@code GetPreDefaultAttackingDamageModifier_CH} and
+ * {@code GetPreDefaultDefendingDamageModifier_CH} for all active effects on the source and target.
+ * It accumulates incremental damage changes, tracks per-effect contributions, and updates the
+ * {@code DamageBreakdown} structures accordingly.
+ *
+ * The function operates on both normal and critical hit contexts by temporarily modifying
+ * {@code ApplyEffectParameters.AbilityResultContext.HitResult}. It computes delta-based changes
+ * using running ("current") damage values to ensure correct stacking behavior, then truncates
+ * the final differences to match XCOM 2’s integer damage handling.
+ *
+ * Damage contributions are recorded into {@code NormalDamage} and {@code CritDamage} via macros
+ * (e.g. {@code ADDDAMITEM}), which merge or insert labeled {@code DamageInfo} entries.
+ *
+ * Notes:
+ * - Uses truncation (not rounding) when finalizing damage differences for consistency with base game logic.
+ * - May produce per-effect sums that do not exactly match total damage due to truncation.
+ * - Relies on Highlander-specific CH functions; effects not implementing them will contribute 0.
+ * - Modifies {@code DamageItem} and {@code DamageItemCrit} as working buffers during iteration.
+ *
+ * @param History                Game state history used to resolve effect states.
+ * @param SourceUnit             The attacking unit whose effects may modify outgoing damage.
+ * @param Target                 The damageable target (may or may not be a unit).
+ * @param AbilityState           The ability being evaluated for damage preview.
+ * @param ApplyEffectParameters  Effect application context, including hit result state (modified during execution).
+ * @param DamageItem             Working structure for normal damage contributions (modified in-place).
+ * @param DamageItemCrit         Working structure for critical damage contributions (modified in-place).
+ * @param NormalDamage           Accumulated breakdown of normal damage (updated in-place).
+ * @param CritDamage             Accumulated breakdown of critical damage (updated in-place).
+ * @param WepDamEffect           Weapon damage effect context (passed to CH modifier functions; may be unused).
+ * @param NewGameState           Optional game state for simulation context (may be none).
+ */
+static function ApplyPreDefaultDamageModifierEffects(
+	XComGameStateHistory History,
+	XComGameState_Unit SourceUnit,
+	Damageable Target,
+	XComGameState_Ability AbilityState,
+	out EffectAppliedData ApplyEffectParameters,
+	out DamageInfo DamageItem,
+	out DamageInfo DamageItemCrit,
+	out DamageBreakdown NormalDamage, 
+	out DamageBreakdown CritDamage,
+	X2Effect_ApplyWeaponDamage WepDamEffect,
+	optional XComGameState NewGameState)
+{
+	local XComGameState_Unit TargetUnit;
+	local XComGameState_Effect EffectState;
+	local X2Effect_Persistent EffectTemplate;
+	local StateObjectReference EffectRef;
+	local DamageModifierInfo ModifierInfo;
+	local float OldDamageMin, OldDamageMax, OldDamageCritMin, OldDamageCritMax;
+	local float CurDamageMin, CurDamageMax, CurDamageCritMin, CurDamageCritMax;
+	local int InitDamageMin, InitDamageMax, InitDamageCritMin, InitDamageCritMax;
+	local int EffectDmg;
+	local int Difference;
+	local string AbilityName;
+	local int i;
+
+	AbilityName = AbilityState.GetMyFriendlyName();
+
+	`TRACE_ENTRY("AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
+
+	InitDamageMin = DamageItem.Min;
+	InitDamageMax = DamageItem.Max;
+	InitDamageCritMin = DamageItemCrit.Min;
+	InitDamageCritMax = DamageItemCrit.Max;
+
+	CurDamageMin = DamageItem.Min;
+	CurDamageMax = DamageItem.Max;
+	CurDamageCritMin = DamageItemCrit.Min;
+	CurDamageCritMax = DamageItemCrit.Max;
+
+
+	if (SourceUnit != none)
+	{
+		foreach SourceUnit.AffectedByEffects(EffectRef)
+		{
+			ModifierInfo.Value = 0;
+			OldDamageMin = CurDamageMin;
+			OldDamageMax = CurDamageMax;
+			OldDamageCritMin = CurDamageCritMin;
+			OldDamageCritMax = CurDamageCritMax;
+
+			EffectState = XComGameState_Effect(History.GetGameStateForObjectID(EffectRef.ObjectID));
+			EffectTemplate = EffectState.GetX2Effect();
+
+			DamageItem.Label=EffectTemplate.GetSpecialDamageMessageName();
+			DamageItemCrit.Label=DamageItem.Label;
+
+			ApplyEffectParameters.AbilityResultContext.HitResult = eHit_Success;
+			CurDamageMin += EffectTemplate.GetPreDefaultAttackingDamageModifier_CH(EffectState, SourceUnit, Target, AbilityState, ApplyEffectParameters, NormalDamage.Min, WepDamEffect, NewGameState);
+			DamageItem.Min = Round(CurDamageMin) - Round(OldDamageMin);
+			
+			CurDamageMax += EffectTemplate.GetPreDefaultAttackingDamageModifier_CH(EffectState, SourceUnit, Target, AbilityState, ApplyEffectParameters, NormalDamage.Max, WepDamEffect, NewGameState);
+			DamageItem.Max = Round(CurDamageMax) - Round(OldDamageMax);
+
+			ApplyEffectParameters.AbilityResultContext.HitResult = eHit_Crit;
+			CurDamageCritMin += EffectTemplate.GetPreDefaultAttackingDamageModifier_CH(EffectState, SourceUnit, Target, AbilityState, ApplyEffectParameters, NormalDamage.Min+CritDamage.Min, WepDamEffect, NewGameState);
+			DamageItemCrit.Min = Round(CurDamageCritMin) - Round(OldDamageCritMin);
+			
+			CurDamageCritMax += EffectTemplate.GetPreDefaultAttackingDamageModifier_CH(EffectState, SourceUnit, Target, AbilityState, ApplyEffectParameters, NormalDamage.Max+CritDamage.Max, WepDamEffect, NewGameState);
+			DamageItemCrit.Max = Round(CurDamageCritMax) - Round(OldDamageCritMax);
+			
+			`ADDDAMITEM(Normal);
+			DamageItem=DamageItemCrit;
+			`ADDDAMITEM(Crit);
+			`TRACE("Adjusted for SourceUnit.AffectedByEffects. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
+		}
+	}
+
+	TargetUnit = XComGameState_Unit(Target);
+	if (TargetUnit != none)
+	{
+		foreach TargetUnit.AffectedByEffects(EffectRef)
+		{
+			ModifierInfo.Value = 0;
+			OldDamageMin = CurDamageMin;
+			OldDamageMax = CurDamageMax;
+			OldDamageCritMin = CurDamageCritMin;
+			OldDamageCritMax = CurDamageCritMax;
+
+			EffectState = XComGameState_Effect(History.GetGameStateForObjectID(EffectRef.ObjectID));
+			EffectTemplate = EffectState.GetX2Effect();
+			DamageItem.Label=EffectTemplate.GetSpecialDamageMessageName();
+			DamageItemCrit.Label=DamageItem.Label;
+			
+			ApplyEffectParameters.AbilityResultContext.HitResult = eHit_Success;
+			CurDamageMin += EffectTemplate.GetPreDefaultDefendingDamageModifier_CH(EffectState, SourceUnit, TargetUnit, AbilityState, ApplyEffectParameters, NormalDamage.Min, WepDamEffect, NewGameState);
+			DamageItem.Min = Round(CurDamageMin) - Round(OldDamageMin);
+
+			CurDamageMax += EffectTemplate.GetPreDefaultDefendingDamageModifier_CH(EffectState, SourceUnit, TargetUnit, AbilityState, ApplyEffectParameters, NormalDamage.Max, WepDamEffect, NewGameState);
+			DamageItem.Max = Round(CurDamageMax) - Round(OldDamageMax);
+		
+			ApplyEffectParameters.AbilityResultContext.HitResult = eHit_Crit;
+			CurDamageCritMin += EffectTemplate.GetPreDefaultDefendingDamageModifier_CH(EffectState, SourceUnit, TargetUnit, AbilityState, ApplyEffectParameters, NormalDamage.Min+CritDamage.Min, WepDamEffect, NewGameState);
+			DamageItemCrit.Min = Round(CurDamageCritMin) - Round(OldDamageCritMin);
+
+			CurDamageCritMax += EffectTemplate.GetPreDefaultDefendingDamageModifier_CH(EffectState, SourceUnit, TargetUnit, AbilityState, ApplyEffectParameters, NormalDamage.Max+CritDamage.Max, WepDamEffect, NewGameState);
+			DamageItemCrit.Max = Round(CurDamageCritMax) - Round(OldDamageCritMax);
+			
+			`ADDDAMITEM(Normal);
+			DamageItem=DamageItemCrit;
+			`ADDDAMITEM(Crit);
+			`TRACE("Adjusted for TargetUnit.AffectedByEffects. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
+		}
+	}
+
+	// Truncate rather than use `Round()` for consistency with how XCOM 2
+	// handles float -> int conversion in most cases. Note that this may
+	// result in the sum of the shot modifiers not adding up to the overall
+	// damage modifier, but damage is generally shown as a range anyway.
+			
+	// Issue #1099
+	// Truncate the change in damage rather than the final damage itself.
+
+	Difference = CurDamageMin - InitDamageMin;
+	DamageItem.Min = InitDamageMin + Difference;
+
+	Difference = CurDamageMax - InitDamageMax;
+	DamageItem.Max = InitDamageMax + Difference;
+
+	Difference = CurDamageCritMin - InitDamageCritMin;
+	DamageItemCrit.Min = InitDamageCritMin + Difference;
+
+	Difference = CurDamageCritMax - InitDamageCritMax;
+	DamageItemCrit.Max = InitDamageCritMax + Difference;
+
+	`TRACE("After truncating damage. DamageItem:" @ DamageInfoToString(DamageItem) $ ", DamageItemCrit:" @ DamageInfoToString(DamageItemCrit));
+	`TRACE_EXIT("AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
+}
+
+/**
+ * Tigrik: Add missing damage modifiers. Account for CHL #923
+ * 
+ * Applies post-default (Highlander) damage modifier effects to both attacking and defending units,
+ * updating the provided damage breakdown structures for normal and critical damage.
+ *
+ * This function mirrors the behavior of the Community Highlander damage pipeline by executing
+ * {@code GetPreDefaultAttackingDamageModifier_CH} and
+ * {@code GetPreDefaultDefendingDamageModifier_CH} for all active effects on the source and target.
+ * It accumulates incremental damage changes, tracks per-effect contributions, and updates the
+ * {@code DamageBreakdown} structures accordingly.
+ *
+ * The function operates on both normal and critical hit contexts by temporarily modifying
+ * {@code ApplyEffectParameters.AbilityResultContext.HitResult}. It computes delta-based changes
+ * using running ("current") damage values to ensure correct stacking behavior, then truncates
+ * the final differences to match XCOM 2’s integer damage handling.
+ *
+ * Damage contributions are recorded into {@code NormalDamage} and {@code CritDamage} via macros
+ * (e.g. {@code ADDDAMITEM}), which merge or insert labeled {@code DamageInfo} entries.
+ *
+ * Notes:
+ * - Uses truncation (not rounding) when finalizing damage differences for consistency with base game logic.
+ * - May produce per-effect sums that do not exactly match total damage due to truncation.
+ * - Relies on Highlander-specific CH functions; effects not implementing them will contribute 0.
+ * - Modifies {@code DamageItem} and {@code DamageItemCrit} as working buffers during iteration.
+ *
+ * @param History                Game state history used to resolve effect states.
+ * @param SourceUnit             The attacking unit whose effects may modify outgoing damage.
+ * @param Target                 The damageable target (may or may not be a unit).
+ * @param AbilityState           The ability being evaluated for damage preview.
+ * @param ApplyEffectParameters  Effect application context, including hit result state (modified during execution).
+ * @param DamageItem             Working structure for normal damage contributions (modified in-place).
+ * @param DamageItemCrit         Working structure for critical damage contributions (modified in-place).
+ * @param NormalDamage           Accumulated breakdown of normal damage (updated in-place).
+ * @param CritDamage             Accumulated breakdown of critical damage (updated in-place).
+ * @param WepDamEffect           Weapon damage effect context (passed to CH modifier functions; may be unused).
+ * @param NewGameState           Optional game state for simulation context (may be none).
+ */
+static function ApplyPostDefaultDamageModifierEffects(
+	XComGameStateHistory History,
+	XComGameState_Unit SourceUnit,
+	Damageable Target,
+	XComGameState_Ability AbilityState,
+	out EffectAppliedData ApplyEffectParameters,
+	out DamageInfo DamageItem,
+	out DamageInfo DamageItemCrit,
+	out DamageBreakdown NormalDamage, 
+	out DamageBreakdown CritDamage,
+	X2Effect_ApplyWeaponDamage WepDamEffect,
+	optional XComGameState NewGameState)
+{
+	local XComGameState_Unit TargetUnit;
+	local XComGameState_Effect EffectState;
+	local X2Effect_Persistent EffectTemplate;
+	local StateObjectReference EffectRef;
+	local DamageModifierInfo ModifierInfo;
+	local float OldDamageMin, OldDamageMax, OldDamageCritMin, OldDamageCritMax;
+	local float CurDamageMin, CurDamageMax, CurDamageCritMin, CurDamageCritMax;
+	local int InitDamageMin, InitDamageMax, InitDamageCritMin, InitDamageCritMax;
+	local int EffectDmg;
+	local int Difference;
+	local string AbilityName;
+	local int i;
+
+	AbilityName = AbilityState.GetMyFriendlyName();
+
+	`TRACE_ENTRY("AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
+
+	InitDamageMin = DamageItem.Min;
+	InitDamageMax = DamageItem.Max;
+	InitDamageCritMin = DamageItemCrit.Min;
+	InitDamageCritMax = DamageItemCrit.Max;
+
+	CurDamageMin = DamageItem.Min;
+	CurDamageMax = DamageItem.Max;
+	CurDamageCritMin = DamageItemCrit.Min;
+	CurDamageCritMax = DamageItemCrit.Max;
+
+
+	if (SourceUnit != none)
+	{
+		foreach SourceUnit.AffectedByEffects(EffectRef)
+		{
+			ModifierInfo.Value = 0;
+			OldDamageMin = CurDamageMin;
+			OldDamageMax = CurDamageMax;
+			OldDamageCritMin = CurDamageCritMin;
+			OldDamageCritMax = CurDamageCritMax;
+
+			EffectState = XComGameState_Effect(History.GetGameStateForObjectID(EffectRef.ObjectID));
+			EffectTemplate = EffectState.GetX2Effect();
+
+			DamageItem.Label=EffectTemplate.GetSpecialDamageMessageName();
+			DamageItemCrit.Label=DamageItem.Label;
+
+			ApplyEffectParameters.AbilityResultContext.HitResult = eHit_Success;
+			CurDamageMin += EffectTemplate.GetPostDefaultAttackingDamageModifier_CH(EffectState, SourceUnit, Target, AbilityState, ApplyEffectParameters, NormalDamage.Min, WepDamEffect, NewGameState);
+			DamageItem.Min = Round(CurDamageMin) - Round(OldDamageMin);
+			
+			CurDamageMax += EffectTemplate.GetPostDefaultAttackingDamageModifier_CH(EffectState, SourceUnit, Target, AbilityState, ApplyEffectParameters, NormalDamage.Max, WepDamEffect, NewGameState);
+			DamageItem.Max = Round(CurDamageMax) - Round(OldDamageMax);
+
+			ApplyEffectParameters.AbilityResultContext.HitResult = eHit_Crit;
+			CurDamageCritMin += EffectTemplate.GetPostDefaultAttackingDamageModifier_CH(EffectState, SourceUnit, Target, AbilityState, ApplyEffectParameters, NormalDamage.Min+CritDamage.Min, WepDamEffect, NewGameState);
+			DamageItemCrit.Min = Round(CurDamageCritMin) - Round(OldDamageCritMin);
+			
+			CurDamageCritMax += EffectTemplate.GetPostDefaultAttackingDamageModifier_CH(EffectState, SourceUnit, Target, AbilityState, ApplyEffectParameters, NormalDamage.Max+CritDamage.Max, WepDamEffect, NewGameState);
+			DamageItemCrit.Max = Round(CurDamageCritMax) - Round(OldDamageCritMax);
+			
+			`ADDDAMITEM(Normal);
+			DamageItem=DamageItemCrit;
+			`ADDDAMITEM(Crit);
+			`TRACE("Adjusted for SourceUnit.AffectedByEffects. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
+		}
+	}
+
+	TargetUnit = XComGameState_Unit(Target);
+	if (TargetUnit != none)
+	{
+		foreach TargetUnit.AffectedByEffects(EffectRef)
+		{
+			ModifierInfo.Value = 0;
+			OldDamageMin = CurDamageMin;
+			OldDamageMax = CurDamageMax;
+			OldDamageCritMin = CurDamageCritMin;
+			OldDamageCritMax = CurDamageCritMax;
+
+			EffectState = XComGameState_Effect(History.GetGameStateForObjectID(EffectRef.ObjectID));
+			EffectTemplate = EffectState.GetX2Effect();
+			DamageItem.Label=EffectTemplate.GetSpecialDamageMessageName();
+			DamageItemCrit.Label=DamageItem.Label;
+			
+			ApplyEffectParameters.AbilityResultContext.HitResult = eHit_Success;
+			CurDamageMin += EffectTemplate.GetPostDefaultDefendingDamageModifier_CH(EffectState, SourceUnit, TargetUnit, AbilityState, ApplyEffectParameters, NormalDamage.Min, WepDamEffect, NewGameState);
+			DamageItem.Min = Round(CurDamageMin) - Round(OldDamageMin);
+
+			CurDamageMax += EffectTemplate.GetPostDefaultDefendingDamageModifier_CH(EffectState, SourceUnit, TargetUnit, AbilityState, ApplyEffectParameters, NormalDamage.Max, WepDamEffect, NewGameState);
+			DamageItem.Max = Round(CurDamageMax) - Round(OldDamageMax);
+		
+			ApplyEffectParameters.AbilityResultContext.HitResult = eHit_Crit;
+			CurDamageCritMin += EffectTemplate.GetPostDefaultDefendingDamageModifier_CH(EffectState, SourceUnit, TargetUnit, AbilityState, ApplyEffectParameters, NormalDamage.Min+CritDamage.Min, WepDamEffect, NewGameState);
+			DamageItemCrit.Min = Round(CurDamageCritMin) - Round(OldDamageCritMin);
+
+			CurDamageCritMax += EffectTemplate.GetPostDefaultDefendingDamageModifier_CH(EffectState, SourceUnit, TargetUnit, AbilityState, ApplyEffectParameters, NormalDamage.Max+CritDamage.Max, WepDamEffect, NewGameState);
+			DamageItemCrit.Max = Round(CurDamageCritMax) - Round(OldDamageCritMax);
+			
+			`ADDDAMITEM(Normal);
+			DamageItem=DamageItemCrit;
+			`ADDDAMITEM(Crit);
+			`TRACE("Adjusted for TargetUnit.AffectedByEffects. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
+		}
+	}
+
+	// Truncate rather than use `Round()` for consistency with how XCOM 2
+	// handles float -> int conversion in most cases. Note that this may
+	// result in the sum of the shot modifiers not adding up to the overall
+	// damage modifier, but damage is generally shown as a range anyway.
+			
+	// Issue #1099
+	// Truncate the change in damage rather than the final damage itself.
+
+	Difference = CurDamageMin - InitDamageMin;
+	DamageItem.Min = InitDamageMin + Difference;
+
+	Difference = CurDamageMax - InitDamageMax;
+	DamageItem.Max = InitDamageMax + Difference;
+
+	Difference = CurDamageCritMin - InitDamageCritMin;
+	DamageItemCrit.Min = InitDamageCritMin + Difference;
+
+	Difference = CurDamageCritMax - InitDamageCritMax;
+	DamageItemCrit.Max = InitDamageCritMax + Difference;
+
+	`TRACE("After truncating damage. DamageItem:" @ DamageInfoToString(DamageItem) $ ", DamageItemCrit:" @ DamageInfoToString(DamageItemCrit));
+	`TRACE_EXIT("AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
+}
+
+/**
+ * Converts a DamageBreakdown struct into a human-readable string representation.
+ *
+ * This function manually serializes all fields of the DamageBreakdown, including
+ * nested DamageInfo entries within the InfoList array. The output format is
+ * similar to Java's toString(), making it useful for debugging and logging.
+ *
+ * Example output:
+ * DamageBreakdown{Min=2, Max=5, Bonus=1, InfoList=[{Label="Base", Min=2, Max=4}, {Label="Modifier", Min=3, Max=5}]}
+ *
+ * @param DB The DamageBreakdown instance to convert.
+ * @return A string containing all values from the struct, including nested array elements.
+ */
+static function string DamageBreakdownToString(DamageBreakdown DB)
+{
+	local string Result;
+	local int i;
+
+	Result = "DamageBreakdown{";
+
+	// Top-level fields
+	Result $= "Min=" $ string(DB.Min) $ ", ";
+	Result $= "Max=" $ string(DB.Max) $ ", ";
+	Result $= "Bonus=" $ string(DB.Bonus) $ ", ";
+
+	// InfoList
+	Result $= "InfoList=[";
+
+	for (i = 0; i < DB.InfoList.Length; i++)
+	{
+		Result $= DamageInfoToString(DB.InfoList[i]);
+
+		if (i < DB.InfoList.Length - 1)
+		{
+			Result $= ", ";
+		}
+	}
+
+	Result $= "]";
+
+	Result $= "}";
+
+	return Result;
+}
+
+/**
+ * Converts a DamageInfo struct into a human-readable string representation.
+ *
+ * Serializes all fields of the DamageInfo struct, including Label, Min, and Max.
+ * The output format is compact and intended for debugging or logging purposes.
+ *
+ * Example output:
+ * {Label="Base", Min=2, Max=4}
+ *
+ * @param Info The DamageInfo instance to convert.
+ * @return A string containing all values from the struct.
+ */
+static function string DamageInfoToString(DamageInfo Info)
+{
+	return "{Label=\"" $ Info.Label $ "\", Min=" $ string(Info.Min) $ ", Max=" $ string(Info.Max) $ "}";
 }
