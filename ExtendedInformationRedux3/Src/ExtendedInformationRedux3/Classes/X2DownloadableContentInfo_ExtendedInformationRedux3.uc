@@ -40,6 +40,9 @@ static event OnPostTemplatesCreated()
 	`TRACE_ENTRY("");
 	`INFO(class'EIR_Version'.static.GetDisplayString());
 
+	// Tigrik: Patch templates
+	class'TemplatePatchLib'.static.PatchTemplates();
+
 	// Tigrik: Run all unit tests
 	class'EIR_TestRunner'.static.RunAllTests();
 

@@ -86,6 +86,9 @@
     </Content>
     <Content Include="Src\ExtendedInformationRedux3\Classes\MCM_Defaults.uc" />
     <Content Include="Src\ExtendedInformationRedux3\Classes\StatListLib.uc" />
+    <Content Include="Src\ExtendedInformationRedux3\Classes\TemplatePatchLib.uc">
+      <SubType>Content</SubType>
+    </Content>
     <Content Include="Src\ExtendedInformationRedux3\Classes\UIAbilityListItem_HitChance.uc" />
     <Content Include="Src\ExtendedInformationRedux3\Classes\UIAbilityList_HitChance.uc" />
     <Content Include="Src\ExtendedInformationRedux3\Classes\UIEffectListItem_HitChance.uc" />
@@ -104,7 +107,13 @@
     <Content Include="Src\ExtendedInformationRedux3\Classes\X2EventListener_ExtendedInformation.uc">
       <SubType>Content</SubType>
     </Content>
+    <Content Include="Src\ExtendedInformationRedux3\Classes\X2Patch_PrecisionShotCritDamage.uc">
+      <SubType>Content</SubType>
+    </Content>
     <Content Include="Src\ExtendedInformationRedux3\Classes\X2TacticalGameRuleset_BreakdownObserver.uc">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Src\ExtendedInformationRedux3\Classes\X2TemplatePatch.uc">
       <SubType>Content</SubType>
     </Content>
     <Content Include="Src\ExtendedInformationRedux3\EIR_LoggerMacros.uci">
