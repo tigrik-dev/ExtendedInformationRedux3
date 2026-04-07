@@ -85,6 +85,8 @@ var localized string			sShowAimAssist_ifUnsafe_MCMText;
 var localized string			sShowAimAssist_ifUnsafe_MCMTooltip;
 var localized string			sShowUnsafeAimAssist_MCMText;
 var localized string			sShowUnsafeAimAssist_MCMTooltip;
+var localized string			sShowUnsafeAimAssist_ifSafe_MCMTooltip;
+							
 //var localized string			sFlyoverDuration_MCMText;
 var localized string			sShowGuaranteedHit_MCMText;
 
@@ -329,13 +331,7 @@ simulated function ClientModCallback(MCM_API_Instance ConfigAPI, int GameMode)
 
 	// Tigrik: If enabling Aim Assist may cause bugs, then display a warning and an explanation in the tooltip
 	ShowAimAssist_MCMUI				= Group0.AddCheckbox('ShowAimAssist', IsAimAssistUnsafe ? sShowAimAssist_ifUnsafe_MCMText : sShowAimAssist_MCMText, IsAimAssistUnsafe ? sShowAimAssist_ifUnsafe_MCMTooltip : sShowAimAssist_MCMText, TH_AIM_ASSIST, , CheckBoxChangeHandler);
-	ShowUnsafeAimAssist_MCMUI		= Group0.AddCheckbox('ShowUnsafeAimAssist', sShowUnsafeAimAssist_MCMText, sShowUnsafeAimAssist_MCMTooltip, TH_UNSAFE_AIM_ASSIST, , CheckBoxChangeHandler);
-
-	// Tigrik: Make the checkbox 'Confirm Unsafe Aim Assist' un-editable if enabling Aim Assist won't cause bugs 
-	if (!IsAimAssistUnsafe)
-	{
-		ShowUnsafeAimAssist_MCMUI.SetEditable(false);
-	}
+	ShowUnsafeAimAssist_MCMUI		= Group0.AddCheckbox('ShowUnsafeAimAssist', sShowUnsafeAimAssist_MCMText, IsAimAssistUnsafe ? sShowUnsafeAimAssist_MCMTooltip : sShowUnsafeAimAssist_ifSafe_MCMTooltip, TH_UNSAFE_AIM_ASSIST, , CheckBoxChangeHandler);
 	
 	DisplayMissChance_MCMUI			= Group0.AddCheckbox('DisplayMissChance', sDisplayMissChance_MCMText, sDisplayMissChance_MCMText, DISPLAY_MISS_CHANCE, DisplayMissChanceHandler, );
 	Group0.AddLabel('empty_line',"","");

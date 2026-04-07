@@ -35,6 +35,7 @@ sShowAimAssist_ifUnsafe_MCMText = "Show Aim Assist (WARNING: May cause bugs!)";
 sShowAimAssist_ifUnsafe_MCMTooltip = "Detected Highlander's config bDisableAimAssist=true set by LWOTC or other mods\n\nEnabling Aim Assist may cause bugs!\n\nIf you wish to enable it, also check 'Confirm Unsafe Aim Assist' option below. Without it Aim Assist will be automatically disabled on next game launch.";
 sShowUnsafeAimAssist_MCMText = "Confirm Unsafe Aim Assist";
 sShowUnsafeAimAssist_MCMTooltip = "Enable to prevent Aim Assist from being automatically disabled on next game launch";
+sShowUnsafeAimAssist_ifSafe_MCMTooltip = "(Irrelevant in the current case)\n\n\When 'Show Aim Assist' option is deemed unsafe and when it gets automatically disabled on game launch - enabling this option prevents Aim Assist from being automatically disabled"
 ; sFlyoverDuration_MCMText = "Flyovers Duration";
 sShowGuaranteedHit_MCMText = "Show 'Guaranteed Hit' String";
 
