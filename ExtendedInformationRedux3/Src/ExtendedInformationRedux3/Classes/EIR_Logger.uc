@@ -21,7 +21,7 @@
  * 
  * @author Tigrik
  */
-class EIR_Logger extends Object config(ExtendedInformationRedux3);
+class EIR_Logger extends Object config(ExtendedInformationRedux3_Logger);
 
 var config bool bEnableInfo;
 var config bool bEnableDebug;

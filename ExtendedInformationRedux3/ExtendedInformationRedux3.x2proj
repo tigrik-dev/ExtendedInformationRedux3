@@ -26,7 +26,7 @@
     <Folder Include="Src\ExtendedInformationRedux3\Classes\" />
     <Folder Include="Src\ModConfigMenuAPI\" />
     <Folder Include="Src\ModConfigMenuAPI\Classes\" />
-    <Content Include="Config\XComExtendedInformationRedux3.ini">
+    <Content Include="Config\XComExtendedInformationRedux3_Logger.ini">
       <SubType>Content</SubType>
     </Content>
     <Content Include="Config\XComIntLoc.ini">
@@ -49,6 +49,9 @@
       <SubType>Content</SubType>
     </Content>
     <Content Include="Src\ExtendedInformationAPI\Classes\EI_DamagePreviewTemplateAPI.uc">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Src\ExtendedInformationRedux3\Classes\AimAssistLib.uc">
       <SubType>Content</SubType>
     </Content>
     <Content Include="Src\ExtendedInformationRedux3\Classes\DamagePreviewLib.uc">
@@ -85,6 +88,9 @@
       <SubType>Content</SubType>
     </Content>
     <Content Include="Src\ExtendedInformationRedux3\Classes\MCM_Defaults.uc" />
+    <Content Include="Src\ExtendedInformationRedux3\Classes\ModSupportLib.uc">
+      <SubType>Content</SubType>
+    </Content>
     <Content Include="Src\ExtendedInformationRedux3\Classes\StatListLib.uc" />
     <Content Include="Src\ExtendedInformationRedux3\Classes\TemplatePatchLib.uc">
       <SubType>Content</SubType>

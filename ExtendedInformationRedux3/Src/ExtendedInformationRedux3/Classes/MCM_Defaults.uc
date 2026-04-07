@@ -4,11 +4,12 @@
 //	
 //-----------------------------------------------------------
 
-class MCM_Defaults extends object config(ExtendedInformationRedux3_MCMDefaults);
+class MCM_Defaults extends Object config(ExtendedInformationRedux3_MCMDefaults);
 
 var config int		Version;
 
 var config bool		TH_AIM_ASSIST;
+var config bool		TH_UNSAFE_AIM_ASSIST;
 var config bool		HIT_CHANCE_ENABLED;
 var config bool		VERBOSE_TEXT;
 var config bool		DISPLAY_MISS_CHANCE;

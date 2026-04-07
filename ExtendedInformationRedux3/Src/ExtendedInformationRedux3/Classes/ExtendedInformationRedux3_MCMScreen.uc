@@ -1,8 +1,3 @@
-//-----------------------------------------------------------
-//	Class:	ExtendedInformationRedux3_MCMScreen
-//	Author: Mr.Nice / Sebkulu
-//	
-//-----------------------------------------------------------
 /**
  * Mod Configuration Menu (MCM) screen implementation for ExtendedInformationRedux3.
  *
@@ -22,6 +17,7 @@ class ExtendedInformationRedux3_MCMScreen extends Object config(ExtendedInformat
 var config int				CONFIG_VERSION;
 
 var config bool				TH_AIM_ASSIST;
+var config bool				TH_UNSAFE_AIM_ASSIST;
 var config bool				HIT_CHANCE_ENABLED;
 var config bool				VERBOSE_TEXT;
 var config bool				DISPLAY_MISS_CHANCE;
@@ -85,6 +81,10 @@ var localized string			sDisplayMissChance_MCMText;
 var localized string			sShowTemplarMessages_MCMText;
 var localized string			sShowTemplarMessages_MCMTip;
 var localized string			sShowAimAssist_MCMText;
+var localized string			sShowAimAssist_ifUnsafe_MCMText;
+var localized string			sShowAimAssist_ifUnsafe_MCMTooltip;
+var localized string			sShowUnsafeAimAssist_MCMText;
+var localized string			sShowUnsafeAimAssist_MCMTooltip;
 //var localized string			sFlyoverDuration_MCMText;
 var localized string			sShowGuaranteedHit_MCMText;
 
@@ -130,6 +130,7 @@ var MCM_API_Checkbox			VerboseText_MCMUI;
 var MCM_API_Checkbox			DisplayMissChance_MCMUI;
 var MCM_API_Checkbox			ShowTemplarMessages_MCMUI;
 var MCM_API_Checkbox			ShowAimAssist_MCMUI;
+var MCM_API_Checkbox			ShowUnsafeAimAssist_MCMUI;
 //var MCM_API_Slider				FlyoverDuration_MCMUI;
 var MCM_API_Checkbox			ShowGuaranteedHit_MCMUI;
 
@@ -194,6 +195,7 @@ event OnInit(UIScreen Screen)
 `MCM_API_BasicCheckboxSaveHandler(DisplayMissChanceHandler, DISPLAY_MISS_CHANCE)
 `MCM_API_BasicCheckboxSaveHandler(ShowTemplarMessagesHandler, SHOW_TEMPLAR_MSG)
 `MCM_API_BasicCheckboxSaveHandler(ShowAimAssistHandler, TH_AIM_ASSIST)
+`MCM_API_BasicCheckboxSaveHandler(ShowUnsafeAimAssistHandler, TH_UNSAFE_AIM_ASSIST)
 //`MCM_API_BasicSliderSaveHandler(FlyoverDurationHandler,		FLYOVER_DURATION)
 `MCM_API_BasicCheckboxSaveHandler(ShowGuaranteedHitHandler, SHOW_GUARANTEED_HIT)
 
@@ -244,20 +246,23 @@ simulated function CheckBoxChangeHandler(MCM_API_Setting _Setting, bool _Setting
 	SettingName = _Setting.GetName();
 	switch (SettingName)
 	{
-		case 'ShowHitChance'	:
+		case 'ShowHitChance'		:
 			VerboseText_MCMUI.SetEditable(_SettingValue);
 			ShowTemplarMessages_MCMUI.SetEditable(_SettingValue);
 			//FlyoverDuration_MCMUI.SetEditable(_SettingValue);
 			ShowGuaranteedHit_MCMUI.SetEditable(_SettingValue);
 			HIT_CHANCE_ENABLED = _SettingValue;
 			break;
-		case	 'ShowAimAssist':
+		case	 'ShowAimAssist'	:
 			AssistBesideHit_MCMUI.SetEditable(_SettingValue);
 			AssistHexColor_MCMUI.SetEditable(_SettingValue);
 			AssistBar_MCMUI.SetEditable(_SettingValue);
 			TH_AIM_ASSIST = _SettingValue;
 			break;
-		default					: assert(false);
+		case 'ShowUnsafeAimAssist'	:
+			TH_UNSAFE_AIM_ASSIST = _SettingValue;
+			break;
+		default						: assert(false);
 	}
 	`TRACE_EXIT("");
 }
@@ -280,8 +285,12 @@ simulated function ClientModCallback(MCM_API_Instance ConfigAPI, int GameMode)
 	//local MCM_API_SettingsGroup Group5;
 	local MCM_API_SettingsGroup Group6;
 	local int i;
+	local bool IsAimAssistUnsafe;
 
 	`TRACE_ENTRY("GameMode:" @ GameMode);
+
+	// Tigrik: IsAimAssistUnsafe: May Aim Assist cause bugs when enabled?
+	IsAimAssistUnsafe = class'AimAssistLib'.static.IsAimAssistUnsafe();
 
 	ColorArray.AddItem(sBlack);
 	ColorArray.AddItem(sWhite);
@@ -317,7 +326,17 @@ simulated function ClientModCallback(MCM_API_Instance ConfigAPI, int GameMode)
 	Page.EnableResetButton(ResetButtonClicked);
 
 	Group0 = Page.AddGroup('Group0', sGroupGeneralSettings_MCMText);
-	ShowAimAssist_MCMUI				= Group0.AddCheckbox('ShowAimAssist', sShowAimAssist_MCMText, sShowAimAssist_MCMText, TH_AIM_ASSIST, , CheckBoxChangeHandler);
+
+	// Tigrik: If enabling Aim Assist may cause bugs, then display a warning and an explanation in the tooltip
+	ShowAimAssist_MCMUI				= Group0.AddCheckbox('ShowAimAssist', IsAimAssistUnsafe ? sShowAimAssist_ifUnsafe_MCMText : sShowAimAssist_MCMText, IsAimAssistUnsafe ? sShowAimAssist_ifUnsafe_MCMTooltip : sShowAimAssist_MCMText, TH_AIM_ASSIST, , CheckBoxChangeHandler);
+	ShowUnsafeAimAssist_MCMUI		= Group0.AddCheckbox('ShowUnsafeAimAssist', sShowUnsafeAimAssist_MCMText, sShowUnsafeAimAssist_MCMTooltip, TH_UNSAFE_AIM_ASSIST, , CheckBoxChangeHandler);
+
+	// Tigrik: Make the checkbox 'Confirm Unsafe Aim Assist' un-editable if enabling Aim Assist won't cause bugs 
+	if (!IsAimAssistUnsafe)
+	{
+		ShowUnsafeAimAssist_MCMUI.SetEditable(false);
+	}
+	
 	DisplayMissChance_MCMUI			= Group0.AddCheckbox('DisplayMissChance', sDisplayMissChance_MCMText, sDisplayMissChance_MCMText, DISPLAY_MISS_CHANCE, DisplayMissChanceHandler, );
 	Group0.AddLabel('empty_line',"","");
 	
@@ -395,6 +414,7 @@ simulated function LoadSavedSettings()
 	`TRACE_ENTRY("");
     HIT_CHANCE_ENABLED =		`MCM_CH_GetValue(class'MCM_Defaults'.default.HIT_CHANCE_ENABLED,HIT_CHANCE_ENABLED);
     TH_AIM_ASSIST =			`MCM_CH_GetValue(class'MCM_Defaults'.default.TH_AIM_ASSIST,TH_AIM_ASSIST);
+	TH_UNSAFE_AIM_ASSIST =	`MCM_CH_GetValue(class'MCM_Defaults'.default.TH_UNSAFE_AIM_ASSIST,TH_UNSAFE_AIM_ASSIST);
 	VERBOSE_TEXT =			`MCM_CH_GetValue(class'MCM_Defaults'.default.VERBOSE_TEXT,VERBOSE_TEXT);
 	DISPLAY_MISS_CHANCE =	`MCM_CH_GetValue(class'MCM_Defaults'.default.DISPLAY_MISS_CHANCE,DISPLAY_MISS_CHANCE);
 	SHOW_TEMPLAR_MSG =		`MCM_CH_GetValue(class'MCM_Defaults'.default.SHOW_TEMPLAR_MSG,SHOW_TEMPLAR_MSG);
@@ -472,6 +492,7 @@ simulated function ResetButtonClicked(MCM_API_SettingsPage Page)
 	MissHexColor_MCMUI.SetValue(	getStringColorFromHex(class'MCM_Defaults'.default.MISS_HEX_COLOR), false);
 	AssistHexColor_MCMUI.SetValue(	getStringColorFromHex(class'MCM_Defaults'.default.ASSIST_HEX_COLOR), false);
 	ShowAimAssist_MCMUI.SetValue(	class'MCM_Defaults'.default.TH_AIM_ASSIST, false);
+	ShowUnsafeAimAssist_MCMUI.SetValue(	class'MCM_Defaults'.default.TH_UNSAFE_AIM_ASSIST, false);
 	ToolTipAlpha_MCMUI.SetValue(	class'MCM_Defaults'.default.TOOLTIP_ALPHA, false);
 	ShowEnemyToolTip_MCMUI.SetValue(	class'MCM_Defaults'.default.ES_TOOLTIP, false);
 	ShowExtraWeaponStats_MCMUI.SetValue(	class'MCM_Defaults'.default.SHOW_EXTRA_WEAPONSTATS, false);

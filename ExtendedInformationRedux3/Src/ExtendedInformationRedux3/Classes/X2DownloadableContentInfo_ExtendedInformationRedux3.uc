@@ -43,9 +43,6 @@ static event OnPostTemplatesCreated()
 	// Tigrik: Patch templates
 	class'TemplatePatchLib'.static.PatchTemplates();
 
-	// Tigrik: Run all unit tests
-	class'EIR_TestRunner'.static.RunAllTests();
-
 	// Registers BreakdownObserver with the tactical ruleset.
 	X2TacticalGameRuleset(class'XComEngine'.static.GetClassDefaultObject(class'X2TacticalGameRuleset')).EventObserverClasses.AddItem(class'X2TacticalGameRuleset_BreakdownObserver');
 
@@ -173,6 +170,19 @@ static event OnPostTemplatesCreated()
 			}
 		}
 	}
+
+	`DEBUG("class'MCM_Defaults'.default.TH_UNSAFE_AIM_ASSIST:" @ class'MCM_Defaults'.default.TH_UNSAFE_AIM_ASSIST);
+	`DEBUG("class'ExtendedInformationRedux3_MCMScreen'.default.TH_UNSAFE_AIM_ASSIST:" @ class'ExtendedInformationRedux3_MCMScreen'.default.TH_UNSAFE_AIM_ASSIST);
+
+	// Tigrik: Check if certain mods are active and cache the result in config variables
+	class'ModSupportLib'.static.Init();
+
+	// Tigrik: Disable Aim Assist if needed
+	class'AimAssistLib'.static.Init();
+
+	// Tigrik: Run all unit tests
+	class'EIR_TestRunner'.static.RunAllTests();
+
 	`TRACE_EXIT("");
 }	
 
