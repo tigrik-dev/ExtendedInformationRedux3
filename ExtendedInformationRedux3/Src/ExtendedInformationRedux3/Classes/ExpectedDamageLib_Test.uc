@@ -25,12 +25,19 @@ static function bool Test_GetExpectedDamage_BasicHit()
 {
     local ShotBreakdown kBreakdown;
     local float Result;
+	local DamageBreakdown NormalDamage;
+	local DamageBreakdown CritDamage;
 
 	`BEGIN_TEST;
 
     kBreakdown.ResultTable[eHit_Success] = 100;
 
-    Result = class'ExpectedDamageLib'.static.GetExpectedDamage(kBreakdown, 4, 6, 0);
+	NormalDamage.Min = 4;
+	NormalDamage.Max = 6;
+	CritDamage.Min = 0;
+	CritDamage.Max = 0;
+
+    Result = class'ExpectedDamageLib'.static.GetExpectedDamage(kBreakdown, NormalDamage, CritDamage);
 
 	if (!class'EIR_TestAsserts'.static.AssertFloatNear(Result, 5.0, 0.01)) return false;
 
@@ -46,13 +53,20 @@ static function bool Test_GetExpectedDamage_WithCrit()
 {
     local ShotBreakdown kBreakdown;
     local float Result;
+	local DamageBreakdown NormalDamage;
+	local DamageBreakdown CritDamage;
 
     `BEGIN_TEST;
 
     kBreakdown.ResultTable[eHit_Success] = 50;
     kBreakdown.ResultTable[eHit_Crit] = 50;
 
-    Result = class'ExpectedDamageLib'.static.GetExpectedDamage(kBreakdown, 4, 6, 2);
+	NormalDamage.Min = 4;
+	NormalDamage.Max = 6;
+	CritDamage.Min = 1;
+	CritDamage.Max = 3;
+
+    Result = class'ExpectedDamageLib'.static.GetExpectedDamage(kBreakdown, NormalDamage, CritDamage);
 
     // AvgNormal = 5
     // AvgCrit = 7

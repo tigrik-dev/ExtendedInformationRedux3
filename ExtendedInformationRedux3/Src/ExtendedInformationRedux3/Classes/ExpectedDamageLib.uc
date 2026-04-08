@@ -19,17 +19,15 @@ class ExpectedDamageLib extends Object;
  * Calculates Expected Damage (numeric value)
  *
  * @param kBreakdown      Shot breakdown containing result probabilities
- * @param MinDamage       Minimum weapon damage
- * @param MaxDamage       Maximum weapon damage
- * @param CritBonus       Additional crit damage (flat bonus)
+ * @param NormalDamage    Breakdown containing minimum and maximum non-crit damage
+ * @param CritDamage	  Breakdown containing minimum and maximum crit damage
  *
  * @return float          Expected damage value
  */
 static function float GetExpectedDamage(
     ShotBreakdown kBreakdown,
-    int MinDamage,
-    int MaxDamage,
-    int CritBonus
+    DamageBreakdown NormalDamage,
+	DamageBreakdown CritDamage
 )
 {
     local int ED_CritChance, ED_HitChance, ED_GrazeChance, ED_MissChance;
@@ -37,7 +35,7 @@ static function float GetExpectedDamage(
     local float AvgNormal, AvgCrit, AvgGraze;
     local float ExpectedDamage;
 
-	`TRACE_ENTRY("MinDamage:" @ MinDamage $ ", MaxDamage:" @ MaxDamage $ ", CritBonus:" @ CritBonus);
+	`TRACE_ENTRY("NormalDamage:" @ class'DamagePreviewLib'.static.DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ class'DamagePreviewLib'.static.DamageBreakdownToString(CritDamage));
 
     ED_CritChance  = kBreakdown.ResultTable[eHit_Crit];
     ED_HitChance   = kBreakdown.ResultTable[eHit_Success];
@@ -48,9 +46,9 @@ static function float GetExpectedDamage(
     pHit   = float(ED_HitChance)   / 100.0;
     pGraze = float(ED_GrazeChance) / 100.0;
 
-    AvgNormal = (MinDamage + MaxDamage) / 2.0;
-    AvgCrit   = AvgNormal + CritBonus;
-    AvgGraze  = GetAvgGraze(MinDamage, MaxDamage);
+    AvgNormal = (NormalDamage.Min + NormalDamage.Max) / 2.0;
+    AvgCrit   = AvgNormal + ((CritDamage.Min + CritDamage.Max) / 2.0);
+    AvgGraze  = GetAvgGraze(NormalDamage.Min, NormalDamage.Max);
 
     ExpectedDamage =
           pHit  * AvgNormal
@@ -58,9 +56,10 @@ static function float GetExpectedDamage(
         + pGraze * AvgGraze;
 
     `DEBUG("======== Expected Damage ========");
-    `DEBUG("MinDamage:" @ MinDamage);
-    `DEBUG("MaxDamage:" @ MaxDamage);
-    `DEBUG("CritBonus:" @ CritBonus);
+    `DEBUG("NormalDamage.Min:" @ NormalDamage.Min);
+    `DEBUG("NormalDamage.Max:" @ NormalDamage.Max);
+    `DEBUG("CritDamage.Min:" @ CritDamage.Min);
+	`DEBUG("CritDamage.Max:" @ CritDamage.Max);
 
     `DEBUG("ED_HitChance:" @ ED_HitChance);
     `DEBUG("ED_CritChance:" @ ED_CritChance);
@@ -84,25 +83,23 @@ static function float GetExpectedDamage(
  * Returns formatted Expected Damage string, e.g. "4.6"
  *
  * @param kBreakdown      Shot breakdown containing result probabilities
- * @param MinDamage       Minimum weapon damage
- * @param MaxDamage       Maximum weapon damage
- * @param CritBonus       Additional crit damage (flat bonus)
+ * @param NormalDamage    Breakdown containing minimum and maximum non-crit damage
+ * @param CritDamage	  Breakdown containing minimum and maximum crit damage
  *
  * @return string         Formatted Expected Damage string
  */
 static function string GetExpectedDamageString(
     ShotBreakdown kBreakdown,
-    int MinDamage,
-    int MaxDamage,
-    int CritBonus
+    DamageBreakdown NormalDamage,
+	DamageBreakdown CritDamage
 )
 {
     local float ExpectedDamage;
 	local string ExpectedDamageString;
 
-	`TRACE_ENTRY("MinDamage:" @ MinDamage $ ", MaxDamage:" @ MaxDamage $ ", CritBonus:" @ CritBonus);
+	`TRACE_ENTRY("NormalDamage:" @ class'DamagePreviewLib'.static.DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ class'DamagePreviewLib'.static.DamageBreakdownToString(CritDamage));
 
-    ExpectedDamage = GetExpectedDamage(kBreakdown, MinDamage, MaxDamage, CritBonus);
+    ExpectedDamage = GetExpectedDamage(kBreakdown, NormalDamage, CritDamage);
 
 	ExpectedDamageString = class'UIUtilities'.static.FormatFloat(ExpectedDamage, 1);
 

@@ -19,6 +19,7 @@ var config int				CONFIG_VERSION;
 var config bool				TH_AIM_ASSIST;
 var config bool				TH_UNSAFE_AIM_ASSIST;
 var config bool				HIT_CHANCE_ENABLED;
+var config bool				EXPECTED_DAMAGE;
 var config bool				VERBOSE_TEXT;
 var config bool				DISPLAY_MISS_CHANCE;
 var config bool				SHOW_TEMPLAR_MSG;
@@ -126,6 +127,8 @@ var localized string			sToolTipAlpha_MCMText;
 var localized string			sGroupToolTips_MCMTtext;
 var localized string			sShowEnemyToolTip_MCMText;
 var localized string			sShowExtraWeaponStats_MCMText;
+var localized string			sExpectedDamage_MCMText;
+var localized string			sExpectedDamage_MCMTooltip;
 
 var MCM_API_Checkbox			ShowHitChance_MCMUI;
 var MCM_API_Checkbox			VerboseText_MCMUI;
@@ -143,6 +146,7 @@ var MCM_API_Checkbox			AssistBesideHit_MCMUI;
 var MCM_API_Checkbox			PreviewMinimum_MCMUI;
 var MCM_API_Checkbox			PreviewHacking_MCMUI;
 var MCM_API_Checkbox			AssistBar_MCMUI;
+var MCM_API_Checkbox			ExpectedDamage_MCMUI;
 
 var MCM_API_Slider			BarHeight_MCMUI;
 //var MCM_API_Slider			BarOffsetX_MCMUI;
@@ -198,6 +202,7 @@ event OnInit(UIScreen Screen)
 `MCM_API_BasicCheckboxSaveHandler(ShowTemplarMessagesHandler, SHOW_TEMPLAR_MSG)
 `MCM_API_BasicCheckboxSaveHandler(ShowAimAssistHandler, TH_AIM_ASSIST)
 `MCM_API_BasicCheckboxSaveHandler(ShowUnsafeAimAssistHandler, TH_UNSAFE_AIM_ASSIST)
+`MCM_API_BasicCheckboxSaveHandler(ExpectedDamageHandler, EXPECTED_DAMAGE)
 //`MCM_API_BasicSliderSaveHandler(FlyoverDurationHandler,		FLYOVER_DURATION)
 `MCM_API_BasicCheckboxSaveHandler(ShowGuaranteedHitHandler, SHOW_GUARANTEED_HIT)
 
@@ -263,6 +268,9 @@ simulated function CheckBoxChangeHandler(MCM_API_Setting _Setting, bool _Setting
 			break;
 		case 'ShowUnsafeAimAssist'	:
 			TH_UNSAFE_AIM_ASSIST = _SettingValue;
+			break;
+		case 'ExpectedDamage'		:
+			EXPECTED_DAMAGE = _SettingValue;
 			break;
 		default						: assert(false);
 	}
@@ -334,6 +342,7 @@ simulated function ClientModCallback(MCM_API_Instance ConfigAPI, int GameMode)
 	ShowUnsafeAimAssist_MCMUI		= Group0.AddCheckbox('ShowUnsafeAimAssist', sShowUnsafeAimAssist_MCMText, IsAimAssistUnsafe ? sShowUnsafeAimAssist_MCMTooltip : sShowUnsafeAimAssist_ifSafe_MCMTooltip, TH_UNSAFE_AIM_ASSIST, , CheckBoxChangeHandler);
 	
 	DisplayMissChance_MCMUI			= Group0.AddCheckbox('DisplayMissChance', sDisplayMissChance_MCMText, sDisplayMissChance_MCMText, DISPLAY_MISS_CHANCE, DisplayMissChanceHandler, );
+	ExpectedDamage_MCMUI			= Group0.AddCheckbox('ExpectedDamage', sExpectedDamage_MCMText, sExpectedDamage_MCMTooltip, EXPECTED_DAMAGE, , CheckBoxChangeHandler);
 	Group0.AddLabel('empty_line',"","");
 	
 	Group1 = Page.AddGroup('Group1', sGroupFlyoverSettings_MCMText);
@@ -411,6 +420,7 @@ simulated function LoadSavedSettings()
     HIT_CHANCE_ENABLED =		`MCM_CH_GetValue(class'MCM_Defaults'.default.HIT_CHANCE_ENABLED,HIT_CHANCE_ENABLED);
     TH_AIM_ASSIST =			`MCM_CH_GetValue(class'MCM_Defaults'.default.TH_AIM_ASSIST,TH_AIM_ASSIST);
 	TH_UNSAFE_AIM_ASSIST =	`MCM_CH_GetValue(class'MCM_Defaults'.default.TH_UNSAFE_AIM_ASSIST,TH_UNSAFE_AIM_ASSIST);
+	EXPECTED_DAMAGE =		`MCM_CH_GetValue(class'MCM_Defaults'.default.EXPECTED_DAMAGE,EXPECTED_DAMAGE);
 	VERBOSE_TEXT =			`MCM_CH_GetValue(class'MCM_Defaults'.default.VERBOSE_TEXT,VERBOSE_TEXT);
 	DISPLAY_MISS_CHANCE =	`MCM_CH_GetValue(class'MCM_Defaults'.default.DISPLAY_MISS_CHANCE,DISPLAY_MISS_CHANCE);
 	SHOW_TEMPLAR_MSG =		`MCM_CH_GetValue(class'MCM_Defaults'.default.SHOW_TEMPLAR_MSG,SHOW_TEMPLAR_MSG);
@@ -489,6 +499,7 @@ simulated function ResetButtonClicked(MCM_API_SettingsPage Page)
 	AssistHexColor_MCMUI.SetValue(	getStringColorFromHex(class'MCM_Defaults'.default.ASSIST_HEX_COLOR), false);
 	ShowAimAssist_MCMUI.SetValue(	class'MCM_Defaults'.default.TH_AIM_ASSIST, false);
 	ShowUnsafeAimAssist_MCMUI.SetValue(	class'MCM_Defaults'.default.TH_UNSAFE_AIM_ASSIST, false);
+	ExpectedDamage_MCMUI.SetValue(	class'MCM_Defaults'.default.EXPECTED_DAMAGE, false);
 	ToolTipAlpha_MCMUI.SetValue(	class'MCM_Defaults'.default.TOOLTIP_ALPHA, false);
 	ShowEnemyToolTip_MCMUI.SetValue(	class'MCM_Defaults'.default.ES_TOOLTIP, false);
 	ShowExtraWeaponStats_MCMUI.SetValue(	class'MCM_Defaults'.default.SHOW_EXTRA_WEAPONSTATS, false);

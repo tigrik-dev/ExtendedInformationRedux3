@@ -259,7 +259,7 @@ simulated function FindClosestRes(out int ResX, out int ResY)
 simulated function Update() 
 {
     local bool isValidShot, IsSkPostMelee;
-    local string ShotName, ShotDescription, ShotDamage;
+    local string ShotName, ShotDescription;
     local int HitChance, skHitChance, CritChance, GrazeChance, TargetIndex, AimBonus, skAimBonus, BarOffsetY, DodgeOffsetY, CritOffsetY;
     local ShotBreakdown kBreakdown;
     local StateObjectReference Target, EmptyRef;
@@ -373,28 +373,7 @@ simulated function Update()
 			class'DamagePreviewLib'.static.GetDamagePreview(skAbilityState, EmptyRef, NormalDamage, CritDamage);
 		}
 		else class'DamagePreviewLib'.static.GetDamagePreview(skAbilityState, Target, NormalDamage, CritDamage);
-       
-        if (NormalDamage.Min > 0 || NormalDamage.Max > 0)
-		{
-			ShotDamage=`RANGESTRING(NormalDamage.Min, NormalDamage.Max);
-			// [TODO] Tigrik: ExpectedDamage
-			/*ShotDamage $= " (" $ class'ExpectedDamageLib'.static.GetExpectedDamageString(
-				kBreakdown,
-				MinDamage,
-				MaxDamage,
-				GrimyCritDmg
-			) $ ")";*/
 
-            if(NormalDamage.Bonus>0)
-			{
-				AddDamage(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, eUIState_Warning2, 38), true);
-			}
-			else
-			{
-				AddDamage(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, eUIState_Good, 36), true);
-			}
-        }
- 
         //Set up percent to hit / crit values
         //*********************************************************************************
        
@@ -414,6 +393,10 @@ simulated function Update()
 				skHitChance=HitChance;
 				skAimBonus=AimBonus;
 			}
+
+			// Tigrik: Print e.g. "Damage: 3-5"
+			PrintShotDamage(kBreakdown, NormalDamage, CritDamage);
+
 			CritChance = kBreakdown.ResultTable[eHit_Crit];
 			GrazeChance= kBreakdown.ResultTable[eHit_Graze];
            /*****************************************************/
@@ -613,7 +596,13 @@ simulated function Update()
 			}
 			else for (i=0; i<arraycount(BarBoxes); i++) BarBoxes[i].Hide();
 		}
-		else HideAll();
+		else
+		{
+			// Tigrik: Print e.g. "Damage: 3-5"
+			PrintShotDamage(kBreakdown, NormalDamage, CritDamage);
+
+			HideAll();
+		}
         TacticalHUD.m_kShotInfoWings.Show();
  
         //Show preview points, must be negative
@@ -767,6 +756,56 @@ function string UpdateHackDescription( XComGameState_Ability AbilityState, State
 	return ShotDescription;
 }
 
+/**
+ * Formats and displays shot damage information in the UI.
+ *
+ * Responsibilities:
+ * - Convert NormalDamage range into a formatted string
+ * - Optionally append Expected Damage value
+ * - Apply color formatting based on whether bonus damage is present
+ * - Push the final formatted string into the UI via AddDamage()
+ *
+ * Behavior:
+ * - If NormalDamage is greater than zero:
+ *     - Displays damage range (e.g., "3-5")
+ *     - Optionally appends Expected Damage in parentheses (e.g., "3-5 (4.2)")
+ *
+ * @param kBreakdown     Shot breakdown containing hit/crit/graze probabilities
+ * @param NormalDamage   Base damage breakdown (min/max + modifiers)
+ * @param CritDamage     Critical damage breakdown (used for Expected Damage calculation)
+ */
+function PrintShotDamage(ShotBreakdown kBreakdown, DamageBreakdown NormalDamage, DamageBreakdown CritDamage)
+{
+	local string ShotDamage;
+
+	`TRACE_ENTRY("NormalDamage:" @ class'DamagePreviewLib'.static.DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ class'DamagePreviewLib'.static.DamageBreakdownToString(CritDamage));
+
+	if (NormalDamage.Min > 0 || NormalDamage.Max > 0)
+	{
+		ShotDamage=`RANGESTRING(NormalDamage.Min, NormalDamage.Max);
+
+		// Tigrik: ExpectedDamage
+		if (getEXPECTED_DAMAGE())
+		{
+			ShotDamage $= " (" $ class'ExpectedDamageLib'.static.GetExpectedDamageString(
+				kBreakdown,
+				NormalDamage,
+				CritDamage
+			) $ ")";
+		}
+
+        if(NormalDamage.Bonus>0)
+		{
+			AddDamage(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, eUIState_Warning2, 38), true);
+		}
+		else
+		{
+			AddDamage(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, eUIState_Good, 36), true);
+		}
+    }
+	`TRACE_EXIT("");
+}
+
 function bool GetDISPLAY_MISS_CHANCE()
 {
 	return `MCM_CH_GetValue(class'MCM_Defaults'.default.DISPLAY_MISS_CHANCE, class'ExtendedInformationRedux3_MCMScreen'.default.DISPLAY_MISS_CHANCE);
@@ -875,6 +914,11 @@ function bool getTH_ASSIST_BESIDE_HIT()
 function bool getTH_ASSIST_BAR()
 {
 	return `MCM_CH_GetValue(class'MCM_Defaults'.default.TH_ASSIST_BAR, class'ExtendedInformationRedux3_MCMScreen'.default.TH_ASSIST_BAR);
+}
+
+function bool getEXPECTED_DAMAGE()
+{
+	return `MCM_CH_GetValue(class'MCM_Defaults'.default.EXPECTED_DAMAGE, class'ExtendedInformationRedux3_MCMScreen'.default.EXPECTED_DAMAGE);
 }
 
 

@@ -11,6 +11,7 @@ var config int		Version;
 var config bool		TH_AIM_ASSIST;
 var config bool		TH_UNSAFE_AIM_ASSIST;
 var config bool		HIT_CHANCE_ENABLED;
+var config bool		EXPECTED_DAMAGE;
 var config bool		VERBOSE_TEXT;
 var config bool		DISPLAY_MISS_CHANCE;
 var config bool		SHOW_TEMPLAR_MSG;
