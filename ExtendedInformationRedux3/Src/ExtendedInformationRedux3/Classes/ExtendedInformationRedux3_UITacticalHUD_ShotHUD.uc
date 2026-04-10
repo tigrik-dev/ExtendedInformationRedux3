@@ -278,14 +278,14 @@ simulated function Update()
 	local string FontString;
    	local int offsetX, Current, i, j, CounterGraze, CounterCrit, CounterHit, CounterBonus;
 	local float Chance[4];
-	local string sExpectedDamage;
+	local float fExpectedDamage;
 
 	`TRACE_ENTRY("");
     TacticalHUD = UITacticalHUD(Screen);
 	History=`XCOMHISTORY;
  
     SelectedUIAction = TacticalHUD.GetSelectedAction();
-	sExpectedDamage = "";
+	fExpectedDamage = 0.0;
 	if (SelectedUIAction.AbilityObjectRef.ObjectID > 0)
 	{ //If we do not have a valid action selected, ignore this update request
 		SelectedAbilityState = XComGameState_Ability(History.GetGameStateForObjectID(SelectedUIAction.AbilityObjectRef.ObjectID));
@@ -394,10 +394,10 @@ simulated function Update()
 			// Calculate and save Expected Damage if it needs to be displayed by either method
 			if (getEXPECTED_DAMAGE() || ExpectedDamageSlotIndices.Length > 0)
 			{
-				sExpectedDamage = class'ExpectedDamageLib'.static.GetExpectedDamageString(kBreakdown, NormalDamage, CritDamage);
+				fExpectedDamage = class'ExpectedDamageLib'.static.GetExpectedDamage(kBreakdown, NormalDamage, CritDamage);
 			}
 			// Tigrik: Print e.g. "Damage: 3-5"
-			PrintShotDamage(kBreakdown, NormalDamage, CritDamage, sExpectedDamage);
+			PrintShotDamage(kBreakdown, NormalDamage, CritDamage, fExpectedDamage);
 
 
 			CritChance = kBreakdown.ResultTable[eHit_Crit];
@@ -615,28 +615,38 @@ simulated function Update()
 			// Calculate and save Expected Damage if it needs to be displayed by either method
 			if (getEXPECTED_DAMAGE() || ExpectedDamageSlotIndices.Length > 0)
 			{
-				sExpectedDamage = class'ExpectedDamageLib'.static.GetExpectedDamageString(kBreakdown, NormalDamage, CritDamage);
+				fExpectedDamage = class'ExpectedDamageLib'.static.GetExpectedDamage(kBreakdown, NormalDamage, CritDamage);
 			}
 			// Tigrik: Print e.g. "Damage: 3-5"
-			PrintShotDamage(kBreakdown, NormalDamage, CritDamage, sExpectedDamage);
+			PrintShotDamage(kBreakdown, NormalDamage, CritDamage, fExpectedDamage);
 
 			HideAll();
 		}
 
 		// Print Expected Damage in any ShotHUD layout slots "Left 1", "Left 2", "Right 1" or "Right 2" selected by MCM options
-		foreach ExpectedDamageSlotIndices(j)
+		if (!bHide && (fExpectedDamage > 0.0))
 		{
-			FontString = sExpectedDamage;
-			FontString = class'UIUtilities_Text'.static.GetColoredText(FontString, eUIState_Normal, , SlotOffsets[j].bAlignRight ? "right" : "left");
-			FontString = class'UIUtilities_Text'.static.AddFontInfo(FontString,false,true, , ValueFontSize);
-			SlotValues[j].SetPosition(SlotOffsets[j].OffsetX-TEXTWIDTH*int(SlotOffsets[j].bAlignRight),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) - 0.8);
-			SlotValues[j].SetText(FontString);
-			SlotValues[j].Show();
-			FontString = EXPECTED_DAMAGE_LABEL;
-			FontString = class'UIUtilities_Text'.static.GetColoredText(FontString,eUIState_Header,LabelFontSize ,SlotOffsets[j].bAlignRight ? "right" : "left");
-			SlotLabels[j].SetPosition(SlotOffsets[j].OffsetX-TEXTWIDTH*int(SlotOffsets[j].bAlignRight),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) + LabelsOffset);
-			SlotLabels[j].SetText(FontString);
-			SlotLabels[j].Show();
+			foreach ExpectedDamageSlotIndices(j)
+			{
+				FontString = class'ExpectedDamageLib'.static.FormatExpectedDamageString(fExpectedDamage);
+				FontString = class'UIUtilities_Text'.static.GetColoredText(FontString, eUIState_Normal, , SlotOffsets[j].bAlignRight ? "right" : "left");
+				FontString = class'UIUtilities_Text'.static.AddFontInfo(FontString,false,true, , ValueFontSize);
+				SlotValues[j].SetPosition(SlotOffsets[j].OffsetX-TEXTWIDTH*int(SlotOffsets[j].bAlignRight),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) - 0.8);
+				SlotValues[j].SetText(FontString);
+				SlotValues[j].Show();
+				FontString = EXPECTED_DAMAGE_LABEL;
+				FontString = class'UIUtilities_Text'.static.GetColoredText(FontString,eUIState_Header,LabelFontSize ,SlotOffsets[j].bAlignRight ? "right" : "left");
+				SlotLabels[j].SetPosition(SlotOffsets[j].OffsetX-TEXTWIDTH*int(SlotOffsets[j].bAlignRight),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) + LabelsOffset);
+				SlotLabels[j].SetText(FontString);
+				SlotLabels[j].Show();
+			}
+		} else
+		{
+			foreach ExpectedDamageSlotIndices(j)
+			{
+				SlotValues[j].Hide();
+				SlotLabels[j].Hide();
+			}
 		}
 
         TacticalHUD.m_kShotInfoWings.Show();
@@ -811,9 +821,9 @@ function string UpdateHackDescription( XComGameState_Ability AbilityState, State
  * @param kBreakdown		Shot breakdown containing hit/crit/graze probabilities
  * @param NormalDamage		Base damage breakdown (min/max + modifiers)
  * @param CritDamage		Critical damage breakdown (used for Expected Damage calculation)
- * @param sExpectedDamage	If it needs to be shown, contains a formatted expected damage to 1 decimal place
+ * @param fExpectedDamage	Expected damage, unformatted
  */
-function PrintShotDamage(ShotBreakdown kBreakdown, DamageBreakdown NormalDamage, DamageBreakdown CritDamage, string sExpectedDamage)
+function PrintShotDamage(ShotBreakdown kBreakdown, DamageBreakdown NormalDamage, DamageBreakdown CritDamage, float fExpectedDamage)
 {
 	local string ShotDamage;
 
@@ -826,7 +836,7 @@ function PrintShotDamage(ShotBreakdown kBreakdown, DamageBreakdown NormalDamage,
 		// Tigrik: Append Expected Damage if MCM option 'Show Expected Damage' is enabled
 		if (getEXPECTED_DAMAGE())
 		{
-			ShotDamage $= " (" $ sExpectedDamage $ ")";
+			ShotDamage $= " (" $ class'ExpectedDamageLib'.static.FormatExpectedDamageString(fExpectedDamage) $ ")";
 		}
 
         if(NormalDamage.Bonus>0)
