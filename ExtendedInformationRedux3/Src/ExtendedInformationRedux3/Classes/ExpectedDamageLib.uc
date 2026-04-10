@@ -101,10 +101,15 @@ static function string GetExpectedDamageString(
 
     ExpectedDamage = GetExpectedDamage(kBreakdown, NormalDamage, CritDamage);
 
-	ExpectedDamageString = class'UIUtilities'.static.FormatFloat(ExpectedDamage, 1);
+	ExpectedDamageString = FormatExpectedDamageString(ExpectedDamage);
 
 	`TRACE_EXIT("ExpectedDamageString:" @ ExpectedDamageString);
     return ExpectedDamageString;
+}
+
+static function string FormatExpectedDamageString(float ExpectedDamage)
+{
+	return class'UIUtilities'.static.FormatFloat(ExpectedDamage, 1);
 }
 
 /**

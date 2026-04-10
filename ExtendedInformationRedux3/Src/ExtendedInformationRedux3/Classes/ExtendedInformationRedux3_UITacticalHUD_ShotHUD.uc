@@ -58,7 +58,7 @@ var bool TH_PREVIEW_MINIMUM;
 
 var array<int> SHOTHUD_LAYOUT;
 
-var localized string CRIT_DAMAGE_LABEL, GRAZE_CHANCE_LABEL, MISS_CHANCE_LABEL;
+var localized string CRIT_DAMAGE_LABEL, GRAZE_CHANCE_LABEL, MISS_CHANCE_LABEL, EXPECTED_DAMAGE_LABEL;
 
 struct ShotHUDSlotOffset
 {
@@ -278,12 +278,14 @@ simulated function Update()
 	local string FontString;
    	local int offsetX, Current, i, j, CounterGraze, CounterCrit, CounterHit, CounterBonus;
 	local float Chance[4];
+	local string sExpectedDamage;
 
 	`TRACE_ENTRY("");
     TacticalHUD = UITacticalHUD(Screen);
 	History=`XCOMHISTORY;
  
     SelectedUIAction = TacticalHUD.GetSelectedAction();
+	sExpectedDamage = "";
 	if (SelectedUIAction.AbilityObjectRef.ObjectID > 0)
 	{ //If we do not have a valid action selected, ignore this update request
 		SelectedAbilityState = XComGameState_Ability(History.GetGameStateForObjectID(SelectedUIAction.AbilityObjectRef.ObjectID));
@@ -372,7 +374,6 @@ simulated function Update()
 
         //Set up percent to hit / crit values
         //*********************************************************************************
-       
         if (SelectedAbilityTemplate.AbilityToHitCalc != none && SelectedAbilityState.iCooldown == 0)
 		{
 			//Mr. Nice: these three lines from Firaxis original)
@@ -390,8 +391,14 @@ simulated function Update()
 				skAimBonus=AimBonus;
 			}
 
+			// Calculate and save Expected Damage if it needs to be displayed by either method
+			if (getEXPECTED_DAMAGE() || ExpectedDamageSlotIndices.Length > 0)
+			{
+				sExpectedDamage = class'ExpectedDamageLib'.static.GetExpectedDamageString(kBreakdown, NormalDamage, CritDamage);
+			}
 			// Tigrik: Print e.g. "Damage: 3-5"
-			PrintShotDamage(kBreakdown, NormalDamage, CritDamage);
+			PrintShotDamage(kBreakdown, NormalDamage, CritDamage, sExpectedDamage);
+
 
 			CritChance = kBreakdown.ResultTable[eHit_Crit];
 			GrazeChance= kBreakdown.ResultTable[eHit_Graze];
@@ -605,11 +612,33 @@ simulated function Update()
 		}
 		else
 		{
+			// Calculate and save Expected Damage if it needs to be displayed by either method
+			if (getEXPECTED_DAMAGE() || ExpectedDamageSlotIndices.Length > 0)
+			{
+				sExpectedDamage = class'ExpectedDamageLib'.static.GetExpectedDamageString(kBreakdown, NormalDamage, CritDamage);
+			}
 			// Tigrik: Print e.g. "Damage: 3-5"
-			PrintShotDamage(kBreakdown, NormalDamage, CritDamage);
+			PrintShotDamage(kBreakdown, NormalDamage, CritDamage, sExpectedDamage);
 
 			HideAll();
 		}
+
+		// Print Expected Damage in any ShotHUD layout slots "Left 1", "Left 2", "Right 1" or "Right 2" selected by MCM options
+		foreach ExpectedDamageSlotIndices(j)
+		{
+			FontString = sExpectedDamage;
+			FontString = class'UIUtilities_Text'.static.GetColoredText(FontString, eUIState_Normal, , SlotOffsets[j].bAlignRight ? "right" : "left");
+			FontString = class'UIUtilities_Text'.static.AddFontInfo(FontString,false,true, , ValueFontSize);
+			SlotValues[j].SetPosition(SlotOffsets[j].OffsetX-TEXTWIDTH*int(SlotOffsets[j].bAlignRight),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) - 0.8);
+			SlotValues[j].SetText(FontString);
+			SlotValues[j].Show();
+			FontString = EXPECTED_DAMAGE_LABEL;
+			FontString = class'UIUtilities_Text'.static.GetColoredText(FontString,eUIState_Header,LabelFontSize ,SlotOffsets[j].bAlignRight ? "right" : "left");
+			SlotLabels[j].SetPosition(SlotOffsets[j].OffsetX-TEXTWIDTH*int(SlotOffsets[j].bAlignRight),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) + LabelsOffset);
+			SlotLabels[j].SetText(FontString);
+			SlotLabels[j].Show();
+		}
+
         TacticalHUD.m_kShotInfoWings.Show();
  
         //Show preview points, must be negative
@@ -779,11 +808,12 @@ function string UpdateHackDescription( XComGameState_Ability AbilityState, State
  *     - Displays damage range (e.g., "3-5")
  *     - Optionally appends Expected Damage in parentheses (e.g., "3-5 (4.2)")
  *
- * @param kBreakdown     Shot breakdown containing hit/crit/graze probabilities
- * @param NormalDamage   Base damage breakdown (min/max + modifiers)
- * @param CritDamage     Critical damage breakdown (used for Expected Damage calculation)
+ * @param kBreakdown		Shot breakdown containing hit/crit/graze probabilities
+ * @param NormalDamage		Base damage breakdown (min/max + modifiers)
+ * @param CritDamage		Critical damage breakdown (used for Expected Damage calculation)
+ * @param sExpectedDamage	If it needs to be shown, contains a formatted expected damage to 1 decimal place
  */
-function PrintShotDamage(ShotBreakdown kBreakdown, DamageBreakdown NormalDamage, DamageBreakdown CritDamage)
+function PrintShotDamage(ShotBreakdown kBreakdown, DamageBreakdown NormalDamage, DamageBreakdown CritDamage, string sExpectedDamage)
 {
 	local string ShotDamage;
 
@@ -793,26 +823,35 @@ function PrintShotDamage(ShotBreakdown kBreakdown, DamageBreakdown NormalDamage,
 	{
 		ShotDamage=`RANGESTRING(NormalDamage.Min, NormalDamage.Max);
 
-		// Tigrik: ExpectedDamage
+		// Tigrik: Append Expected Damage if MCM option 'Show Expected Damage' is enabled
 		if (getEXPECTED_DAMAGE())
 		{
-			ShotDamage $= " (" $ class'ExpectedDamageLib'.static.GetExpectedDamageString(
-				kBreakdown,
-				NormalDamage,
-				CritDamage
-			) $ ")";
+			ShotDamage $= " (" $ sExpectedDamage $ ")";
 		}
 
         if(NormalDamage.Bonus>0)
 		{
-			AddDamage(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, eUIState_Warning2, 38), true);
+			AddDamage(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, GetDamageColor(NormalDamage), 38), true);
 		}
 		else
 		{
-			AddDamage(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, eUIState_Good, 36), true);
+			AddDamage(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, GetDamageColor(NormalDamage), 36), true);
 		}
     }
 	`TRACE_EXIT("");
+}
+
+/**
+ * Determines which color to use for the damage.
+ * 
+ * Behavior:
+ * - Returns eUIState_Warning2 is NormalDamage has any bonus damage
+ * - Returns eUIState_Good otherwise
+ * @param NormalDamage	Base damage breakdown (min/max + modifiers)
+ */
+function EUIState GetDamageColor(DamageBreakdown NormalDamage)
+{
+	return (NormalDamage.Bonus > 0) ? eUIState_Warning2 : eUIState_Good;
 }
 
 /**
