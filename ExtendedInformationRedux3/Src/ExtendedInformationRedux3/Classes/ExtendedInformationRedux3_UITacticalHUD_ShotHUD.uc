@@ -23,9 +23,15 @@ class ExtendedInformationRedux3_UITacticalHUD_ShotHUD extends UITacticalHUD_Shot
 `define RANGESTRING(MIN, MAX)  ( `MIN == `MAX ? string(`MIN) : string(`MIN) $ "-" $ string(`MAX) )
 
 var UIBGBox BarBoxes[5];
-var UIText GrazeValue, GrazeLabel, CritDamValue, CritDamLabel;
+var UIText SlotValues[4];
+var UIText SlotLabels[4];
+
+// In which ShotHUD slots should "Critical Damage" be printed. "Left 1" = 0, "Left 2" = 1, "Right 1" = 2, "Right 2" = 3
+var array<int> CritDamageSlotIndices;
+var array<int> GrazeChanceSlotIndices;
+var array<int> ExpectedDamageSlotIndices;
+
 var int BAR_HEIGHT, BAR_OFFSET_X, BAR_OFFSET_Y, BAR_POSITION_Y, BAR_WIDTH_MULT, GENERAL_OFFSET_Y;
-var int DODGE_OFFSET_X, DODGE_OFFSET_Y, CRIT_OFFSET_X, CRIT_OFFSET_Y;
 var int MAX_ABILITIES_PER_ROW;
 var int LabelFontSize, ValueFontSize, TEXTWIDTH;
 var int BAR_ALPHA;
@@ -50,16 +56,15 @@ var bool TH_AIM_LEFT_OF_CRIT;
 var bool TH_ASSIST_BESIDE_HIT;
 var bool TH_PREVIEW_MINIMUM;
 
+var array<int> SHOTHUD_LAYOUT;
+
 var localized string CRIT_DAMAGE_LABEL, GRAZE_CHANCE_LABEL, MISS_CHANCE_LABEL;
 
-struct OffsetProperties
+struct ShotHUDSlotOffset
 {
-	var int GrazeOffsetX;
-	var int GrazeOffsetY;
-	var int CritDOffsetX;
-	var int CritDOffsetY;
-	var string GrazeTextAlign;
-	var string CritDTextAlign;
+	var int OffsetX;
+	var int OffsetY;
+	var bool bAlignRight;
 };
 
 struct ResOffsetSt
@@ -70,7 +75,7 @@ struct ResOffsetSt
 	var int ResY;
 };
 
-var config array<OffsetProperties> Offsets;
+var config array<ShotHUDSlotOffset> SlotOffsets;
 var config array<ResOffsetSt> ResOffset;
 
 /**
@@ -92,12 +97,11 @@ simulated function UITacticalHUD_ShotHUD InitShotHUD()
  */
 simulated function InitLayout()
 {
-	local int Index;
+	local int Index, i;
 	local int ResX, ResY;
 	local int RenderWidth, RenderHeight, FullWidth, FullHeight, AlreadyAdjustedVerticalSafeZone;
 	local float RenderAspectRatio, FullAspectRatio;
 	local string searchString, searchString2;
-	local XComOnlineEventMgr EventManager;
 
 	`TRACE_ENTRY("");
 	LabelsOffset = 0;
@@ -150,20 +154,7 @@ simulated function InitLayout()
 	BarColours[2] = getDODGE_HEX_COLOR();
 	BarColours[3] = getASSIST_HEX_COLOR();
 	BarColours[4] = getMISS_HEX_COLOR();
-	GRAZE_CRIT_LAYOUT = getGRAZE_CRIT_LAYOUT();
-	//Mr. Nice Check for auto layout
-	if (GRAZE_CRIT_LAYOUT==0)
-	{
-		EventManager = `ONLINEEVENTMGR;
-		for(Index = EventManager.GetNumDLC() - 1; Index >= 0; Index--)
-		{
-			if(EventManager.GetDLCNames(Index)=='WOTCLifetimeStats') break;
-		}
-		if (Index==-1)
-		//if (XComGameState_CampaignSettings(class'XComGameStateHistory'.static.GetGameStateHistory().GetSingleGameStateObjectForClass(class'XComGameState_CampaignSettings', true)).RequiredDLC.Find('WOTCLifetimeStats')==INDEX_NONE)
-			GRAZE_CRIT_LAYOUT=2;
-		else GRAZE_CRIT_LAYOUT=3;
-	}
+	SHOTHUD_LAYOUT = getSHOTHUD_LAYOUT();
 		
 	TH_ASSIST_BAR = getTH_ASSIST_BAR();
 	TH_SHOW_GRAZED = getTH_SHOW_GRAZED();
@@ -173,34 +164,39 @@ simulated function InitLayout()
 	TH_PREVIEW_MINIMUM = getTH_PREVIEW_MINIMUM();
 	DISPLAY_MISS_CHANCE = getDISPLAY_MISS_CHANCE();
 
-	DODGE_OFFSET_X = Offsets[GRAZE_CRIT_LAYOUT].GrazeOffsetX;
-	DODGE_OFFSET_Y = Offsets[GRAZE_CRIT_LAYOUT].GrazeOffsetY;
-	CRIT_OFFSET_X = Offsets[GRAZE_CRIT_LAYOUT].CritDOffsetX;
-	CRIT_OFFSET_Y = Offsets[GRAZE_CRIT_LAYOUT].CritDOffsetY;
-	
-	GrazeValue = Spawn(class'UIText', self);
-	GrazeValue.InitText();
-	GrazeValue.AnchorBottomCenter();
-	GrazeValue.SetWidth(TEXTWIDTH);
-	GrazeValue.Hide();
+	for (i = 0; i < 4; i++)
+	{
+		SlotValues[i] = CreateShotHUDText(self);
+		SlotLabels[i] = CreateShotHUDText(self);
+	}
 
-	GrazeLabel = Spawn(class'UIText', self);
-	GrazeLabel.InitText();
-	GrazeLabel.AnchorBottomCenter();
-	GrazeLabel.SetWidth(TEXTWIDTH);
-	GrazeLabel.Hide();
+	// Clear the arrays prior to populating them
+	GrazeChanceSlotIndices.Length = 0;
+	CritDamageSlotIndices.Length = 0;
+	ExpectedDamageSlotIndices.Length = 0;
 
-	CritDamValue = Spawn(class'UIText', self);
-	CritDamValue.InitText();
-	CritDamValue.AnchorBottomCenter();
-	CritDamValue.SetWidth(TEXTWIDTH);
-	CritDamValue.Hide();
-
-	CritDamLabel = Spawn(class'UIText', self);
-	CritDamLabel.InitText();
-	CritDamLabel.AnchorBottomCenter();
-	CritDamLabel.SetWidth(TEXTWIDTH);
-	CritDamLabel.Hide();
+	// Determine in which Shot HUD slots to print "Graze Chance", "Critical Damage" and "Expected Damage"
+	// Same stat could be selected multiple times, so an array is needed
+	for (i = 0; i < SHOTHUD_LAYOUT.Length; i++)
+	{
+		// Tigrik: 0 = "None", 1 = "Graze Chance", 2 = "Critical Damage", 3 = "Expected Damage"
+		switch (SHOTHUD_LAYOUT[i])
+		{
+			case 0:
+				break;
+			case 1:
+				GrazeChanceSlotIndices.AddItem(i);
+				break;
+			case 2:
+				CritDamageSlotIndices.AddItem(i);
+				break;
+			case 3:
+				ExpectedDamageSlotIndices.AddItem(i);
+				break;
+			default	: 
+				break;
+		}
+	}
 	
 	for(Index=0; Index<ArrayCount(BarBoxes); Index++)
 	{
@@ -260,7 +256,7 @@ simulated function Update()
 {
     local bool isValidShot, IsSkPostMelee;
     local string ShotName, ShotDescription;
-    local int HitChance, skHitChance, CritChance, GrazeChance, TargetIndex, AimBonus, skAimBonus, BarOffsetY, DodgeOffsetY, CritOffsetY;
+    local int HitChance, skHitChance, CritChance, GrazeChance, TargetIndex, AimBonus, skAimBonus, BarOffsetY;
     local ShotBreakdown kBreakdown;
     local StateObjectReference Target, EmptyRef;
     local XComGameState_Ability SelectedAbilityState, skAbilityState;
@@ -280,7 +276,7 @@ simulated function Update()
 	local XComGameStateHistory History;
 	// New from Grimy Shot Bar
 	local string FontString;
-   	local int offsetX, Current, i, CounterGraze, CounterCrit, CounterHit, CounterBonus;
+   	local int offsetX, Current, i, j, CounterGraze, CounterCrit, CounterHit, CounterBonus;
 	local float Chance[4];
 
 	`TRACE_ENTRY("");
@@ -404,13 +400,9 @@ simulated function Update()
  			
 			// If User selected to display the Modified Hit Chance
 			BarOffsetY=BAR_OFFSET_Y;
-			DodgeOffsetY=DODGE_OFFSET_Y;
-			CritOffsetY=CRIT_OFFSET_Y;
 			if (TacticalHUD.m_kAbilityHUD.ActiveAbilities > MAX_ABILITIES_PER_ROW)
 			{
 				BarOffsetY += GENERAL_OFFSET_Y;
-				DodgeOffsetY += GENERAL_OFFSET_Y;
-				CritOffsetY += GENERAL_OFFSET_Y;
 			}
 
 			bHide = HitChance < 0 || kBreakdown.HideShotBreakdown;
@@ -447,23 +439,29 @@ simulated function Update()
 			{
 				if(TH_SHOW_CRIT_DMG)
 				{
-					FontString = "+" $ `RANGESTRING(CritDamage.Min, CritDamage.Max);
-					FontString = class'UIUtilities_Text'.static.GetColoredText(FontString, CRIT_STATE_COLOUR, , Offsets[GRAZE_CRIT_LAYOUT].CritDTextAlign);
-					FontString = class'UIUtilities_Text'.static.AddFontInfo(FontString,false,true, , ValueFontSize);
-					CritDamValue.SetPosition(CRIT_OFFSET_X-TEXTWIDTH*int(Offsets[GRAZE_CRIT_LAYOUT].CritDTextAlign=="right"),CritOffsetY - 0.8);
-					CritDamValue.SetText(FontString);
-					CritDamValue.Show();
+					foreach CritDamageSlotIndices(j)
+					{
+						FontString = "+" $ `RANGESTRING(CritDamage.Min, CritDamage.Max);
+						FontString = class'UIUtilities_Text'.static.GetColoredText(FontString, CRIT_STATE_COLOUR, , SlotOffsets[j].bAlignRight ? "right" : "left");
+						FontString = class'UIUtilities_Text'.static.AddFontInfo(FontString,false,true, , ValueFontSize);
+						SlotValues[j].SetPosition(SlotOffsets[j].OffsetX-TEXTWIDTH*int(SlotOffsets[j].bAlignRight),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) - 0.8);
+						SlotValues[j].SetText(FontString);
+						SlotValues[j].Show();
 				
-					FontString = CRIT_DAMAGE_LABEL;
-					FontString = class'UIUtilities_Text'.static.GetColoredText(FontString,eUIState_Header, LabelFontSize, Offsets[GRAZE_CRIT_LAYOUT].CritDTextAlign);
-					CritDamLabel.SetPosition(CRIT_OFFSET_X-TEXTWIDTH*int(Offsets[GRAZE_CRIT_LAYOUT].CritDTextAlign=="right"),CritOffsetY + LabelsOffset);
-					CritDamLabel.SetText(FontString);
-					CritDamLabel.Show();
+						FontString = CRIT_DAMAGE_LABEL;
+						FontString = class'UIUtilities_Text'.static.GetColoredText(FontString,eUIState_Header, LabelFontSize, SlotOffsets[j].bAlignRight ? "right" : "left");
+						SlotLabels[j].SetPosition(SlotOffsets[j].OffsetX-TEXTWIDTH*int(SlotOffsets[j].bAlignRight),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) + LabelsOffset);
+						SlotLabels[j].SetText(FontString);
+						SlotLabels[j].Show();
+					}
 				}
 				else
 				{
-					CritDamValue.Hide();
-					CritDamLabel.Hide();
+					foreach CritDamageSlotIndices(j)
+					{
+						SlotValues[j].Hide();
+						SlotLabels[j].Hide();
+					}
 				}
 				if (!bHide || CritChance!=0)
 					AS_SetCriticalChance(class'UIUtilities_Text'.static.GetColoredText(m_sCritChanceLabel, eUIState_Header), CritChance);
@@ -473,8 +471,11 @@ simulated function Update()
 			else
 			{
 				AS_SetCriticalChance("", -1);
-				CritDamValue.Hide();
-				CritDamLabel.Hide();
+				foreach CritDamageSlotIndices(j)
+				{
+					SlotValues[j].Hide();
+					SlotLabels[j].Hide();
+				}
 			}
 			
 			//************Counter Attack Stuff**************************
@@ -506,23 +507,29 @@ simulated function Update()
 
 			if (TH_SHOW_GRAZED && (!bHide || GRAZE_SHOW_NonTRIVIAL) && GrazeChance > 0)
 			{
-				FontString = GrazeChance $ "%";
-				FontString = class'UIUtilities_Text'.static.GetColoredText(FontString, GRAZE_STATE_COLOUR, , Offsets[GRAZE_CRIT_LAYOUT].GrazeTextAlign);
-				FontString = class'UIUtilities_Text'.static.AddFontInfo(FontString,false,true, , ValueFontSize);
-				GrazeValue.SetPosition(DODGE_OFFSET_X -TEXTWIDTH*int(Offsets[GRAZE_CRIT_LAYOUT].GrazeTextAlign=="right"),DodgeOffsetY - 0.8);
-				GrazeValue.SetText(FontString);
-				GrazeValue.Show();
-				FontString = Caps(bCounter ? `LOCFALLBACK(ShortCounterAttack, class'X2TacticalGameRulesetDataStructures'.default.m_aAbilityHitResultStrings[eHit_CounterAttack])
-					: class'X2TacticalGameRulesetDataStructures'.default.m_aAbilityHitResultStrings[eHit_Graze]);
-				FontString = class'UIUtilities_Text'.static.GetColoredText(FontString,eUIState_Header,LabelFontSize ,Offsets[GRAZE_CRIT_LAYOUT].GrazeTextAlign);
-				GrazeLabel.SetPosition(DODGE_OFFSET_X -TEXTWIDTH*int(Offsets[GRAZE_CRIT_LAYOUT].GrazeTextAlign=="right"),DodgeOffsetY + LabelsOffset);
-				GrazeLabel.SetText(FontString);
-				GrazeLabel.Show();
+				foreach GrazeChanceSlotIndices(j)
+				{
+					FontString = GrazeChance $ "%";
+					FontString = class'UIUtilities_Text'.static.GetColoredText(FontString, GRAZE_STATE_COLOUR, , SlotOffsets[j].bAlignRight ? "right" : "left");
+					FontString = class'UIUtilities_Text'.static.AddFontInfo(FontString,false,true, , ValueFontSize);
+					SlotValues[j].SetPosition(SlotOffsets[j].OffsetX-TEXTWIDTH*int(SlotOffsets[j].bAlignRight),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) - 0.8);
+					SlotValues[j].SetText(FontString);
+					SlotValues[j].Show();
+					FontString = Caps(bCounter ? `LOCFALLBACK(ShortCounterAttack, class'X2TacticalGameRulesetDataStructures'.default.m_aAbilityHitResultStrings[eHit_CounterAttack])
+						: class'X2TacticalGameRulesetDataStructures'.default.m_aAbilityHitResultStrings[eHit_Graze]);
+					FontString = class'UIUtilities_Text'.static.GetColoredText(FontString,eUIState_Header,LabelFontSize ,SlotOffsets[j].bAlignRight ? "right" : "left");
+					SlotLabels[j].SetPosition(SlotOffsets[j].OffsetX-TEXTWIDTH*int(SlotOffsets[j].bAlignRight),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) + LabelsOffset);
+					SlotLabels[j].SetText(FontString);
+					SlotLabels[j].Show();
+				}
 			}
 			else
 			{
-				GrazeLabel.Hide();
-				GrazeValue.Hide();
+				foreach GrazeChanceSlotIndices(j)
+				{
+					SlotValues[j].Hide();
+					SlotLabels[j].Hide();
+				}
 			}
 				
 			// Generate the shot breakdown bar
@@ -643,10 +650,11 @@ simulated function HideAll()
 	AS_SetShotChance("", -1);
 	AS_SetCriticalChance("", -1);
 	for (i=0; i<arraycount(BarBoxes); i++) BarBoxes[i].Hide();
-	GrazeValue.Hide();
-	GrazeLabel.Hide();
-	CritDamValue.Hide();
-	CritDamLabel.Hide();
+	for (i=0; i<arraycount(SlotValues); i++)
+	{
+		SlotValues[i].Hide();
+		SlotLabels[i].Hide();
+	}
 	`TRACE_EXIT("");
 }
 
@@ -661,10 +669,11 @@ simulated function ExtendedInformationRedux3_UITacticalHUD_ShotHUD RemoveAll()
 	local int i;
 	`TRACE_ENTRY("");
 	for (i=0; i<arraycount(BarBoxes); i++) BarBoxes[i].Remove();
-	GrazeValue.Remove();
-	GrazeLabel.Remove();
-	CritDamValue.Remove();
-	CritDamLabel.Remove();
+	for (i=0; i<arraycount(SlotValues); i++)
+	{
+		SlotValues[i].Remove();
+		SlotLabels[i].Remove();
+	}
 	`TRACE_EXIT("");
 	return self;
 }
@@ -806,6 +815,46 @@ function PrintShotDamage(ShotBreakdown kBreakdown, DamageBreakdown NormalDamage,
 	`TRACE_EXIT("");
 }
 
+/**
+ * Adjusts the vertical offset for Shot HUD elements based on the number of active abilities.
+ *
+ * If the number of abilities exceeds the maximum allowed per row, an additional global
+ * vertical offset is applied to prevent UI overlap with the expanded ability bar.
+ *
+ * @param TacticalHUD   Reference to the tactical HUD containing ability information
+ * @param OffsetY       Base vertical offset for the UI element
+ *
+ * @return int          Adjusted vertical offset value
+ */
+private function int AlignOffsetY(UITacticalHUD TacticalHUD, int OffsetY)
+{
+	return (TacticalHUD.m_kAbilityHUD.ActiveAbilities > MAX_ABILITIES_PER_ROW) ? (OffsetY + GENERAL_OFFSET_Y) : OffsetY;
+}
+
+/**
+ * Creates and initializes a UIText element for use in the Shot HUD.
+ *
+ * The text element is configured with default properties including bottom-center anchoring,
+ * predefined width, and hidden visibility. This ensures consistent setup for all Shot HUD
+ * text elements such as values and labels.
+ *
+ * @param ShotHUD       Reference to the Shot HUD that will own the created text element
+ *
+ * @return UIText       Newly created and initialized UIText instance
+ */
+private function UIText CreateShotHUDText(UITacticalHUD_ShotHUD ShotHUD)
+{
+    local UIText Text;
+
+    Text = Owner.Spawn(class'UIText', ShotHUD);
+    Text.InitText();
+    Text.AnchorBottomCenter();
+    Text.SetWidth(TEXTWIDTH);
+    Text.Hide();
+
+    return Text;
+}
+
 function bool GetDISPLAY_MISS_CHANCE()
 {
 	return `MCM_CH_GetValue(class'MCM_Defaults'.default.DISPLAY_MISS_CHANCE, class'ExtendedInformationRedux3_MCMScreen'.default.DISPLAY_MISS_CHANCE);
@@ -901,9 +950,16 @@ function string getASSIST_HEX_COLOR()
 	return `MCM_CH_GetValue(class'MCM_Defaults'.default.ASSIST_HEX_COLOR, class'ExtendedInformationRedux3_MCMScreen'.default.ASSIST_HEX_COLOR);
 }
 
-function int getGRAZE_CRIT_LAYOUT()
+function array<int> getSHOTHUD_LAYOUT()
 {
-	return `MCM_CH_GetValue(class'MCM_Defaults'.default.GRAZE_CRIT_LAYOUT, class'ExtendedInformationRedux3_MCMScreen'.default.GRAZE_CRIT_LAYOUT);
+	local array<int> Result;
+
+	Result.AddItem(`MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_LAYOUT_LEFT_1, class'ExtendedInformationRedux3_MCMScreen'.default.SHOTHUD_LAYOUT_LEFT_1));
+	Result.AddItem(`MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_LAYOUT_LEFT_2, class'ExtendedInformationRedux3_MCMScreen'.default.SHOTHUD_LAYOUT_LEFT_2));
+	Result.AddItem(`MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_LAYOUT_RIGHT_1, class'ExtendedInformationRedux3_MCMScreen'.default.SHOTHUD_LAYOUT_RIGHT_1));
+	Result.AddItem(`MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_LAYOUT_RIGHT_2, class'ExtendedInformationRedux3_MCMScreen'.default.SHOTHUD_LAYOUT_RIGHT_2));
+
+	return Result;
 }
 
 function bool getTH_ASSIST_BESIDE_HIT()

@@ -30,8 +30,10 @@ var config bool				SHOW_GUARANTEED_HIT;
 //var config int				DODGE_OFFSET_X, DODGE_OFFSET_Y, CRIT_OFFSET_X, CRIT_OFFSET_Y;
 var config int				BAR_ALPHA, BAR_HEIGHT, BAR_OFFSET_Y;
 var config string			HIT_HEX_COLOR, CRIT_HEX_COLOR, DODGE_HEX_COLOR, MISS_HEX_COLOR, ASSIST_HEX_COLOR;
-var config int				GRAZE_CRIT_LAYOUT;
-//var config string			GRAZE_CRIT_LAYOUT_MCM;
+var config int				SHOTHUD_LAYOUT_LEFT_1;
+var config int				SHOTHUD_LAYOUT_LEFT_2;
+var config int				SHOTHUD_LAYOUT_RIGHT_1;
+var config int				SHOTHUD_LAYOUT_RIGHT_2;
 
 var config bool				TH_SHOW_GRAZED;
 var config bool				TH_SHOW_CRIT_DMG;
@@ -66,11 +68,7 @@ var localized string			sObjIconBackground;
 
 var array<string>			ColorArray;
 
-//var localized string			sLayoutLeft;
-//var localized string			sLayoutBalanced;
-//var localized string			sLayoutRight;
-var localized array<string>		LayoutArray;
-var localized string			sLayoutCustom;
+var localized array<string>		SlotOptions;
 
 var localized string			sSettingsPage_MCMText;
 var localized string			sPageTitle_MCMText;
@@ -116,8 +114,11 @@ var localized string			sPreviewMinimum_MCMText;
 var localized string			sPreviewHacking_MCMText;
 var localized string			sWarningMessage_MCMText;
 var localized string			sAssistHexColor_MCMText;
-var localized string			sGrazeCritLayout_MCMText;
-
+var localized string			sShotHudDisplayLayout_MCMText;
+var localized string			sLeftSide1_MCMText;
+var localized string			sLeftSide2_MCMText;
+var localized string			sRightSide1_MCMText;
+var localized string			sRightSide2_MCMText;
 
 //var localized string			sShowAlwaysShotBreakdownHUD_MCMText;
 var localized string			sShowAssistAimBreakdownHUD_MCMText;
@@ -152,12 +153,12 @@ var MCM_API_Slider			BarHeight_MCMUI;
 //var MCM_API_Slider			BarOffsetX_MCMUI;
 var MCM_API_Slider			BarOffsetY_MCMUI;
 var MCM_API_Slider			BarAlpha_MCMUI;
-/*var MCM_API_Slider			BarWidthMult_MCMUI;
-var MCM_API_Slider			GeneralOffsetY_MCMUI;
-var MCM_API_Slider			DodgeOffsetX_MCMUI;
-var MCM_API_Slider			CritOffsetX_MCMUI;
-var MCM_API_Slider			CritOffsetY_MCMUI;*/
-var MCM_API_Dropdown			GrazeCritLayout_MCMUI;
+
+var MCM_API_Dropdown			LeftSide1_MCMUI;
+var MCM_API_Dropdown			LeftSide2_MCMUI;
+var MCM_API_Dropdown			RightSide1_MCMUI;
+var MCM_API_Dropdown			RightSide2_MCMUI;
+
 
 var MCM_API_Dropdown			HitHexColor_MCMUI;
 var MCM_API_Dropdown			CritHexColor_MCMUI;
@@ -219,13 +220,10 @@ event OnInit(UIScreen Screen)
 `MCM_API_BasicSliderSaveHandler(BarOffsetYHandler,		BAR_OFFSET_Y)
 `MCM_API_BasicSliderSaveHandler(BarAlphaHandler,			BAR_ALPHA)
 
-/*`MCM_API_BasicSliderSaveHandler(BarWidthMultHandler,		BAR_WIDTH_MULT)
-`MCM_API_BasicSliderSaveHandler(GeneralOffsetYHandler,	GENERAL_OFFSET_Y)
-`MCM_API_BasicSliderSaveHandler(DodgeOffsetXHandler,		DODGE_OFFSET_X)
-`MCM_API_BasicSliderSaveHandler(CritOffsetXHandler,		CRIT_OFFSET_X)
-`MCM_API_BasicSliderSaveHandler(CritOffsetYHandler,		CRIT_OFFSET_Y)*/
-`MCM_API_BasicIndexSaveHandler(GrazeCritLayoutHandler,	GRAZE_CRIT_LAYOUT, LayoutArray)
-//`MCM_API_BasicDropdownSaveHandler(GrazeCritLayoutHandler,	GRAZE_CRIT_LAYOUT_MCM)
+`MCM_API_BasicIndexSaveHandler(SlotLayoutHandler0,	SHOTHUD_LAYOUT_LEFT_1, SlotOptions)
+`MCM_API_BasicIndexSaveHandler(SlotLayoutHandler1,	SHOTHUD_LAYOUT_LEFT_2, SlotOptions)
+`MCM_API_BasicIndexSaveHandler(SlotLayoutHandler2,	SHOTHUD_LAYOUT_RIGHT_1, SlotOptions)
+`MCM_API_BasicIndexSaveHandler(SlotLayoutHandler3,	SHOTHUD_LAYOUT_RIGHT_2, SlotOptions)
 
 `MCM_API_BasicDropdownSaveHandler(HitHexColorHandler,	HIT_HEX_COLOR_MCM)
 `MCM_API_BasicDropdownSaveHandler(CritHexColorHandler,	CRIT_HEX_COLOR_MCM)
@@ -290,11 +288,11 @@ simulated function ClientModCallback(MCM_API_Instance ConfigAPI, int GameMode)
 	local MCM_API_SettingsGroup Group0;
 	local MCM_API_SettingsGroup Group1;
 	local MCM_API_SettingsGroup Group2;
+	local MCM_API_SettingsGroup Group2Point5;
 	local MCM_API_SettingsGroup Group3;
 	local MCM_API_SettingsGroup Group4;
 	//local MCM_API_SettingsGroup Group5;
 	local MCM_API_SettingsGroup Group6;
-	local int i;
 	local bool IsAimAssistUnsafe;
 
 	`TRACE_ENTRY("GameMode:" @ GameMode);
@@ -318,15 +316,6 @@ simulated function ClientModCallback(MCM_API_Instance ConfigAPI, int GameMode)
 	ColorArray.AddItem(sOrangeEngineering);
 	ColorArray.AddItem(sBlueScience);
 	ColorArray.AddItem(sObjIconBackground);
-
-	//LayoutArray.AddItem(sLayoutLeft);
-	//LayoutArray.AddItem(	sLayoutBalanced);
-	//LayoutArray.AddItem(	sLayoutRight);
-
-	for (i=LayoutArray.Length;i<class'ExtendedInformationRedux3_UITacticalHUD_ShotHUD'.default.Offsets.Length;i++)
-	{
-		LayoutArray.AddItem(Repl(sLayoutCustom, "<index>", i));
-	}
 
 	LoadSavedSettings();
 
@@ -362,8 +351,15 @@ simulated function ClientModCallback(MCM_API_Instance ConfigAPI, int GameMode)
 	ShowCrit_MCMUI					= Group2.AddCheckbox('ShowCrit', sShowCrit_MCMText, sShowCrit_MCMText, TH_SHOW_CRIT_DMG, ShowCritHandler, );
 	PreviewMinimum_MCMUI				= Group2.AddCheckbox('PreviewMinimum', sPreviewMinimum_MCMText, sPreviewMinimum_MCMText, TH_PREVIEW_MINIMUM, PreviewMinimumHandler, );
 	PreviewHacking_MCMUI				= Group2.AddCheckbox('PreviewHacking', sPreviewHacking_MCMText, sPreviewHacking_MCMText, TH_PREVIEW_HACKING, PreviewHackingHandler, );
-	GrazeCritLayout_MCMUI				= Group2.AddDropdown('GrazeCritLayout', sGrazeCritLayout_MCMText, sGrazeCritLayout_MCMText, LayoutArray, LayoutArray[GRAZE_CRIT_LAYOUT], GrazeCritLayoutHandler, );
 	Group2.AddLabel('empty_line',"","");
+
+	Group2Point5 = Page.AddGroup('Group2Point5', sShotHudDisplayLayout_MCMText);
+	LeftSide1_MCMUI						= Group2Point5.AddDropdown('LeftSide1', sLeftSide1_MCMText, sLeftSide1_MCMText, SlotOptions, SlotOptions[SHOTHUD_LAYOUT_LEFT_1], SlotLayoutHandler0, );
+	LeftSide2_MCMUI						= Group2Point5.AddDropdown('LeftSide2', sLeftSide2_MCMText, sLeftSide2_MCMText, SlotOptions, SlotOptions[SHOTHUD_LAYOUT_LEFT_2], SlotLayoutHandler1, );
+	RightSide1_MCMUI					= Group2Point5.AddDropdown('RightSide1', sRightSide1_MCMText, sRightSide1_MCMText, SlotOptions, SlotOptions[SHOTHUD_LAYOUT_RIGHT_1], SlotLayoutHandler2, );
+	RightSide2_MCMUI					= Group2Point5.AddDropdown('RightSide2', sRightSide2_MCMText, sRightSide2_MCMText, SlotOptions, SlotOptions[SHOTHUD_LAYOUT_RIGHT_2], SlotLayoutHandler3, );
+
+	Group2Point5.AddLabel('empty_line',"","");
 
 	Group3 = Page.AddGroup('Group3', sGroupShotBar_MCMText);
 	/*Group3.AddLabel('Warning1',sWarningMessage_MCMText,"");*/
@@ -455,7 +451,10 @@ simulated function LoadSavedSettings()
 	SHOW_EXTRA_WEAPONSTATS = `MCM_CH_GetValue(class'MCM_Defaults'.default.SHOW_EXTRA_WEAPONSTATS,SHOW_EXTRA_WEAPONSTATS);
 	//FLYOVER_DURATION = `MCM_CH_GetValue(class'MCM_Defaults'.default.FLYOVER_DURATION,FLYOVER_DURATION);
 	SHOW_GUARANTEED_HIT =	`MCM_CH_GetValue(class'MCM_Defaults'.default.SHOW_GUARANTEED_HIT,SHOW_GUARANTEED_HIT);
-	GRAZE_CRIT_LAYOUT =		`MCM_CH_GetValue(class'MCM_Defaults'.default.GRAZE_CRIT_LAYOUT,GRAZE_CRIT_LAYOUT);
+	SHOTHUD_LAYOUT_LEFT_1 =		`MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_LAYOUT_LEFT_1,SHOTHUD_LAYOUT_LEFT_1);
+	SHOTHUD_LAYOUT_LEFT_2 =		`MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_LAYOUT_LEFT_2,SHOTHUD_LAYOUT_LEFT_2);
+	SHOTHUD_LAYOUT_RIGHT_1 =	`MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_LAYOUT_RIGHT_1,SHOTHUD_LAYOUT_RIGHT_1);
+	SHOTHUD_LAYOUT_RIGHT_2 =	`MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_LAYOUT_RIGHT_2,SHOTHUD_LAYOUT_RIGHT_2);
 
 	//DEBUG
 	//DODGE_OFFSET_Y =			`MCM_CH_GetValue(class'MCM_Defaults'.default.DODGE_OFFSET_Y,DODGE_OFFSET_Y);
@@ -505,7 +504,11 @@ simulated function ResetButtonClicked(MCM_API_SettingsPage Page)
 	ShowExtraWeaponStats_MCMUI.SetValue(	class'MCM_Defaults'.default.SHOW_EXTRA_WEAPONSTATS, false);
 	//FlyoverDuration_MCMUI.SetValue (class'MCM_Defaults'.default.FLYOVER_DURATION, false);
 	ShowGuaranteedHit_MCMUI.SetValue(class'MCM_Defaults'.default.SHOW_GUARANTEED_HIT, false);
-	GrazeCritLayout_MCMUI.SetValue(LayoutArray[class'MCM_Defaults'.default.GRAZE_CRIT_LAYOUT], false);
+	LeftSide1_MCMUI.SetValue(SlotOptions[class'MCM_Defaults'.default.SHOTHUD_LAYOUT_LEFT_1], false);
+	LeftSide2_MCMUI.SetValue(SlotOptions[class'MCM_Defaults'.default.SHOTHUD_LAYOUT_LEFT_2], false);
+	RightSide1_MCMUI.SetValue(SlotOptions[class'MCM_Defaults'.default.SHOTHUD_LAYOUT_RIGHT_1], false);
+	RightSide2_MCMUI.SetValue(SlotOptions[class'MCM_Defaults'.default.SHOTHUD_LAYOUT_RIGHT_2], false);
+
 	`TRACE_EXIT("");
 }
 
@@ -599,34 +602,3 @@ function string getStringColorFromHex(string ColorString)
 		default : return sGray;
 	}
 }
-/*
-function int getIndexFromLayoutText(string LayoutText)
-{
-	switch (LayoutText)
-	{
-		case sLayoutLeft : 
-			return 0;
-		case sLayoutBalanced :
-			return 1;
-		case sLayoutRight : 
-			return 2;
-		default :
-			return 1;
-	}
-}
-
-function string getLayoutTextFromindex(int Index)
-{
-	switch (Index)
-	{
-		case 0 : 
-			return sLayoutLeft;
-		case 1 :
-			return sLayoutBalanced;
-		case 2 : 
-			return sLayoutRight;
-		default :
-			return sLayoutBalanced;
-	}
-}
-*/

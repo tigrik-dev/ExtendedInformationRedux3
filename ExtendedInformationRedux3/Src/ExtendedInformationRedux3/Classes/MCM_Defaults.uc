@@ -31,7 +31,11 @@ var config string	HIT_HEX_COLOR;
 var config string	CRIT_HEX_COLOR;
 var config string	DODGE_HEX_COLOR;
 var config string	MISS_HEX_COLOR;
-var config int		GRAZE_CRIT_LAYOUT;
+var config int		SHOTHUD_LAYOUT_LEFT_1;
+var config int		SHOTHUD_LAYOUT_LEFT_2;
+var config int		SHOTHUD_LAYOUT_RIGHT_1;
+var config int		SHOTHUD_LAYOUT_RIGHT_2;
+
 var config string	ASSIST_HEX_COLOR;
 
 var config bool		TH_SHOW_GRAZED;

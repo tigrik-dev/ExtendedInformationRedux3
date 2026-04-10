@@ -55,6 +55,7 @@ sDodgeHexColor_MCMText = "Graze Bar Colour";
 sAssistHexColor_MCMText = "Aim Assist Bar Color";
 sMissHexColor_MCMText = "Miss Bar Colour";
 sGroupShotHUD_MCMText = "ShotHUD Settings";
+sGroupShotHUDLayout_MCMText = "ShotHUD Display Layout";
 sGroupBarColors_MCMText = "Bar Colour Settings";
 sShowGrazed_MCMText = "Show Grazed in ShotHUD";
 sShowCrit_MCMText = "Show Crit in ShotHUD";
@@ -64,7 +65,6 @@ sAssistBar_MCMText = "Combine Aim Assist Bar with Normal Hit Bar";
 sPreviewMinimum_MCMText = "Preview Minimum Damage";
 sPreviewHacking_MCMText = "Preview Hacking";
 sWarningMessage_MCMText = "Please note any change to Offset might result in bad display!";
-sGrazeCritLayout_MCMText = "Graze Chance and Crit Damage Display Layout"
 sExpectedDamage_MCMText = "Show Expected Damage"
 sExpectedDamage_MCMTooltip = "Enable to see Expected Damage in Shot HUD next to damage. e.g. 'Damage: 3-5 (2.6)'\n\n\Expected Damage is a weighted average damage. When aiming at the current enemy with the selected ability, what is the average damage you will do, considering hit chance, crit chance, dodge, graze band, weapon damage with all damage modifiers, and bonus crit damage."
 
@@ -90,11 +90,15 @@ sOrangeEngineering = "Orange Engineering";
 sBlueScience = "Blue Science";
 sObjIconBackground = "Objective Icon Background";
 
-LayoutArray[0] = "Auto"
-LayoutArray[1] = "Graze and Crit D. to the left"
-LayoutArray[2] = "Graze and Crit D. on each side"
-LayoutArray[3] = "Graze and Crit D. to the right"
-sLayoutCustom = "Custom Layout <index>"
+sShotHudDisplayLayout_MCMText = "Shot HUD Display Layout"
+sLeftSide1_MCMText = "Left Side 1"
+sLeftSide2_MCMText = "Left Side 2"
+sRightSide1_MCMText = "Right Side 1"
+sRightSide2_MCMText = "Right Side 2"
+SlotOptions[0] = "None"
+SlotOptions[1] = "Graze Chance"
+SlotOptions[2] = "Critical Damage"
+SlotOptions[3] = "Expected Damage"
 
 ;sShowAlwaysShotBreakdownHUD_MCMText = "Always Show Shot Breakdown";
 sGroupShotWings_MCMText = "Shot Wings Settings";
