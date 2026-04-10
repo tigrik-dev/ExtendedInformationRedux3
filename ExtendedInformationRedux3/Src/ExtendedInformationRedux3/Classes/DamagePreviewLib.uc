@@ -358,7 +358,6 @@ static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, 
 	local DamageInfo DamageItem, DamageItemCrit;
 	//local DamageModifierInfo DamageModInfo;
 	local string AbilityName;
-	local XComOnlineEventMgr EventManager;
 
 	`TRACE_ENTRY("TargetRef.ObjectID:" @ TargetRef.ObjectID $ ", bAsPrimaryTarget:" @ bAsPrimaryTarget);
 
@@ -455,37 +454,28 @@ static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, 
 				}
 			}
 		}
-		EventManager = `ONLINEEVENTMGR;
-		for(i = EventManager.GetNumDLC() - 1; i >= 0; i--)
+
+		// Treat new CH upgrade damage as base damage unless a tag is specified
+		if (!WepDamEffect.bAllowWeaponUpgrade)
 		{
-			if(EventManager.GetDLCNames(i)=='X2WOTCCommunityHighlander')
+			`TRACE_IF("!WepDamEffect.bAllowWeaponUpgrade");
+			WeaponUpgradeTemplates = SourceWeapon.GetMyWeaponUpgradeTemplates();
+		}
+		foreach WeaponUpgradeTemplates(WeaponUpgradeTemplate)
+		{
+			if ((!WepDamEffect.bIgnoreBaseDamage && WepDamEffect.DamageTag == '') || WeaponUpgradeTemplate.CHBonusDamage.Tag == WepDamEffect.DamageTag)
 			{
-				`TRACE_IF("EventManager.GetDLCNames(i)=='X2WOTCCommunityHighlander'");
-				// Treat new CH upgrade damage as base damage unless a tag is specified
-				if (!WepDamEffect.bAllowWeaponUpgrade)
-				{
-					`TRACE_IF("!WepDamEffect.bAllowWeaponUpgrade");
-					WeaponUpgradeTemplates = SourceWeapon.GetMyWeaponUpgradeTemplates();
-				}
-				foreach WeaponUpgradeTemplates(WeaponUpgradeTemplate)
-				{
-					if ((!WepDamEffect.bIgnoreBaseDamage && WepDamEffect.DamageTag == '') || WeaponUpgradeTemplate.CHBonusDamage.Tag == WepDamEffect.DamageTag)
-					{
-						`TRACE_IF("(!WepDamEffect.bIgnoreBaseDamage && WepDamEffect.DamageTag == '') || WeaponUpgradeTemplate.CHBonusDamage.Tag == WepDamEffect.DamageTag");
-						UpgradeDamageValue = WeaponUpgradeTemplate.CHBonusDamage;
+				`TRACE_IF("(!WepDamEffect.bIgnoreBaseDamage && WepDamEffect.DamageTag == '') || WeaponUpgradeTemplate.CHBonusDamage.Tag == WepDamEffect.DamageTag");
+				UpgradeDamageValue = WeaponUpgradeTemplate.CHBonusDamage;
 
-						WepDamEffect.ModifyDamageValue(UpgradeDamageValue, TargetUnit, AppliedDamageTypes);
+				WepDamEffect.ModifyDamageValue(UpgradeDamageValue, TargetUnit, AppliedDamageTypes);
 
-						UpgradeDamageValue.PlusOne=0;
-						DamageItem.Label=WeaponUpgradeTemplate.GetItemFriendlyName();
-						`INSERTTOBOTH(UpgradeDamageValue);
-						`TRACE("Added UpgradeDamageValue. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
-					}
-				}
-				break;
+				UpgradeDamageValue.PlusOne=0;
+				DamageItem.Label=WeaponUpgradeTemplate.GetItemFriendlyName();
+				`INSERTTOBOTH(UpgradeDamageValue);
+				`TRACE("Added UpgradeDamageValue. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
 			}
 		}
-
 
 		if (SourceWeapon.HasLoadedAmmo() && !WepDamEffect.bIgnoreBaseDamage)
 		{
