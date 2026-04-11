@@ -833,8 +833,8 @@ function PrintShotDamage(ShotBreakdown kBreakdown, DamageBreakdown NormalDamage,
 	{
 		ShotDamage=`RANGESTRING(NormalDamage.Min, NormalDamage.Max);
 
-		// Tigrik: Append Expected Damage if MCM option 'Show Expected Damage' is enabled
-		if (getEXPECTED_DAMAGE())
+		// Tigrik: Append Expected Damage if MCM option 'Show Expected Damage' is enabled and if it's greater than 0.0
+		if (getEXPECTED_DAMAGE() && (fExpectedDamage > 0.0))
 		{
 			ShotDamage $= " (" $ class'ExpectedDamageLib'.static.FormatExpectedDamageString(fExpectedDamage) $ ")";
 		}
