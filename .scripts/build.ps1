@@ -2,7 +2,7 @@ Param(
     [string] $srcDirectory, # the path that contains your mod's .XCOM_sln
     [string] $sdkPath, # the path to your SDK installation ending in "XCOM 2 War of the Chosen SDK"
     [string] $gamePath, # the path to your XCOM 2 installation ending in "XCOM2-WaroftheChosen"
-    [string] $config # build configuration
+    [string] $config, # build configuration
     [switch] $useHighlanderFromEnv # If present, builds the mod against the Community Highlander, as found in X2EMPT_HIGHLANDER_FOLDER
 )
 
