@@ -82,6 +82,7 @@ class DamagePreviewLib extends Object implements(EI_DamagePreviewHelperAPI);
 // Inserts weapon damage to both Normal and Crit
 `define INSERTTOBOTH(WEPDAM) DamageItem.Min=`MINDAM(`WEPDAM);	\\
 	DamageItem.Max=`MAXDAM(`WEPDAM);		\\
+	OriginalPierce+=`WEPDAM.Pierce;         \\
 	`INSERTDAMITEM(Normal, true);					\\
 	DamageItem.Min=`WEPDAM.Crit;			\\
 	DamageItem.Max=`WEPDAM.Crit;			\\
@@ -359,6 +360,12 @@ static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, 
 	//local DamageModifierInfo DamageModInfo;
 	local string AbilityName;
 
+	// Begin CHL Issue #1540 - variables for cover DR	
+	local int OriginalMitigation, OriginalPierce;
+	// End CHL Issue #1540
+
+	local int IgnoreArmor, IgnoreShields; // CHL Issue #1542
+
 	`TRACE_ENTRY("TargetRef.ObjectID:" @ TargetRef.ObjectID $ ", bAsPrimaryTarget:" @ bAsPrimaryTarget);
 
 	bDoesDamageIgnoreShields = WepDamEffect.bBypassShields;
@@ -613,13 +620,177 @@ static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, 
 
 	// Tigrik: Add missing damage modifiers. Account for CHL #923
 	ApplyPostDefaultDamageModifierEffects(History, SourceUnit, TargetUnit, AbilityState, TestEffectParams, DamageItem, DamageItemCrit, NormalDamage, CritDamage, WepDamEffect);
+
+	// Dalo: Start CHL Issue #1542
+	IgnoreArmor = bIgnoreArmor ? 1 : 0;
+	IgnoreShields = bDoesDamageIgnoreShields ? 1 : 0;
+	class'CHHelpers'.static.GetCDO().TriggerOverrideDefenseBypass(AppliedDamageTypes, IgnoreArmor, IgnoreShields, TestEffectParams, self);
+	`TRACE("Invoked TriggerOverrideDefenseBypass. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", Original Armor/Shield Ignores:" @ bIgnoreArmor $ "/" $ bDoesDamageIgnoreShields $ ", Overridden Ignores:" @ IgnoreArmor > 0 $ "/" $ IgnoreShields > 0);
+	bDoesDamageIgnoreShields = IgnoreShields > 0;
+	// End CHL Issue #1542
 	
 	if (!bDoesDamageIgnoreShields)
 	{
 		`TRACE_IF("!bDoesDamageIgnoreShields");
 		AllowsShield += NormalDamage.Max;
 	}
+
+	// Dalo: Begin CHL Issue #1540 - preview armor DR
+	// TODO: Only run this code if the appropriate MCM option is enabled!
+	if (TargetUnit != none && IgnoreArmor == 0 && NormalDamage.Min > 0)
+	{
+		`TRACE_IF("TargetUnit != none && !bIgnoreArmor && NormalDamage.Min > 0");
+		// Dalo: The original mitigation (and original minimum mitigation, i.e. 0)
+		// are shared across both damage values, so can be initialized here.
+		OriginalMitigation = TargetUnit.GetArmorMitigationForUnitFlag();
+		AppliedMandatoryMitigationMin = 0;
+		AppliedMandatoryMitigationMax = 0;
+		DamageItem.Label = class'XGLocalizedData'.default.ArmorMitigation;
+		DamageItemCrit.Label = DamageItem.Label;
+
+		DamageItem.Min = NormalDamage.Min;
+		DamageItem.Max = NormalDamage.Max;
+		CalculateArmorMitigation(
+			OriginalMitigation, 
+			OriginalPierce, 
+			TestEffectParams, 
+			WepDamEffect, 
+			AppliedMandatoryMitigationMin,
+			AppliedMandatoryMitigationMax,
+			DamageItem
+		);
+		`INSERTDAMITEM(Normal);
+
+		DamageItemCrit.Min = CritDamage.Min;
+		DamageItemCrit.Max = CritDamage.Max;
+		CalculateArmorMitigation(
+			OriginalMitigation,
+			OriginalPierce,
+			TestEffectParams,
+			WepDamEffect,
+			AppliedMandatoryMitigationMin,
+			AppliedMandatoryMitigationMax,
+			DamageItemCrit
+		);
+		// Dalo: Only factor *extra* mitigation (if any) into crit damage!
+		// Theoretically, I suppose a mod could cause this to overflow.
+		// I do not know how, but if they do, that's probably fair play?
+		DamageItemCrit.Min -= DamageItem.Min;
+		DamageItemCrit.Max -= DamageItem.Max;
+		DamageItem = DamageItemCrit;
+		`INSERTDAMITEM(Crit);	
+		`TRACE("Invoked AdjustArmorMitigation. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
+	}
+	// End CHL Issue #1540
+	
 	`TRACE_EXIT("AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
+}
+
+/**
+ * Dalo: Helper function to handle CHL #1540. 
+ *
+ * A port of the #1540 armor preview pipeline to EIR. Results should be
+ * identical to the code I wrote for the Highlander's {@code X2Effect_ApplyWeaponDamage::GetDamagePreview},
+ * but this has been optimized for EIR's codebase... to some extent.
+ * 
+ * The function operates on only one hit context (normal or critical) in order to minimize code reuse.
+ * Handling the resulting mitigation item for that context is left to the caller.
+ *
+ * Notes:
+ * - At call time, {@code DamageItem} should contain the final unmitigated damage values for its context,
+ *   to more accurately calculate mitigation (e.g. if resisting a percentage of incoming damage).
+ * - Upon completion, {@code DamageItem} will contain the final mitigation values for its context,
+ *   after piercing and minimum mitigation have been applied.
+ *
+ * @param OriginalMitigation			How much unmodified armor the unit had before we started calculating.
+ * @param OriginalPierce				How much piercing the attack had before we started calculating.
+ * @param AllowsShield					How much shield damage the attack is allowed to deal, required by the CHL helper for issue #743
+ * @param TestEffectParams				Effect application context, including hit result state.
+ * @param WepDamEffect					Weapon damage effect context (passed to CHL callback; may be unused).
+ * @param AppliedMandatoryMitigationMin	How much mandatory mitigation has been applied to minimum damage by a previous context (to prevent double-dipping).
+ * @param AppliedMandatoryMitigationMax As above, but for maximum damage.
+ * @param DamageItem					Damage breakdown item 
+ */
+static function CalculateArmorMitigation(
+	int OriginalMitigation, 
+	int OriginalPierce, 
+	int AllowsShield,
+	EffectAppliedData TestEffectParams, 
+	X2Effect_ApplyWeaponDamage WepDamEffect,
+	out int AppliedMandatoryMitigationMin, 
+	out int AppliedMandatoryMitigationMax,
+	out DamageInfo DamageItem
+) { 
+	// My CH helper expects mitigation data to come in a WDV.
+	local WeaponDamageValue MinDamagePreview, MaxDamagePreview;
+
+	// It seems that passing struct values as out parameters to a function
+	// prevents them from being edited by the function,
+	// so we need a few extra variables to store the data...
+	local int MinPierce, MaxPierce;
+	local int MinMandatoryMitigation, MaxMandatoryMitigation;
+	local int NetMitigationMin, NetMitigationMax;
+
+	// Unused in this context, but the helper expects to write to them.
+	local int _MinDamage, _MaxDamage; 
+
+	// Init the WDVs for the helper.
+	MinDamagePreview.Damage = DamageItem.Min;
+	MaxDamagePreview.Damage = DamageItem.Max;
+
+	// Get adjusted mitigation, piercing, and minimum mitigation
+	// for the attack's minimum damage.
+	MinMitigation = OriginalMitigation;
+	MinPierce = OriginalPierce;
+	MinMandatoryMitigation = 0;
+	class'CHHelpers'.static.GetCDO().TriggerAdjustArmorMitigation(
+		MinDamagePreview.Damage,
+		MinMitigation,
+		MinPierce,
+		MinMandatoryMitigation, // Starts at 0
+		TestEffectParams,
+		WepDamEffect,
+		// Tells the event handlers that this is a minimum damage preview.
+		// (The absence of a game state tells them it's *a* damage preview.)
+		true
+	);
+	MinDamagePreview.Spread = MinMitigation;
+	MinDamagePreview.Pierce = MinPierce;
+	MinDamagePreview.PlusOne = MinMandatoryMitigation - AppliedMandatoryMitigationMin;
+	
+	// Now do the same for the attack's maximum damage.
+	MaxMitigation = OriginalMitigation;
+	MaxPierce = OriginalPierce;
+	MaxMandatoryMitigation = 0;
+	class'CHHelpers'.static.GetCDO().TriggerAdjustArmorMitigation(
+		MaxDamagePreview.Damage,
+		MaxMitigation,
+		MaxPierce,
+		MaxMandatoryMitigation, // Starts at 0
+		TestEffectParams,
+		WepDamEffect
+	);
+	MaxDamagePreview.Spread = MaxMitigation;
+	MaxDamagePreview.Pierce = MaxPierce;
+	MaxDamagePreview.PlusOne = MaxMandatoryMitigation - AppliedMandatoryMitigationMax;	
+
+	// Now that we're done adjusting the raw values, let's crunch them into real-(game)-world outcomes!
+	class'CHHelpers'.static.CalculateMitigatedDamagePreview(
+		TestEffectParams.TargetStateObjectRef,
+		MinDamagePreview,
+		MaxDamagePreview,
+		AllowsShield,
+		_MinDamage,
+		_MaxDamage,
+		NetMitigationMin,
+		NetMitigationMax,
+	);
+
+	// ... And prepare our output data!
+	AppliedMandatoryMitigationMin += min(MinMandatoryMitigation, NetMitigationMin);
+	AppliedMandatoryMitigationMax += min(MaxMandatoryMitigation, NetMitigationMax);
+	DamageItem.Min = NetMitigationMin;
+	DamageItem.Max = NetMitigationMax;
 }
 
 /**
@@ -637,7 +808,7 @@ static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, 
  * The function operates on both normal and critical hit contexts by temporarily modifying
  * {@code ApplyEffectParameters.AbilityResultContext.HitResult}. It computes delta-based changes
  * using running ("current") damage values to ensure correct stacking behavior, then truncates
- * the final differences to match XCOM 2’s integer damage handling.
+ * the final differences to match XCOM 2ï¿½s integer damage handling.
  *
  * Damage contributions are recorded into {@code NormalDamage} and {@code CritDamage} via macros
  * (e.g. {@code ADDDAMITEM}), which merge or insert labeled {@code DamageInfo} entries.
@@ -837,7 +1008,7 @@ static function ApplyPreDefaultDamageModifierEffects(
  * The function operates on both normal and critical hit contexts by temporarily modifying
  * {@code ApplyEffectParameters.AbilityResultContext.HitResult}. It computes delta-based changes
  * using running ("current") damage values to ensure correct stacking behavior, then truncates
- * the final differences to match XCOM 2’s integer damage handling.
+ * the final differences to match XCOM 2ï¿½s integer damage handling.
  *
  * Damage contributions are recorded into {@code NormalDamage} and {@code CritDamage} via macros
  * (e.g. {@code ADDDAMITEM}), which merge or insert labeled {@code DamageInfo} entries.

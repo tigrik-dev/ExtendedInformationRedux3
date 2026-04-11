@@ -67,6 +67,8 @@ sPreviewHacking_MCMText = "Preview Hacking";
 sWarningMessage_MCMText = "Please note any change to Offset might result in bad display!";
 sExpectedDamage_MCMText = "Show Expected Damage"
 sExpectedDamage_MCMTooltip = "Enable to see Expected Damage in Shot HUD next to damage. e.g. 'Damage: 3-5 (2.6)'\n\n\Expected Damage is a weighted average damage. When aiming at the current enemy with the selected ability, what is the average damage you will do, considering hit chance, crit chance, dodge, graze band, weapon damage with all damage modifiers, and bonus crit damage."
+sShowMitigation_MCMText = "Show Armor Mitigation"
+sShowMitigation_MCMTooltip = "Enable to include armor mitigation in damage calculations.\n\nBy default, armor mitigation is not shown in the Shot HUD and must be tracked by hand. This option displays a new 'Armor' damage modifier for attacks whose damage would be reduced by armor.\n\nCertain mods may make non-deterministic changes to armor mitigation for a given attack. While the resulting damage modifiers and damage range should still be correct (unless the mod is doing something particularly strange), please be advised that enabling this option may in some cases reduce the accuracy of the values provided by the 'Show Expected Damage' option."
 
 ;DEBUG
 sDodgeOffsetY_MCMText = "Dodge Offset Y";
