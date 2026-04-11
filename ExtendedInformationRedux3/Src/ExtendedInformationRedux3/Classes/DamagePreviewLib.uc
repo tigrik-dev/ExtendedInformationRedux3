@@ -362,6 +362,7 @@ static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, 
 
 	// Begin CHL Issue #1540 - variables for cover DR	
 	local int OriginalMitigation, OriginalPierce;
+	local int AppliedMandatoryMitigationMin, AppliedMandatoryMitigationMax;
 	// End CHL Issue #1540
 
 	local int IgnoreArmor, IgnoreShields; // CHL Issue #1542
@@ -622,10 +623,10 @@ static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, 
 	ApplyPostDefaultDamageModifierEffects(History, SourceUnit, TargetUnit, AbilityState, TestEffectParams, DamageItem, DamageItemCrit, NormalDamage, CritDamage, WepDamEffect);
 
 	// Dalo: Start CHL Issue #1542
-	IgnoreArmor = bIgnoreArmor ? 1 : 0;
+	IgnoreArmor = WepDamEffect.bIgnoreArmor ? 1 : 0;
 	IgnoreShields = bDoesDamageIgnoreShields ? 1 : 0;
-	class'CHHelpers'.static.GetCDO().TriggerOverrideDefenseBypass(AppliedDamageTypes, IgnoreArmor, IgnoreShields, TestEffectParams, self);
-	`TRACE("Invoked TriggerOverrideDefenseBypass. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", Original Armor/Shield Ignores:" @ bIgnoreArmor $ "/" $ bDoesDamageIgnoreShields $ ", Overridden Ignores:" @ IgnoreArmor > 0 $ "/" $ IgnoreShields > 0);
+	class'CHHelpers'.static.GetCDO().TriggerOverrideDefenseBypass(AppliedDamageTypes, IgnoreArmor, IgnoreShields, TestEffectParams, WepDamEffect);
+	`TRACE("Invoked TriggerOverrideDefenseBypass. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", Original Armor/Shield Ignores:" @ WepDamEffect.bIgnoreArmor $ "/" $ bDoesDamageIgnoreShields $ ", Overridden Ignores:" @ IgnoreArmor > 0 $ "/" $ IgnoreShields > 0);
 	bDoesDamageIgnoreShields = IgnoreShields > 0;
 	// End CHL Issue #1542
 	
@@ -653,6 +654,7 @@ static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, 
 		CalculateArmorMitigation(
 			OriginalMitigation, 
 			OriginalPierce, 
+			AllowsShield,
 			TestEffectParams, 
 			WepDamEffect, 
 			AppliedMandatoryMitigationMin,
@@ -666,6 +668,7 @@ static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, 
 		CalculateArmorMitigation(
 			OriginalMitigation,
 			OriginalPierce,
+			AllowsShield,
 			TestEffectParams,
 			WepDamEffect,
 			AppliedMandatoryMitigationMin,
@@ -728,6 +731,7 @@ static function CalculateArmorMitigation(
 	// prevents them from being edited by the function,
 	// so we need a few extra variables to store the data...
 	local int MinPierce, MaxPierce;
+	local int MinMitigation, MaxMitigation;
 	local int MinMandatoryMitigation, MaxMandatoryMitigation;
 	local int NetMitigationMin, NetMitigationMax;
 
@@ -783,7 +787,7 @@ static function CalculateArmorMitigation(
 		_MinDamage,
 		_MaxDamage,
 		NetMitigationMin,
-		NetMitigationMax,
+		NetMitigationMax
 	);
 
 	// ... And prepare our output data!
