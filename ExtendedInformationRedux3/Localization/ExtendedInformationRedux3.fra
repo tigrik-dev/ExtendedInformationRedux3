@@ -19,8 +19,8 @@ REPEATER_KILL ="Repeater";
 FAILED_TEXT = "Raté!"
 
 [ExtendedInformationRedux3_MCMScreen]
-sSettingsPage_MCMText = "Extended Information";
-sPageTitle_MCMText = "Extended Information";
+sSettingsPage_MCMText = "Extended Information Redux";
+sPageTitle_MCMText = "Extended Information Redux";
 sGroupGeneralSettings_MCMText = "Paramètres Généraux";
 sGroupFlyoverSettings_MCMText = "Paramètres des Affichages de Dégâts";
 sShowHitChance_MCMText = "Montrer les Chances de Toucher dans le Message Volant";

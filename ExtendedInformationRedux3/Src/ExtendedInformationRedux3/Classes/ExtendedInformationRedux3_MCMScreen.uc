@@ -320,7 +320,7 @@ simulated function ClientModCallback(MCM_API_Instance ConfigAPI, int GameMode)
 	LoadSavedSettings();
 
 	Page = ConfigAPI.NewSettingsPage(sSettingsPage_MCMText);
-	Page.SetPageTitle(sPageTitle_MCMText);
+	Page.SetPageTitle(sPageTitle_MCMText @ class'EIR_Version'.static.GetVersionStringWithPrefix());
 	Page.SetSaveHandler(SaveButtonClicked);
 	Page.EnableResetButton(ResetButtonClicked);
 

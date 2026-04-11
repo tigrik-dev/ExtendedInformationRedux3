@@ -131,6 +131,6 @@ static function string GetDisplayString()
 defaultproperties
 {
     MajorVersion = 0
-    MinorVersion = 1
+    MinorVersion = 2
     PatchVersion = 0
 }
