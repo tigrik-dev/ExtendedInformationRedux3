@@ -49,7 +49,10 @@ class DamagePreviewLib extends Object implements(EI_DamagePreviewHelperAPI);
 	}														\\
 
 // Inserts damage item at beginning
-`define INSERTDAMITEM(TYPE, NOTBONUS) if (DamageItem.Min!=0 || DamageItem.Max!=0) \\
+`define INSERTDAMITEM(TYPE, NOTBONUS) `INSERTDAMITEM_TOINDEX(`TYPE, 0, `NOTBONUS)
+
+// Insert damage item at index (if no existing item with same label, else update that one)
+`define INSERTDAMITEM_TOINDEX(TYPE, INDEX, NOTBONUS) if (DamageItem.Min!=0 || DamageItem.Max!=0) \\
 	{														\\		
 		i=`{TYPE}Damage.InfoList.Find('Label', DamageItem.Label); \\
 		if (i!=INDEX_NONE && DamageItem.Label!="")			\\
@@ -64,7 +67,7 @@ class DamagePreviewLib extends Object implements(EI_DamagePreviewHelperAPI);
 		}													\\
 		else												\\
 		{													\\
-			`{TYPE}Damage.InfoList.InsertItem(0, DamageItem);	\\
+			`{TYPE}Damage.InfoList.InsertItem(min(`INDEX, `{TYPE}Damage.InfoList.Length), DamageItem);	\\
 			`if (`NOTBONUS) `else `{TYPE}Damage.Bonus++; `endif \\
 		}													\\
 		`{TYPE}Damage.Min+=DamageItem.Min;					\\
@@ -363,6 +366,7 @@ static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, 
 	// Begin CHL Issue #1540 - variables for cover DR	
 	local int OriginalMitigation, OriginalPierce;
 	local int AppliedMandatoryMitigationMin, AppliedMandatoryMitigationMax;
+	local int MinDamage, MaxDamage;
 	// End CHL Issue #1540
 
 	local int IgnoreArmor, IgnoreShields; // CHL Issue #1542
@@ -648,9 +652,14 @@ static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, 
 		AppliedMandatoryMitigationMax = 0;
 		DamageItem.Label = class'XGLocalizedData'.default.ArmorMitigation;
 		DamageItemCrit.Label = DamageItem.Label;
-
 		DamageItem.Min = NormalDamage.Min;
 		DamageItem.Max = NormalDamage.Max;
+		DamageItemCrit.Min = NormalDamage.Min + CritDamage.Min;
+		DamageItemCrit.Max = NormalDamage.Max + CritDamage.Max;
+
+		MinDamage = DamageItem.Min;
+		MaxDamage = DamageItem.Max;	
+		`TRACE("First call to CalculateArmorMitigation. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", MinDamage:" @ MinDamage $ ", MaxDamage:" @ MaxDamage);
 		CalculateArmorMitigation(
 			OriginalMitigation, 
 			OriginalPierce, 
@@ -659,12 +668,17 @@ static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, 
 			WepDamEffect, 
 			AppliedMandatoryMitigationMin,
 			AppliedMandatoryMitigationMax,
-			DamageItem
+			MinDamage,
+			MaxDamage
 		);
-		`INSERTDAMITEM(Normal);
+		DamageItem.Min = MinDamage;
+		DamageItem.Max = MaxDamage;
+		`TRACE("Completed first call to CalculateArmorMitigation. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", MinDamage:" @ MinDamage $ ", MaxDamage:" @ MaxDamage);
+		`INSERTDAMITEM_TOINDEX(Normal, 1);
 
-		DamageItemCrit.Min = CritDamage.Min;
-		DamageItemCrit.Max = CritDamage.Max;
+		MinDamage = DamageItemCrit.Min;
+		MaxDamage = DamageItemCrit.Max;
+		`TRACE("Second call to CalculateArmorMitigation. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", MinDamage:" @ MinDamage $ ", MaxDamage:" @ MaxDamage);
 		CalculateArmorMitigation(
 			OriginalMitigation,
 			OriginalPierce,
@@ -673,15 +687,17 @@ static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, 
 			WepDamEffect,
 			AppliedMandatoryMitigationMin,
 			AppliedMandatoryMitigationMax,
-			DamageItemCrit
+			MinDamage,
+			MaxDamage
 		);
+		`TRACE("Completed second call to CalculateArmorMitigation. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", MinDamage:" @ MinDamage $ ", MaxDamage:" @ MaxDamage);
 		// Dalo: Only factor *extra* mitigation (if any) into crit damage!
 		// Theoretically, I suppose a mod could cause this to overflow.
 		// I do not know how, but if they do, that's probably fair play?
-		DamageItemCrit.Min -= DamageItem.Min;
-		DamageItemCrit.Max -= DamageItem.Max;
+		DamageItemCrit.Min = MinDamage - DamageItem.Min;
+		DamageItemCrit.Max = MaxDamage - DamageItem.Max;
 		DamageItem = DamageItemCrit;
-		`INSERTDAMITEM(Crit);	
+		`INSERTDAMITEM_TOINDEX(Crit, 1);	
 		`TRACE("Invoked AdjustArmorMitigation. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
 	}
 	// End CHL Issue #1540
@@ -700,9 +716,9 @@ static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, 
  * Handling the resulting mitigation item for that context is left to the caller.
  *
  * Notes:
- * - At call time, {@code DamageItem} should contain the final unmitigated damage values for its context,
+ * - At call time, {@code MinDamage} and {@code MaxDamage} should contain the final unmitigated damage values for its context,
  *   to more accurately calculate mitigation (e.g. if resisting a percentage of incoming damage).
- * - Upon completion, {@code DamageItem} will contain the final mitigation values for its context,
+ * - Upon completion, {@code MinDamage} and {@code MaxDamage} will contain the final mitigation values for its context,
  *   after piercing and minimum mitigation have been applied.
  *
  * @param OriginalMitigation			How much unmodified armor the unit had before we started calculating.
@@ -712,7 +728,8 @@ static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, 
  * @param WepDamEffect					Weapon damage effect context (passed to CHL callback; may be unused).
  * @param AppliedMandatoryMitigationMin	How much mandatory mitigation has been applied to minimum damage by a previous context (to prevent double-dipping).
  * @param AppliedMandatoryMitigationMax As above, but for maximum damage.
- * @param DamageItem					Damage breakdown item 
+ * @param MinDamage						Minimum damage inflicted by the attack in this context.
+ * @param MaxDamage						Maximum damage inflicted by the attack in this context.
  */
 static function CalculateArmorMitigation(
 	int OriginalMitigation, 
@@ -722,7 +739,8 @@ static function CalculateArmorMitigation(
 	X2Effect_ApplyWeaponDamage WepDamEffect,
 	out int AppliedMandatoryMitigationMin, 
 	out int AppliedMandatoryMitigationMax,
-	out DamageInfo DamageItem
+	out int MinDamage,
+	out int MaxDamage
 ) { 
 	// My CH helper expects mitigation data to come in a WDV.
 	local WeaponDamageValue MinDamagePreview, MaxDamagePreview;
@@ -735,12 +753,9 @@ static function CalculateArmorMitigation(
 	local int MinMandatoryMitigation, MaxMandatoryMitigation;
 	local int NetMitigationMin, NetMitigationMax;
 
-	// Unused in this context, but the helper expects to write to them.
-	local int _MinDamage, _MaxDamage; 
-
-	// Init the WDVs for the helper.
-	MinDamagePreview.Damage = DamageItem.Min;
-	MaxDamagePreview.Damage = DamageItem.Max;
+	// Init the WDVs so the helper can correctly calculate how much damage was prevented.
+	MinDamagePreview.Damage = MinDamage;
+	MaxDamagePreview.Damage = MaxDamage;
 
 	// Get adjusted mitigation, piercing, and minimum mitigation
 	// for the attack's minimum damage.
@@ -748,7 +763,7 @@ static function CalculateArmorMitigation(
 	MinPierce = OriginalPierce;
 	MinMandatoryMitigation = 0;
 	class'CHHelpers'.static.GetCDO().TriggerAdjustArmorMitigation(
-		MinDamagePreview.Damage,
+		MinDamage,
 		MinMitigation,
 		MinPierce,
 		MinMandatoryMitigation, // Starts at 0
@@ -767,7 +782,7 @@ static function CalculateArmorMitigation(
 	MaxPierce = OriginalPierce;
 	MaxMandatoryMitigation = 0;
 	class'CHHelpers'.static.GetCDO().TriggerAdjustArmorMitigation(
-		MaxDamagePreview.Damage,
+		MaxDamage,
 		MaxMitigation,
 		MaxPierce,
 		MaxMandatoryMitigation, // Starts at 0
@@ -779,22 +794,23 @@ static function CalculateArmorMitigation(
 	MaxDamagePreview.PlusOne = MaxMandatoryMitigation - AppliedMandatoryMitigationMax;	
 
 	// Now that we're done adjusting the raw values, let's crunch them into real-(game)-world outcomes!
+	`TRACE("About to call CalculateMitigatedDamagePreview. Min/MaxMitigation:" @ MinMitigation $ "/" $ MaxMitigation $ ", Min/MaxMandatoryMitigation:" @ MinDamagePreview.PlusOne $ "/" $ MaxDamagePreview.PlusOne $ ", Min/MaxDamage:" @ MinDamage $ "/" $ MaxDamage);
 	class'CHHelpers'.static.CalculateMitigatedDamagePreview(
 		TestEffectParams.TargetStateObjectRef,
 		MinDamagePreview,
 		MaxDamagePreview,
 		AllowsShield,
-		_MinDamage,
-		_MaxDamage,
+		MinDamage,
+		MaxDamage,
 		NetMitigationMin,
 		NetMitigationMax
 	);
 
 	// ... And prepare our output data!
-	AppliedMandatoryMitigationMin += min(MinMandatoryMitigation, NetMitigationMin);
-	AppliedMandatoryMitigationMax += min(MaxMandatoryMitigation, NetMitigationMax);
-	DamageItem.Min = NetMitigationMin;
-	DamageItem.Max = NetMitigationMax;
+	AppliedMandatoryMitigationMin += min(MinMandatoryMitigation, abs(NetMitigationMin));
+	AppliedMandatoryMitigationMax += min(MaxMandatoryMitigation, abs(NetMitigationMax));
+	MinDamage = NetMitigationMin;
+	MaxDamage = NetMitigationMax;
 }
 
 /**
