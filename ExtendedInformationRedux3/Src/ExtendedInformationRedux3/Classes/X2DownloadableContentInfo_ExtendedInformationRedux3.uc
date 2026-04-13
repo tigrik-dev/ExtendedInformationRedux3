@@ -180,8 +180,8 @@ static event OnPostTemplatesCreated()
 	// Tigrik: Disable Aim Assist if needed
 	class'AimAssistLib'.static.Init();
 
-	// Tigrik: Run all unit tests
-	class'EIR_TestRunner'.static.RunAllTests();
+	// Tigrik: Run all unit tests (in dev only)
+	//class'EIR_TestRunner'.static.RunAllTests();
 
 	`TRACE_EXIT("");
 }	
