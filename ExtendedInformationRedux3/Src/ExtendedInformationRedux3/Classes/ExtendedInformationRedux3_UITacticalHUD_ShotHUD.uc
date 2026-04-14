@@ -784,22 +784,39 @@ static function SetAbilityMinDamagePreview(UIUnitFlag kFlag, XComGameState_Abili
     kFlag.SetArmorPointsPreview(MinDamageValue.Shred, MinDamageValue.Pierce);
 	`TRACE_EXIT("");
 }
- 
+
+/**
+ * Prepends formatted hack reward description to the ShotDescription string.
+ *
+ * Retrieves hack reward data for the given ability and target, formats the
+ * reward names and their respective chances, and inserts the result before
+ * the existing ShotDescription (on a new line).
+ *
+ * @param AbilityState    Ability state used to calculate hack breakdown
+ * @param Target          Target reference for the hack attempt
+ * @param ShotDescription Original shot description text
+ *
+ * @return string         Updated ShotDescription with hack info prepended
+ */ 
 function string UpdateHackDescription( XComGameState_Ability AbilityState, StateObjectReference Target, string ShotDescription)
 {
 	local EIHackBreakdown HackBreakdown;
 	local HackRewardInfo RewardItem;
+	local string HackDescription;
 
 	`TRACE_ENTRY("");
 	if(class'HackCalcLib'.static.GetHackBreakdown(AbilityState, Target, HackBreakdown))
 	{
-		RewardItem=HackBreakdown.RewardList[0];
-		ShotDescription $= "\n" $ class'UIUtilities_Text'.static.GetColoredText(RewardItem.RewardTemplate.GetFriendlyName(), RewardItem.RewardTemplate.bBadThing ? eUIState_Bad : eUIState_Good);
-		RewardItem=HackBreakdown.RewardList[1];
-		ShotDescription $= " - " $ class'UIUtilities_Text'.static.GetColoredText(RewardItem.RewardTemplate.GetFriendlyName() $ ": " $ Clamp(RewardItem.Chance, 0, 100) $ "%", eUIState_Good);
-		RewardItem=HackBreakdown.RewardList[2];
-		ShotDescription $= ", " $ class'UIUtilities_Text'.static.GetColoredText(RewardItem.RewardTemplate.GetFriendlyName() $ ": " $ Clamp(RewardItem.Chance, 0, 100) $ "%", eUIState_Good);
+		RewardItem = HackBreakdown.RewardList[0];
+		HackDescription = class'UIUtilities_Text'.static.GetColoredText(RewardItem.RewardTemplate.GetFriendlyName(), RewardItem.RewardTemplate.bBadThing ? eUIState_Bad : eUIState_Good);
+		RewardItem = HackBreakdown.RewardList[1];
+		HackDescription $= " - " $ class'UIUtilities_Text'.static.GetColoredText(RewardItem.RewardTemplate.GetFriendlyName() $ ": " $ Clamp(RewardItem.Chance, 0, 100) $ "%", eUIState_Good);
+		RewardItem = HackBreakdown.RewardList[2];
+		HackDescription $= ", " $ class'UIUtilities_Text'.static.GetColoredText(RewardItem.RewardTemplate.GetFriendlyName() $ ": " $ Clamp(RewardItem.Chance, 0, 100) $ "%", eUIState_Good);
 	}
+
+	// Tigrik: Display hack rewards and hack chances before the ability description, instead of after it.
+	ShotDescription = HackDescription $ "\n" $ ShotDescription;
 	`TRACE_EXIT("ShotDescription:" @ ShotDescription);
 	return ShotDescription;
 }
