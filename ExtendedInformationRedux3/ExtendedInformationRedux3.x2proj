@@ -91,6 +91,9 @@
     <Content Include="Src\ExtendedInformationRedux3\Classes\ModSupportLib.uc">
       <SubType>Content</SubType>
     </Content>
+    <Content Include="Src\ExtendedInformationRedux3\Classes\StatContestLib.uc">
+      <SubType>Content</SubType>
+    </Content>
     <Content Include="Src\ExtendedInformationRedux3\Classes\StatListLib.uc" />
     <Content Include="Src\ExtendedInformationRedux3\Classes\TemplatePatchLib.uc">
       <SubType>Content</SubType>
