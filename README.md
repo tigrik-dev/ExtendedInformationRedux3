@@ -1,3 +1,3 @@
-[WOTC] Extended Information! Redux
+Extended Information Redux
 
-A redux version of an XCOM 2 mod [Extended Information!](https://steamcommunity.com/sharedfiles/filedetails/?id=1183444470)
+[XCOM 2 mod](https://steamcommunity.com/sharedfiles/filedetails/?id=3706139879), a redux version of [Extended Information!](https://steamcommunity.com/sharedfiles/filedetails/?id=1183444470)
