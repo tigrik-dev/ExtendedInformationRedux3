@@ -32,6 +32,12 @@
     <Content Include="Config\XComIntLoc.ini">
       <SubType>Content</SubType>
     </Content>
+    <Content Include="Localization\ExtendedInformationRedux3.chn">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Localization\ExtendedInformationRedux3.cht">
+      <SubType>Content</SubType>
+    </Content>
     <Content Include="ReadMe.txt" />
     <Content Include="ModPreview.jpg" />
     <Content Include="Config\XComEditor.ini" />
@@ -88,6 +94,9 @@
       <SubType>Content</SubType>
     </Content>
     <Content Include="Src\ExtendedInformationRedux3\Classes\MCM_Defaults.uc" />
+    <Content Include="Src\ExtendedInformationRedux3\Classes\ModClassOverrideLib.uc">
+      <SubType>Content</SubType>
+    </Content>
     <Content Include="Src\ExtendedInformationRedux3\Classes\ModSupportLib.uc">
       <SubType>Content</SubType>
     </Content>
@@ -114,6 +123,9 @@
       <SubType>Content</SubType>
     </Content>
     <Content Include="Src\ExtendedInformationRedux3\Classes\X2Patch_PrecisionShotCritDamage.uc">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Src\ExtendedInformationRedux3\Classes\X2TacticalGameRulesetLib.uc">
       <SubType>Content</SubType>
     </Content>
     <Content Include="Src\ExtendedInformationRedux3\Classes\X2TacticalGameRuleset_BreakdownObserver.uc">

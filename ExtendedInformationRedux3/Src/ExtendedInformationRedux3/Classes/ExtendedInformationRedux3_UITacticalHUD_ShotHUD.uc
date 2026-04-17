@@ -268,7 +268,7 @@ simulated function Update()
     local UIUnitFlag UnitFlag;
     //local WeaponDamageValue MinDamageValue, MaxDamageValue;
     local X2TargetingMethod TargetingMethod;
-    local bool WillBreakConcealment, WillEndTurn, bHide, bCounter;
+    local bool WillBreakConcealment, WillEndTurn, bHide;
 	local DamageBreakdown NormalDamage, CritDamage;
 	local X2AbilityToHitCalc_StandardAim StandardHitCalc;
 	local UnitValue CounterattackCheck;
@@ -484,33 +484,6 @@ simulated function Update()
 					SlotLabels[j].Hide();
 				}
 			}
-			
-			//************Counter Attack Stuff**************************
-			//Mr. Nice: Counter attacks turn all graze & miss results to counters,
-			//plus a chance to turn guaranteed hit melees to counters (at the same rate as Mutons boosted dodge against melee)
-			StandardHitCalc=X2AbilityToHitCalc_StandardAim(skAbilityState.GetMyTemplate().AbilityToHitCalc);
-			if (StandardHitCalc!=none && StandardHitCalc.bMeleeAttack)
-			{
-				TargetUnitState = XComGameState_Unit(History.GetGameStateForObjectID(Target.ObjectID));
-				if (TargetUnitState!=none && !TargetUnitState.IsImpaired()
-					&& TargetUnitState.GetUnitValue(class'X2Ability'.default.CounterattackDodgeEffectName, CounterattackCheck)
-					&& CounterattackCheck.fValue == class'X2Ability'.default.CounterattackDodgeUnitValue)
-				{
-					bCounter=true;
-					if (StandardHitCalc.bGuaranteedHit)
-					{
-						CounterGraze=max(0,(skHitChance-GrazeChance))*class'X2Ability_Muton'.default.COUNTERATTACK_DODGE_AMOUNT/100;
-						if (CritChance!=0)
-							//Mr. Nice: For bar purposes, don't want crit to disappear if non-zero in principle
-							CounterCrit=max(1, CritChance*(100-class'X2Ability_Muton'.default.COUNTERATTACK_DODGE_AMOUNT)/100);
-						if (skAimBonus!=0)
-							CounterBonus=max(1, skAimBonus*(100-class'X2Ability_Muton'.default.COUNTERATTACK_DODGE_AMOUNT)/100);
-						CounterHit=CounterGraze-CounterCrit-CounterBonus;
-					}
-					if (!IsSkPostMelee) CounterGraze+=100-HitChance;
-					GrazeChance+=CounterGraze;
-				}
-			}
 
 			if (TH_SHOW_GRAZED && (!bHide || GRAZE_SHOW_NonTRIVIAL) && GrazeChance > 0)
 			{
@@ -522,8 +495,7 @@ simulated function Update()
 					SlotValues[j].SetPosition(SlotOffsets[j].OffsetX-TEXTWIDTH*int(SlotOffsets[j].bAlignRight),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) - 0.8);
 					SlotValues[j].SetText(FontString);
 					SlotValues[j].Show();
-					FontString = Caps(bCounter ? `LOCFALLBACK(ShortCounterAttack, class'X2TacticalGameRulesetDataStructures'.default.m_aAbilityHitResultStrings[eHit_CounterAttack])
-						: class'X2TacticalGameRulesetDataStructures'.default.m_aAbilityHitResultStrings[eHit_Graze]);
+					FontString = Caps(class'X2TacticalGameRulesetDataStructures'.default.m_aAbilityHitResultStrings[eHit_Graze]);
 					FontString = class'UIUtilities_Text'.static.GetColoredText(FontString,eUIState_Header,LabelFontSize ,SlotOffsets[j].bAlignRight ? "right" : "left");
 					SlotLabels[j].SetPosition(SlotOffsets[j].OffsetX-TEXTWIDTH*int(SlotOffsets[j].bAlignRight),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) + LabelsOffset);
 					SlotLabels[j].SetText(FontString);
@@ -553,14 +525,7 @@ simulated function Update()
 					}
 					//`redscreen(`showvar(HitChance));
 					Chance[eHit_Miss]=100-HitChance;
-				if (bCounter)
-				{
-					Chance[eHit_Graze]+=CounterGraze;
-					Chance[eHit_Crit]-=CounterCrit;
-					Chance[eHit_Success]-=CounterHit;
-					AimBonus-=CounterBonus;
-					Chance[eHit_Miss]=0;//Misses will be Counters, so no miss to show in the bar
-				}
+				
 				if (IsSkPostMelee)
 				{
 					Chance[eHit_Success]+=skAimBonus;
@@ -784,21 +749,38 @@ static function SetAbilityMinDamagePreview(UIUnitFlag kFlag, XComGameState_Abili
     kFlag.SetArmorPointsPreview(MinDamageValue.Shred, MinDamageValue.Pierce);
 	`TRACE_EXIT("");
 }
- 
+
+/**
+ * Prepends formatted hack reward description to the ShotDescription string.
+ *
+ * Retrieves hack reward data for the given ability and target, formats the
+ * reward names and their respective chances, and inserts the result before
+ * the existing ShotDescription (on a new line).
+ *
+ * @param AbilityState    Ability state used to calculate hack breakdown
+ * @param Target          Target reference for the hack attempt
+ * @param ShotDescription Original shot description text
+ *
+ * @return string         Updated ShotDescription with hack info prepended
+ */ 
 function string UpdateHackDescription( XComGameState_Ability AbilityState, StateObjectReference Target, string ShotDescription)
 {
 	local EIHackBreakdown HackBreakdown;
 	local HackRewardInfo RewardItem;
+	local string HackDescription;
 
 	`TRACE_ENTRY("");
 	if(class'HackCalcLib'.static.GetHackBreakdown(AbilityState, Target, HackBreakdown))
 	{
-		RewardItem=HackBreakdown.RewardList[0];
-		ShotDescription $= "\n" $ class'UIUtilities_Text'.static.GetColoredText(RewardItem.RewardTemplate.GetFriendlyName(), RewardItem.RewardTemplate.bBadThing ? eUIState_Bad : eUIState_Good);
-		RewardItem=HackBreakdown.RewardList[1];
-		ShotDescription $= " - " $ class'UIUtilities_Text'.static.GetColoredText(RewardItem.RewardTemplate.GetFriendlyName() $ ": " $ Clamp(RewardItem.Chance, 0, 100) $ "%", eUIState_Good);
-		RewardItem=HackBreakdown.RewardList[2];
-		ShotDescription $= ", " $ class'UIUtilities_Text'.static.GetColoredText(RewardItem.RewardTemplate.GetFriendlyName() $ ": " $ Clamp(RewardItem.Chance, 0, 100) $ "%", eUIState_Good);
+		RewardItem = HackBreakdown.RewardList[0];
+		HackDescription = class'UIUtilities_Text'.static.GetColoredText(RewardItem.RewardTemplate.GetFriendlyName(), RewardItem.RewardTemplate.bBadThing ? eUIState_Bad : eUIState_Good);
+		RewardItem = HackBreakdown.RewardList[1];
+		HackDescription $= " - " $ class'UIUtilities_Text'.static.GetColoredText(RewardItem.RewardTemplate.GetFriendlyName() $ ": " $ Clamp(RewardItem.Chance, 0, 100) $ "%", eUIState_Good);
+		RewardItem = HackBreakdown.RewardList[2];
+		HackDescription $= ", " $ class'UIUtilities_Text'.static.GetColoredText(RewardItem.RewardTemplate.GetFriendlyName() $ ": " $ Clamp(RewardItem.Chance, 0, 100) $ "%", eUIState_Good);
+		
+		// Tigrik: Display hack rewards and hack chances before the ability description, instead of after it.
+		ShotDescription = HackDescription $ "\n" $ ShotDescription;
 	}
 	`TRACE_EXIT("ShotDescription:" @ ShotDescription);
 	return ShotDescription;
@@ -833,8 +815,8 @@ function PrintShotDamage(ShotBreakdown kBreakdown, DamageBreakdown NormalDamage,
 	{
 		ShotDamage=`RANGESTRING(NormalDamage.Min, NormalDamage.Max);
 
-		// Tigrik: Append Expected Damage if MCM option 'Show Expected Damage' is enabled
-		if (getEXPECTED_DAMAGE())
+		// Tigrik: Append Expected Damage if MCM option 'Show Expected Damage' is enabled and if it's greater than 0.0
+		if (getEXPECTED_DAMAGE() && (fExpectedDamage > 0.0))
 		{
 			ShotDamage $= " (" $ class'ExpectedDamageLib'.static.FormatExpectedDamageString(fExpectedDamage) $ ")";
 		}

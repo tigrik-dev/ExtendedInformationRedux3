@@ -1,3 +1,4 @@
 *.lnk
 BuildCache/
 *.code-workspace
+**/PublishedFileId.ID

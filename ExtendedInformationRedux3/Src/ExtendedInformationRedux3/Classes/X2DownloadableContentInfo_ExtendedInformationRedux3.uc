@@ -44,7 +44,7 @@ static event OnPostTemplatesCreated()
 	class'TemplatePatchLib'.static.PatchTemplates();
 
 	// Registers BreakdownObserver with the tactical ruleset.
-	X2TacticalGameRuleset(class'XComEngine'.static.GetClassDefaultObject(class'X2TacticalGameRuleset')).EventObserverClasses.AddItem(class'X2TacticalGameRuleset_BreakdownObserver');
+	X2TacticalGameRuleset(class'XComEngine'.static.GetClassDefaultObjectByName(class'ModClassOverrideLib'.static.ResolveFinalClassName(class'X2TacticalGameRuleset'.Name))).EventObserverClasses.AddItem(class'X2TacticalGameRuleset_BreakdownObserver');
 
 	Abilities = class'X2AbilityTemplateManager'.static.GetAbilityTemplateManager();
 
@@ -180,8 +180,8 @@ static event OnPostTemplatesCreated()
 	// Tigrik: Disable Aim Assist if needed
 	class'AimAssistLib'.static.Init();
 
-	// Tigrik: Run all unit tests
-	class'EIR_TestRunner'.static.RunAllTests();
+	// Tigrik: Run all unit tests (in dev only)
+	//class'EIR_TestRunner'.static.RunAllTests();
 
 	`TRACE_EXIT("");
 }	
