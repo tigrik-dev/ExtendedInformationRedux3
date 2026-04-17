@@ -86,7 +86,12 @@ event PostBuildGameState(XComGameState NewGameState);
 /// <summary>
 /// Allows the observer class to set up any internal state it needs to when it is created
 /// </summary>
-event Initialize();
+event Initialize()
+{
+	`TRACE_ENTRY("");
+	`DEBUG("BreakdownObserver initialized");
+	`TRACE_EXIT("");
+}
 
 /// <summary>
 /// Event observers may use this to cache information about the state objects they need to operate on
