@@ -138,6 +138,3 @@ HackDefenceLabel = "HACK DEFENCE";
 MindSpinHit = "Mind Spun!"
 ShortCounterAttack = "Counter"
 Grappled = "Grappled!"
-
-[LocalizedEffectNames]
-XComGame.X2Effect_Dazed = "Dazed"

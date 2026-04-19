@@ -13,6 +13,15 @@ static function string GetFallbackEffectLabel(X2Effect Effect)
 
     `TRACE_ENTRY("Effect.Class.Name:" @ string(Effect.Class.Name));
 
+	// === 0. Hardcoded overrides ===
+    Label = GetHardcodedEffectLabelOverride(Effect);
+    if (Label != "")
+    {
+        `DEBUG("Using HARDCODED label:" @ Label);
+        `TRACE_EXIT("Return (hardcoded):" @ Label);
+        return Label;
+    }
+
     // === Build keys ===
     ClassKey   = string(Effect.Class.Name);
     PackageName = string(Effect.Class.Outer.Name);
@@ -90,6 +99,22 @@ static function string GetFallbackEffectLabel(X2Effect Effect)
 
     `TRACE_EXIT("Return:" @ Result);
     return Result;
+}
+
+static function string GetHardcodedEffectLabelOverride(X2Effect Effect)
+{
+    local name EffectName;
+
+	`TRACE_ENTRY("Effect.Class.Name:" @ Effect.Class.Name);
+    EffectName = Effect.Class.Name;
+
+    switch (EffectName)
+    {
+        case 'X2Effect_Dazed':
+            return class'X2StatusEffects_XPack'.default.DazedFriendlyName;
+    }
+
+    return ""; // no override
 }
 
 static function bool IsMissingLocalization(string Value)
