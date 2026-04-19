@@ -1,4 +1,4 @@
-class StatContestLib extends Object;
+class StatContestLib extends Object config(ExtendedInformationRedux3_EffectLib);
 
 `include(ExtendedInformationRedux3\Src\ExtendedInformationRedux3\EIR_LoggerMacros.uci)
 
@@ -8,6 +8,14 @@ struct StatContestEffectInfo
     var float Chance;
 };
 
+struct RelevantEffectOverride
+{
+    var string PackageName;   // e.g. "ExtendedInformationRedux3"
+    var string ClassName;     // e.g. "X2Effect_MyPoison"
+    var name AbilityName;     // optional; if empty ? wildcard
+};
+
+var config array<RelevantEffectOverride> RelevantEffects;
 
 /**
  * Returns formatted stat contest effect chances string for abilities like Insanity
@@ -33,6 +41,7 @@ static function string GetStatContestEffectChancesString(
     local float TierValue, LowTierValue, HighTierValue, TierValueSum;
 
     local array<StatContestEffectInfo> EffectInfos;
+	local string Result;
 
     `TRACE_ENTRY("Ability:" @ AbilityState.GetMyTemplateName());
 
@@ -90,44 +99,64 @@ static function string GetStatContestEffectChancesString(
     }
 
     // === Build effect groups ===
-    BuildEffectInfos(Effects, MaxTier, TierValues, EffectInfos);
+    BuildEffectInfos(Effects, MaxTier, TierValues, AbilityState, EffectInfos);
 
-	`TRACE_EXIT("Ability:" @ AbilityState.GetMyTemplateName());
+	// === Format ===
+	Result = FormatEffectInfos(EffectInfos);
 
-    // === Format ===
-    return FormatEffectInfos(EffectInfos);
+	`TRACE_EXIT("Ability:" @ AbilityState.GetMyTemplateName() $ ", Return:" @ Result);
+    return Result;
 }
 
 static function BuildEffectInfos(
     array<X2Effect> Effects,
     int MaxTier,
     array<float> TierValues,
+    XComGameState_Ability AbilityState,
     out array<StatContestEffectInfo> OutInfos
 )
 {
-    local int Idx, ExistingIdx, Tier;
+    local int ExistingIdx, Tier;
     local X2Effect Effect;
     local StatContestEffectInfo Info;
-	local X2Effect_Persistent PersistentEffect;
-	local bool bFound;
+    local X2Effect_Persistent PersistentEffect;
+    local bool bFound;
+    local string Label;
 
-	`TRACE_ENTRY("");
+    `TRACE_ENTRY("Ability:" @ AbilityState.GetMyTemplateName());
 
     foreach Effects(Effect)
     {
-		if (!IsRelevant(Effect)) continue;
-        if (Effect.MinStatContestResult == 0 && Effect.MaxStatContestResult == 0) continue;
+        // 1. Relevance filter (now includes config overrides)
+        if (!IsRelevant(Effect, AbilityState.GetMyTemplateName()))
+            continue;
 
-		PersistentEffect = X2Effect_Persistent(Effect);
-		if (PersistentEffect == none) continue;
+        // 2. Must participate in stat contest
+        if (Effect.MinStatContestResult == 0 && Effect.MaxStatContestResult == 0)
+            continue;
 
-        Info.Label = PersistentEffect.FriendlyName;
+        // 3. Resolve label
+        PersistentEffect = X2Effect_Persistent(Effect);
+
+        if (PersistentEffect != none && PersistentEffect.FriendlyName != "")
+        {
+            Label = PersistentEffect.FriendlyName;
+            `DEBUG("Using FriendlyName for" @ string(Effect.Class.Name) @ ":" @ Label);
+        }
+        else
+        {
+            Label = class'EffectLib'.static.GetFallbackEffectLabel(Effect);
+            `DEBUG("Using fallback label for" @ string(Effect.Class.Name) @ ":" @ Label);
+        }
+
+        Info.Label = Label;
         Info.Chance = 0;
 
+        // 4. Compute probability
         for (Tier = 1; Tier <= MaxTier; ++Tier)
         {
-            if ((PersistentEffect.MinStatContestResult == 0 || Tier >= PersistentEffect.MinStatContestResult) &&
-                (PersistentEffect.MaxStatContestResult == 0 || Tier <= PersistentEffect.MaxStatContestResult))
+            if ((Effect.MinStatContestResult == 0 || Tier >= Effect.MinStatContestResult) &&
+                (Effect.MaxStatContestResult == 0 || Tier <= Effect.MaxStatContestResult))
             {
                 Info.Chance += TierValues[Tier - 1];
             }
@@ -137,33 +166,65 @@ static function BuildEffectInfos(
 
         `DEBUG("ADDING Effect:" @ Info.Label @ "RawChance:" @ Info.Chance);
 
+        // 5. Merge duplicate labels (e.g. multiple Disorients)
         bFound = false;
 
-		for (ExistingIdx = 0; ExistingIdx < OutInfos.Length; ++ExistingIdx)
-		{
-			if (OutInfos[ExistingIdx].Label == Info.Label)
-			{
-				OutInfos[ExistingIdx].Chance += Info.Chance;
-				bFound = true;
-				`DEBUG("MERGED Effect:" @ OutInfos[ExistingIdx].Label @ "NewTotal:" @ OutInfos[ExistingIdx].Chance);
-				break;
-			}
-		}
+        for (ExistingIdx = 0; ExistingIdx < OutInfos.Length; ++ExistingIdx)
+        {
+            if (OutInfos[ExistingIdx].Label == Info.Label)
+            {
+                OutInfos[ExistingIdx].Chance += Info.Chance;
+                bFound = true;
 
-		if (!bFound)
-		{
-			OutInfos.AddItem(Info);
-			`DEBUG("ADDED NEW Effect:" @ Info.Label @ "Chance:" @ Info.Chance);
-		}
-		`DEBUG("FINAL Effect:" @ Info.Label @ "TotalChance:" @ Info.Chance);
+                `DEBUG("MERGED Effect:" @ Info.Label @ "NewTotal:" @ OutInfos[ExistingIdx].Chance);
+                break;
+            }
+        }
+
+        if (!bFound)
+        {
+            OutInfos.AddItem(Info);
+            `DEBUG("ADDED NEW Effect:" @ Info.Label @ "Chance:" @ Info.Chance);
+        }
     }
-	`TRACE_EXIT("");
+
+    // 6. Final summary debug
+    for (ExistingIdx = 0; ExistingIdx < OutInfos.Length; ++ExistingIdx)
+    {
+        `DEBUG("FINAL Effect:" @ OutInfos[ExistingIdx].Label @ "TotalChance:" @ OutInfos[ExistingIdx].Chance);
+    }
+
+    `TRACE_EXIT("");
 }
 
-static function bool IsRelevant(X2Effect Effect)
+static function bool IsRelevant(X2Effect Effect, optional name AbilityName)
 {
     local X2Effect_Persistent PersistentEffect;
+    local RelevantEffectOverride Override;
+    local string EffectPackage, EffectClass;
 
+	`TRACE_ENTRY("EffectPackage:" @ Effect.Class.Outer.Name $ ", EffectClass:" @ Effect.Class.Name $ ", AbilityName:" @ AbilityName);
+
+    EffectPackage = string(Effect.Class.Outer.Name);
+    EffectClass   = string(Effect.Class.Name);
+
+    // === 1. Config overrides ===
+    foreach default.RelevantEffects(Override)
+    {
+		`TRACE("Override.PackageName:" @ Override.PackageName $ ", Override.ClassName:" @ Override.ClassName $ ", Override.AbilityName:" @ Override.AbilityName);
+        if (Override.PackageName == EffectPackage &&
+            Override.ClassName == EffectClass)
+        {
+            // AbilityName match OR wildcard (empty)
+            if (Override.AbilityName == '' || Override.AbilityName == AbilityName)
+            {
+                `DEBUG("IsRelevant: OVERRIDE matched for" @ EffectClass @ "Ability:" @ AbilityName);
+                return true;
+            }
+        }
+    }
+
+    // === 2. Default logic ===
     PersistentEffect = X2Effect_Persistent(Effect);
     if (PersistentEffect == none)
         return false;
@@ -174,18 +235,17 @@ static function bool IsRelevant(X2Effect Effect)
 
 static function EUIState GetColorForIndex(int Index, int Total)
 {
-    local int GoodCount, WarningCount, BadCount;
+    local int GoodCount, WarningCount;
 
     if (Total == 1)
         return eUIState_Good;
 
     if (Total == 2)
-        return (Index == 0) ? eUIState_Good : eUIState_Bad;
+        return (Index == 0) ? eUIState_Good : eUIState_Psyonic;
 
     // Distribute
     GoodCount = (Total + 2) / 3;
     WarningCount = (Total + 1) / 3;
-    BadCount = Total / 3;
 
     if (Index < GoodCount)
         return eUIState_Good;
@@ -193,21 +253,25 @@ static function EUIState GetColorForIndex(int Index, int Total)
     if (Index < GoodCount + WarningCount)
         return eUIState_Warning;
 
-    return eUIState_Bad;
+    return eUIState_Psyonic;
 }
 
 static function string FormatEffectInfos(array<StatContestEffectInfo> Infos)
 {
     local int Idx;
     local string Result;
+    local int RoundedChance;
 
     for (Idx = 0; Idx < Infos.Length; ++Idx)
     {
         if (Idx > 0)
             Result $= " | ";
 
+        // Proper rounding instead of truncation
+        RoundedChance = int(Infos[Idx].Chance + 0.5f);
+
         Result $= class'UIUtilities_Text'.static.GetColoredText(
-            Infos[Idx].Label $ ": " $ int(Infos[Idx].Chance) $ "%",
+            Infos[Idx].Label $ ": " $ RoundedChance $ "%",
             GetColorForIndex(Idx, Infos.Length)
         );
     }

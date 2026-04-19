@@ -255,7 +255,7 @@ simulated function FindClosestRes(out int ResX, out int ResY)
 simulated function Update() 
 {
     local bool isValidShot, IsSkPostMelee;
-    local string ShotName, ShotDescription;
+    local string ShotName, ShotDescription, StatContestEffectChances;
     local int HitChance, skHitChance, CritChance, GrazeChance, TargetIndex, AimBonus, skAimBonus, BarOffsetY;
     local ShotBreakdown kBreakdown;
     local StateObjectReference Target, EmptyRef;
@@ -338,7 +338,8 @@ simulated function Update()
 		WillBreakConcealment = SelectedAbilityState.MayBreakConcealmentOnActivation(Target.ObjectID);
 		WillEndTurn = SelectedAbilityState.WillEndTurn();
  
-		ShotDescription = class'StatContestLib'.static.GetStatContestEffectChancesString(SelectedAbilityState, Target) $ "\n" $ ShotDescription;
+		StatContestEffectChances = class'StatContestLib'.static.GetStatContestEffectChancesString(SelectedAbilityState, Target);
+		if (StatContestEffectChances != "") ShotDescription = StatContestEffectChances $ "\n" $ ShotDescription;
 
 		//AS_SetShotInfo(ShotName, ShotDescription, WillBreakConcealment, WillEndTurn);
 		// Display Hack Info if relevant

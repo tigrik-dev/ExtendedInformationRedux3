@@ -4,27 +4,63 @@ class EffectLib extends Object;
 
 static function string GetFallbackEffectLabel(X2Effect Effect)
 {
-    local string Label;
+    local string Label, LocalizedLabel;
+    local string FullKey, ClassKey;
+    local string PackageName;
     local int i;
     local string Char, PrevChar, NextChar;
     local string Result;
 
-    // Strip prefix
-    Label = string(Effect.Class.Name);
-    Label = Repl(Label, "X2Effect_", "");
+    `TRACE_ENTRY("Effect.Class.Name:" @ string(Effect.Class.Name));
 
-    // === NEW: validate only letters ===
+    // === Build keys ===
+    ClassKey   = string(Effect.Class.Name);
+    PackageName = string(Effect.Class.Outer.Name);
+    FullKey    = PackageName $ "." $ ClassKey;
+
+	`DEBUG("FullKey:" @ FullKey);
+
+    // === 1. Try FULLY QUALIFIED localization ===
+    LocalizedLabel = Localize("LocalizedEffectNames", FullKey, "ExtendedInformationRedux3");
+
+    if (!IsMissingLocalization(LocalizedLabel))
+    {
+        `DEBUG("Using FULL localized label:" @ LocalizedLabel);
+        `TRACE_EXIT("Return (localized full):" @ LocalizedLabel);
+        return LocalizedLabel;
+    }
+
+    // === 2. Try CLASS-ONLY localization (fallback) ===
+    LocalizedLabel = Localize("LocalizedEffectNames", ClassKey, "ExtendedInformationRedux3");
+
+    if (!IsMissingLocalization(LocalizedLabel))
+    {
+        `DEBUG("Using CLASS localized label:" @ LocalizedLabel);
+        `TRACE_EXIT("Return (localized class):" @ LocalizedLabel);
+        return LocalizedLabel;
+    }
+
+    // === 3. Strip prefix ===
+    Label = Repl(ClassKey, "X2Effect_", "");
+
+    // === 4. Validate (letters only) ===
+	// If an effect still has any non-letter characters after stripping "X2Effect_" - display a fallback "Unknown"
+	// e.g. "JaysEffect_HunkerDownReduxDebug2" -> "Unknown"
     for (i = 0; i < Len(Label); i++)
     {
         Char = Mid(Label, i, 1);
 
-        if (!IsUpper(Char) && !IsLower(Char))
+        if (!class'StringLib'.static.IsUpper(Char) && !class'StringLib'.static.IsLower(Char))
         {
+            `DEBUG("Invalid characters detected, returning fallback");
+            `TRACE_EXIT("Return: Unknown");
             return "Unknown";
         }
     }
 
-    // === Existing formatting logic ===
+    // === 5. Insert spaces (PascalCase ? readable) ===
+	// Add spaces in between words. e.g. "MindScorch" -> "Mind Scorch"
+	// Don't add spaces where an acronym is detected. e.g. "LWMindScorch" -> "LW Mind Scorch"
     Result = "";
 
     for (i = 0; i < Len(Label); i++)
@@ -40,10 +76,9 @@ static function string GetFallbackEffectLabel(X2Effect Effect)
             else
                 NextChar = "";
 
-            // Insert space rules
             if (
-                (IsLower(PrevChar) && IsUpper(Char)) ||
-                (IsUpper(PrevChar) && IsUpper(Char) && NextChar != "" && IsLower(NextChar))
+                (class'StringLib'.static.IsLower(PrevChar) && class'StringLib'.static.IsUpper(Char)) ||
+                (class'StringLib'.static.IsUpper(PrevChar) && class'StringLib'.static.IsUpper(Char) && NextChar != "" && class'StringLib'.static.IsLower(NextChar))
             )
             {
                 Result $= " ";
@@ -53,15 +88,12 @@ static function string GetFallbackEffectLabel(X2Effect Effect)
         Result $= Char;
     }
 
+    `TRACE_EXIT("Return:" @ Result);
     return Result;
 }
 
-private static function bool IsUpper(string C)
+static function bool IsMissingLocalization(string Value)
 {
-    return C >= "A" && C <= "Z";
-}
-
-private static function bool IsLower(string C)
-{
-    return C >= "a" && C <= "z";
+    // Unreal returns "?INT?Package.Section.Key?" when missing
+    return Left(Value, 5) == "?INT?";
 }
