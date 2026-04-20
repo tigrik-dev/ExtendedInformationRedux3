@@ -255,7 +255,7 @@ simulated function FindClosestRes(out int ResX, out int ResY)
 simulated function Update() 
 {
     local bool isValidShot, IsSkPostMelee;
-    local string ShotName, ShotDescription;
+    local string ShotName, ShotDescription, StatContestEffectChances;
     local int HitChance, skHitChance, CritChance, GrazeChance, TargetIndex, AimBonus, skAimBonus, BarOffsetY;
     local ShotBreakdown kBreakdown;
     local StateObjectReference Target, EmptyRef;
@@ -270,13 +270,11 @@ simulated function Update()
     local X2TargetingMethod TargetingMethod;
     local bool WillBreakConcealment, WillEndTurn, bHide;
 	local DamageBreakdown NormalDamage, CritDamage;
-	local X2AbilityToHitCalc_StandardAim StandardHitCalc;
-	local UnitValue CounterattackCheck;
-	local XComGameState_Unit UnitState, TargetUnitState;
+	local XComGameState_Unit UnitState;
 	local XComGameStateHistory History;
 	// New from Grimy Shot Bar
 	local string FontString;
-   	local int offsetX, Current, i, j, CounterGraze, CounterCrit, CounterHit, CounterBonus;
+   	local int offsetX, Current, i, j;
 	local float Chance[4];
 	local float fExpectedDamage;
 
@@ -340,6 +338,9 @@ simulated function Update()
 		WillBreakConcealment = SelectedAbilityState.MayBreakConcealmentOnActivation(Target.ObjectID);
 		WillEndTurn = SelectedAbilityState.WillEndTurn();
  
+		StatContestEffectChances = class'StatContestLib'.static.GetStatContestEffectChancesString(SelectedAbilityState, Target, kTarget);
+		if (StatContestEffectChances != "") ShotDescription = StatContestEffectChances $ "\n" $ ShotDescription;
+
 		//AS_SetShotInfo(ShotName, ShotDescription, WillBreakConcealment, WillEndTurn);
 		// Display Hack Info if relevant
 		AS_SetShotInfo(ShotName, UpdateHackDescription(SelectedAbilityState, Target, ShotDescription), WillBreakConcealment, WillEndTurn);

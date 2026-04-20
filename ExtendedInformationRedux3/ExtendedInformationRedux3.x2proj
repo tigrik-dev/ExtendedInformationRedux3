@@ -26,6 +26,9 @@
     <Folder Include="Src\ExtendedInformationRedux3\Classes\" />
     <Folder Include="Src\ModConfigMenuAPI\" />
     <Folder Include="Src\ModConfigMenuAPI\Classes\" />
+    <Content Include="Config\XComExtendedInformationRedux3_EffectLib.ini">
+      <SubType>Content</SubType>
+    </Content>
     <Content Include="Config\XComExtendedInformationRedux3_Logger.ini">
       <SubType>Content</SubType>
     </Content>
@@ -61,6 +64,9 @@
       <SubType>Content</SubType>
     </Content>
     <Content Include="Src\ExtendedInformationRedux3\Classes\DamagePreviewLib.uc">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Src\ExtendedInformationRedux3\Classes\EffectLib.uc">
       <SubType>Content</SubType>
     </Content>
     <Content Include="Src\ExtendedInformationRedux3\Classes\EIR_Logger.uc">
@@ -100,7 +106,13 @@
     <Content Include="Src\ExtendedInformationRedux3\Classes\ModSupportLib.uc">
       <SubType>Content</SubType>
     </Content>
+    <Content Include="Src\ExtendedInformationRedux3\Classes\StatContestLib.uc">
+      <SubType>Content</SubType>
+    </Content>
     <Content Include="Src\ExtendedInformationRedux3\Classes\StatListLib.uc" />
+    <Content Include="Src\ExtendedInformationRedux3\Classes\StringLib.uc">
+      <SubType>Content</SubType>
+    </Content>
     <Content Include="Src\ExtendedInformationRedux3\Classes\TemplatePatchLib.uc">
       <SubType>Content</SubType>
     </Content>
