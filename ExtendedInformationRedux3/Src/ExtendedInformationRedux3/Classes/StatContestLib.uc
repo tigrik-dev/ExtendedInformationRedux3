@@ -319,7 +319,7 @@ static function BuildEffectInfos(
 	out array<TierEffectBucket> OutTierBuckets
 )
 {
-    local int Tier, i, Idx, EffectOrderIndex, CurrentEffectOrder;
+    local int Tier, i, Idx, CurrentEffectOrder;
     local X2Effect Effect;
     local XComGameState_Unit TargetUnit, SourceUnit;
     local string Label;
@@ -347,7 +347,6 @@ static function BuildEffectInfos(
         OutTierBuckets[Tier].Labels.Length = 0;
     }
 
-	EffectOrderIndex = 0;
     // === Iterate tiers ===
     for (Tier = 1; Tier <= MaxTier; ++Tier)
     {
@@ -368,14 +367,14 @@ static function BuildEffectInfos(
                 continue;
 
             // 3. simulate conditions
-            if (!DoesEffectPassConditions(Effect, AbilityState, TargetUnit, SourceUnit))
+            if (!class'EffectLib'.static.DoesEffectPassConditions(Effect, AbilityState, TargetUnit, SourceUnit))
             {
                 `DEBUG("Effect failed conditions:" @ string(Effect.Class.Name));
                 continue;
             }
 
             // 4. resolve label
-            Label = ResolveEffectLabel(Effect);
+            Label = class'EffectLib'.static.ResolveEffectLabel(Effect);
 
 			OutTierBuckets[Tier - 1].Labels.AddItem(Label);
 
@@ -438,46 +437,6 @@ static function bool AreEffectInfosMutuallyExclusive(
     return true;
 }
 
-static function bool DoesEffectPassConditions(
-    X2Effect Effect,
-    XComGameState_Ability AbilityState,
-    XComGameState_Unit TargetUnit,
-    XComGameState_Unit SourceUnit
-)
-{
-    local X2Condition Condition;
-    local name Result;
-
-    foreach Effect.TargetConditions(Condition)
-    {
-        Result = Condition.AbilityMeetsCondition(AbilityState, TargetUnit);
-        if (Result != 'AA_Success')
-            return false;
-
-        Result = Condition.MeetsCondition(TargetUnit);
-        if (Result != 'AA_Success')
-            return false;
-
-        Result = Condition.MeetsConditionWithSource(TargetUnit, SourceUnit);
-        if (Result != 'AA_Success')
-            return false;
-    }
-
-    return true;
-}
-
-static function string ResolveEffectLabel(X2Effect Effect)
-{
-    local X2Effect_Persistent PersistentEffect;
-
-    PersistentEffect = X2Effect_Persistent(Effect);
-
-    if (PersistentEffect != none && PersistentEffect.FriendlyName != "")
-        return PersistentEffect.FriendlyName;
-
-    return class'EffectLib'.static.GetFallbackEffectLabel(Effect);
-}
-
 static function StatContestEffectInfo MakeEffectInfo(string Label, float Chance)
 {
     local StatContestEffectInfo Info;
@@ -524,29 +483,6 @@ static function bool IsRelevant(X2Effect Effect, optional name AbilityName)
     return PersistentEffect.Class != class'X2Effect_Persistent';
 }
 
-static function EUIState GetColorForIndex(int Index, int Total)
-{
-    local int GoodCount, WarningCount;
-
-    if (Total == 1)
-        return eUIState_Good;
-
-    if (Total == 2)
-        return (Index == 0) ? eUIState_Good : eUIState_Psyonic;
-
-    // Distribute
-    GoodCount = (Total + 2) / 3;
-    WarningCount = (Total + 1) / 3;
-
-    if (Index < GoodCount)
-        return eUIState_Good;
-
-    if (Index < GoodCount + WarningCount)
-        return eUIState_Warning;
-
-    return eUIState_Psyonic;
-}
-
 static function string FormatEffectInfos(array<StatContestEffectInfo> Infos)
 {
     local string Result;
@@ -559,7 +495,7 @@ static function string FormatEffectInfos(array<StatContestEffectInfo> Infos)
 
         Result $= class'UIUtilities_Text'.static.GetColoredText(
             Infos[i].Label $ ": " $ Infos[i].RoundedChance $ "%",
-            GetColorForIndex(i, Infos.Length)
+            class'EffectLib'.static.GetColorForIndex(i, Infos.Length)
         );
     }
 

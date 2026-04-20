@@ -122,3 +122,66 @@ static function bool IsMissingLocalization(string Value)
     // Unreal returns "?INT?Package.Section.Key?" when missing
     return Left(Value, 5) == "?INT?";
 }
+
+static function EUIState GetColorForIndex(int Index, int Total)
+{
+    local int GoodCount, WarningCount;
+
+    if (Total == 1)
+        return eUIState_Good;
+
+    if (Total == 2)
+        return (Index == 0) ? eUIState_Good : eUIState_Psyonic;
+
+    // Distribute
+    GoodCount = (Total + 2) / 3;
+    WarningCount = (Total + 1) / 3;
+
+    if (Index < GoodCount)
+        return eUIState_Good;
+
+    if (Index < GoodCount + WarningCount)
+        return eUIState_Warning;
+
+    return eUIState_Psyonic;
+}
+
+static function string ResolveEffectLabel(X2Effect Effect)
+{
+    local X2Effect_Persistent PersistentEffect;
+
+    PersistentEffect = X2Effect_Persistent(Effect);
+
+    if (PersistentEffect != none && PersistentEffect.FriendlyName != "")
+        return PersistentEffect.FriendlyName;
+
+    return GetFallbackEffectLabel(Effect);
+}
+
+static function bool DoesEffectPassConditions(
+    X2Effect Effect,
+    XComGameState_Ability AbilityState,
+    XComGameState_Unit TargetUnit,
+    XComGameState_Unit SourceUnit
+)
+{
+    local X2Condition Condition;
+    local name Result;
+
+    foreach Effect.TargetConditions(Condition)
+    {
+        Result = Condition.AbilityMeetsCondition(AbilityState, TargetUnit);
+        if (Result != 'AA_Success')
+            return false;
+
+        Result = Condition.MeetsCondition(TargetUnit);
+        if (Result != 'AA_Success')
+            return false;
+
+        Result = Condition.MeetsConditionWithSource(TargetUnit, SourceUnit);
+        if (Result != 'AA_Success')
+            return false;
+    }
+
+    return true;
+}
