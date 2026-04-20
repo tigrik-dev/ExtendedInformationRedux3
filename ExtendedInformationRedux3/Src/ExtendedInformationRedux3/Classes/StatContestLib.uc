@@ -6,12 +6,13 @@ struct StatContestEffectInfo
 {
     var string Label;
     var float Chance;
+	var int RoundedChance;
 };
 
 struct RelevantEffectOverride
 {
     var string PackageName;   // e.g. "ExtendedInformationRedux3"
-    var string ClassName;     // e.g. "X2Effect_MyPoison"
+    var string ClassName;     // e.g. "X2Effect_Dazed"
     var name AbilityName;     // optional; if empty ? wildcard
 };
 
@@ -27,7 +28,8 @@ var config array<RelevantEffectOverride> RelevantEffects;
  */
 static function string GetStatContestEffectChancesString(
     XComGameState_Ability AbilityState,
-    StateObjectReference TargetRef
+    StateObjectReference TargetRef,
+    AvailableTarget kTarget
 )
 {
     local X2AbilityTemplate Template;
@@ -35,13 +37,14 @@ static function string GetStatContestEffectChancesString(
     local X2AbilityToHitCalc_StatCheck StatCalc;
 
     local int AttackVal, DefendVal, MaxTier, Idx;
-    local int MiddleTier;
+    local int MiddleTier, HitChance, MissChance;
 
     local array<float> TierValues;
     local float TierValue, LowTierValue, HighTierValue, TierValueSum;
 
     local array<StatContestEffectInfo> EffectInfos;
-	local string Result;
+    local string Result, MissLabel;
+    local ShotBreakdown kBreakdown;
 
     `TRACE_ENTRY("Ability:" @ AbilityState.GetMyTemplateName());
 
@@ -54,7 +57,6 @@ static function string GetStatContestEffectChancesString(
 
     Effects = Template.AbilityTargetEffects;
 
-    // Detect if this ability even uses stat contest tiers
     MaxTier = GetHighestTierPossibleFromEffects(Effects);
     if (MaxTier <= 0)
         return "";
@@ -63,6 +65,20 @@ static function string GetStatContestEffectChancesString(
     if (StatCalc == none)
         return "";
 
+    // === HIT / MISS ===
+    AbilityState.GetShotBreakdown(kTarget, kBreakdown);
+
+    HitChance = Clamp(
+        (kBreakdown.bIsMultishot ? kBreakdown.MultiShotHitChance : kBreakdown.FinalHitChance),
+        0, 100
+    );
+
+    MissChance = 100 - HitChance;
+
+    `DEBUG("HitChance:" @ HitChance);
+    `DEBUG("MissChance:" @ MissChance);
+
+    // === Attack / Defense ===
     AttackVal = StatCalc.GetAttackValue(AbilityState, TargetRef);
     DefendVal = StatCalc.GetDefendValue(AbilityState, TargetRef);
 
@@ -98,14 +114,159 @@ static function string GetStatContestEffectChancesString(
         `DEBUG("Normalized Tier[" $ (Idx+1) $ "]:" @ TierValues[Idx]);
     }
 
-    // === Build effect groups ===
+    // === Build effect chances (0–100 assuming HIT) ===
     BuildEffectInfos(Effects, MaxTier, TierValues, AbilityState, EffectInfos);
 
-	// === Format ===
-	Result = FormatEffectInfos(EffectInfos);
+    // === SCALE by hit chance ===
+    ScaleEffectInfosByHitChance(EffectInfos, HitChance);
 
-	`TRACE_EXIT("Ability:" @ AbilityState.GetMyTemplateName() $ ", Return:" @ Result);
+    // === SMART ROUND ===
+    ApplySmartRounding(EffectInfos, HitChance);
+
+    // === FORMAT ===
+    Result = FormatEffectInfos(EffectInfos);
+
+    // === MISS ===
+    if (MissChance > 0)
+    {
+        MissLabel = class'X2TacticalGameRulesetDataStructures'.default.m_aAbilityHitResultStrings[eHit_Miss];
+
+        Result $= " | " $
+            class'UIUtilities_Text'.static.GetColoredText(
+                MissLabel $ ": " $ MissChance $ "%",
+                eUIState_Bad
+            );
+    }
+
+    `TRACE_EXIT("Return:" @ Result);
     return Result;
+}
+
+static function ScaleEffectInfosByHitChance(
+    out array<StatContestEffectInfo> Infos,
+    int HitChance
+)
+{
+    local int i;
+
+	`TRACE_ENTRY("");
+    for (i = 0; i < Infos.Length; i++)
+    {
+        Infos[i].Chance = Infos[i].Chance * float(HitChance) / 100.0f;
+
+        `DEBUG("Scaled:" @ Infos[i].Label @ Infos[i].Chance);
+    }
+	`TRACE_EXIT("");
+}
+
+static function ApplySmartRounding(
+    out array<StatContestEffectInfo> Infos,
+    int TargetTotal
+)
+{
+    local int i, CurrentSum, Needed, BestIdx;
+    local float BestFraction;
+    local array<int> Rounded;
+    local array<float> Fractions;
+    local array<bool> ForcedToOne;
+
+    `TRACE_ENTRY("");
+
+    // === STEP 1: floor everything ===
+    for (i = 0; i < Infos.Length; i++)
+    {
+        Rounded.AddItem(int(Infos[i].Chance));
+        Fractions.AddItem(Infos[i].Chance - float(Rounded[i]));
+        ForcedToOne.AddItem(false);
+
+        `DEBUG("Initial:" @ Infos[i].Label @ "Raw:" @ Infos[i].Chance @ "Floor:" @ Rounded[i]);
+    }
+
+    // === STEP 2: enforce minimum 1% for non-zero values ===
+    for (i = 0; i < Infos.Length; i++)
+    {
+        if (Infos[i].Chance > 0.0f && Rounded[i] == 0)
+        {
+            Rounded[i] = 1;
+            ForcedToOne[i] = true;
+
+            `DEBUG("Forced to 1%:" @ Infos[i].Label);
+        }
+    }
+
+    // === STEP 3: compute sum ===
+    CurrentSum = 0;
+    for (i = 0; i < Rounded.Length; i++)
+    {
+        CurrentSum += Rounded[i];
+    }
+
+    Needed = TargetTotal - CurrentSum;
+
+    `DEBUG("After min-pass Sum:" @ CurrentSum @ "Target:" @ TargetTotal @ "Needed:" @ Needed);
+
+    // === STEP 4A: need to ADD points ? give to largest fractions ===
+    while (Needed > 0)
+    {
+        BestIdx = -1;
+        BestFraction = -1.0;
+
+        for (i = 0; i < Infos.Length; i++)
+        {
+            if (Fractions[i] > BestFraction)
+            {
+                BestFraction = Fractions[i];
+                BestIdx = i;
+            }
+        }
+
+        if (BestIdx == -1)
+            break;
+
+        Rounded[BestIdx]++;
+        Fractions[BestIdx] = 0;
+        Needed--;
+
+        `DEBUG("Rounding UP:" @ Infos[BestIdx].Label);
+    }
+
+    // === STEP 4B: need to REMOVE points ? take from smallest fractions ===
+    while (Needed < 0)
+    {
+        BestIdx = -1;
+        BestFraction = 999.0;
+
+        for (i = 0; i < Infos.Length; i++)
+        {
+            // don't reduce forced 1% unless absolutely necessary
+            if (Rounded[i] > 1 || !ForcedToOne[i])
+            {
+                if (Fractions[i] < BestFraction)
+                {
+                    BestFraction = Fractions[i];
+                    BestIdx = i;
+                }
+            }
+        }
+
+        if (BestIdx == -1)
+            break;
+
+        Rounded[BestIdx]--;
+        Needed++;
+
+        `DEBUG("Rounding DOWN:" @ Infos[BestIdx].Label);
+    }
+
+    // === STEP 5: write back ===
+    for (i = 0; i < Infos.Length; i++)
+    {
+        Infos[i].RoundedChance = Rounded[i];
+
+        `DEBUG("FINAL:" @ Infos[i].Label @ Infos[i].RoundedChance);
+    }
+
+    `TRACE_EXIT("");
 }
 
 static function BuildEffectInfos(
@@ -258,21 +419,17 @@ static function EUIState GetColorForIndex(int Index, int Total)
 
 static function string FormatEffectInfos(array<StatContestEffectInfo> Infos)
 {
-    local int Idx;
     local string Result;
-    local int RoundedChance;
+    local int i;
 
-    for (Idx = 0; Idx < Infos.Length; ++Idx)
+    for (i = 0; i < Infos.Length; i++)
     {
-        if (Idx > 0)
+        if (i > 0)
             Result $= " | ";
 
-        // Proper rounding instead of truncation
-        RoundedChance = int(Infos[Idx].Chance + 0.5f);
-
         Result $= class'UIUtilities_Text'.static.GetColoredText(
-            Infos[Idx].Label $ ": " $ RoundedChance $ "%",
-            GetColorForIndex(Idx, Infos.Length)
+            Infos[i].Label $ ": " $ Infos[i].RoundedChance $ "%",
+            GetColorForIndex(i, Infos.Length)
         );
     }
 

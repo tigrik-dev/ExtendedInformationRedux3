@@ -338,7 +338,7 @@ simulated function Update()
 		WillBreakConcealment = SelectedAbilityState.MayBreakConcealmentOnActivation(Target.ObjectID);
 		WillEndTurn = SelectedAbilityState.WillEndTurn();
  
-		StatContestEffectChances = class'StatContestLib'.static.GetStatContestEffectChancesString(SelectedAbilityState, Target);
+		StatContestEffectChances = class'StatContestLib'.static.GetStatContestEffectChancesString(SelectedAbilityState, Target, kTarget);
 		if (StatContestEffectChances != "") ShotDescription = StatContestEffectChances $ "\n" $ ShotDescription;
 
 		//AS_SetShotInfo(ShotName, ShotDescription, WillBreakConcealment, WillEndTurn);
