@@ -16,6 +16,11 @@ struct RelevantEffectOverride
     var name AbilityName;     // optional; if empty ? wildcard
 };
 
+struct TierEffectBucket
+{
+    var array<string> Labels;
+};
+
 var config array<RelevantEffectOverride> RelevantEffects;
 
 /**
@@ -45,6 +50,8 @@ static function string GetStatContestEffectChancesString(
     local array<StatContestEffectInfo> EffectInfos;
     local string Result, MissLabel;
     local ShotBreakdown kBreakdown;
+	local bool bMutuallyExclusive;
+	local array<TierEffectBucket> TierEffectBuckets;
 
     `TRACE_ENTRY("Ability:" @ AbilityState.GetMyTemplateName());
 
@@ -115,13 +122,19 @@ static function string GetStatContestEffectChancesString(
     }
 
     // === Build effect chances (0–100 assuming HIT) ===
-    BuildEffectInfos(Effects, MaxTier, TierValues, AbilityState, EffectInfos);
+    BuildEffectInfos(Effects, MaxTier, TierValues, AbilityState, TargetRef, EffectInfos, TierEffectBuckets);
 
     // === SCALE by hit chance ===
     ScaleEffectInfosByHitChance(EffectInfos, HitChance);
 
+
     // === SMART ROUND ===
-    ApplySmartRounding(EffectInfos, HitChance);
+	bMutuallyExclusive = AreEffectInfosMutuallyExclusive(TierEffectBuckets);
+	`DEBUG("MutuallyExclusive:" @ bMutuallyExclusive);
+    ApplySmartRounding(EffectInfos, HitChance, bMutuallyExclusive);
+
+	// === SORT ===
+	SortEffectInfos(EffectInfos);
 
     // === FORMAT ===
     Result = FormatEffectInfos(EffectInfos);
@@ -161,7 +174,8 @@ static function ScaleEffectInfosByHitChance(
 
 static function ApplySmartRounding(
     out array<StatContestEffectInfo> Infos,
-    int TargetTotal
+    int TargetTotal,
+    bool bForceTotal
 )
 {
     local int i, CurrentSum, Needed, BestIdx;
@@ -171,6 +185,13 @@ static function ApplySmartRounding(
     local array<bool> ForcedToOne;
 
     `TRACE_ENTRY("");
+
+	if (!bForceTotal)
+	{
+		// Independent probabilities - just round normally, no normalization
+		ApplyIndependentRounding(Infos);
+		return;
+	}
 
     // === STEP 1: floor everything ===
     for (i = 0; i < Infos.Length; i++)
@@ -261,9 +282,31 @@ static function ApplySmartRounding(
     // === STEP 5: write back ===
     for (i = 0; i < Infos.Length; i++)
     {
-        Infos[i].RoundedChance = Rounded[i];
+        Infos[i].RoundedChance = Max(0, Rounded[i]);
 
         `DEBUG("FINAL:" @ Infos[i].Label @ Infos[i].RoundedChance);
+    }
+
+    `TRACE_EXIT("");
+}
+
+static function ApplyIndependentRounding(out array<StatContestEffectInfo> Infos)
+{
+    local int i;
+    local int Rounded;
+
+    `TRACE_ENTRY("Independent rounding");
+
+    for (i = 0; i < Infos.Length; i++)
+    {
+        Rounded = int(Infos[i].Chance + 0.5f); // standard rounding
+
+        if (Infos[i].Chance > 0.0f && Rounded == 0)
+            Rounded = 1;
+
+        Infos[i].RoundedChance = Rounded;
+
+        `DEBUG("Independent:" @ Infos[i].Label @ Infos[i].Chance @ "->" @ Rounded);
     }
 
     `TRACE_EXIT("");
@@ -274,88 +317,164 @@ static function BuildEffectInfos(
     int MaxTier,
     array<float> TierValues,
     XComGameState_Ability AbilityState,
-    out array<StatContestEffectInfo> OutInfos
+	StateObjectReference TargetRef,
+    out array<StatContestEffectInfo> OutInfos,
+	out array<TierEffectBucket> OutTierBuckets
 )
 {
-    local int ExistingIdx, Tier;
+    local int Tier, i, Idx;
     local X2Effect Effect;
-    local StatContestEffectInfo Info;
-    local X2Effect_Persistent PersistentEffect;
-    local bool bFound;
+    local XComGameState_Unit TargetUnit, SourceUnit;
     local string Label;
 
-    `TRACE_ENTRY("Ability:" @ AbilityState.GetMyTemplateName());
+    local array<string> Labels;
+    local array<float> Chances;
 
-    foreach Effects(Effect)
+    `TRACE_ENTRY("SIMULATED MODE Ability:" @ AbilityState.GetMyTemplateName());
+
+    // === Resolve units ===
+    TargetUnit = XComGameState_Unit(`XCOMHISTORY.GetGameStateForObjectID(TargetRef.ObjectID));
+    SourceUnit = XComGameState_Unit(`XCOMHISTORY.GetGameStateForObjectID(AbilityState.OwnerStateObject.ObjectID));
+
+    if (TargetUnit == none)
     {
-        // 1. Relevance filter (now includes config overrides)
-        if (!IsRelevant(Effect, AbilityState.GetMyTemplateName()))
-            continue;
+        `DEBUG("No target unit - aborting");
+        return;
+    }
 
-        // 2. Must participate in stat contest
-        if (Effect.MinStatContestResult == 0 && Effect.MaxStatContestResult == 0)
-            continue;
+	// Initialize buckets
+    OutTierBuckets.Length = MaxTier;
+    for (Tier = 0; Tier < MaxTier; Tier++)
+    {
+        OutTierBuckets[Tier].Labels.Length = 0;
+    }
 
-        // 3. Resolve label
-        PersistentEffect = X2Effect_Persistent(Effect);
+    // === Iterate tiers ===
+    for (Tier = 1; Tier <= MaxTier; ++Tier)
+    {
+        `DEBUG("=== Tier" @ Tier @ "Weight:" @ TierValues[Tier - 1]);
 
-        if (PersistentEffect != none && PersistentEffect.FriendlyName != "")
+        foreach Effects(Effect)
         {
-            Label = PersistentEffect.FriendlyName;
-            `DEBUG("Using FriendlyName for" @ string(Effect.Class.Name) @ ":" @ Label);
-        }
-        else
-        {
-            Label = class'EffectLib'.static.GetFallbackEffectLabel(Effect);
-            `DEBUG("Using fallback label for" @ string(Effect.Class.Name) @ ":" @ Label);
-        }
+            // 1. relevance
+            if (!IsRelevant(Effect, AbilityState.GetMyTemplateName()))
+                continue;
 
-        Info.Label = Label;
-        Info.Chance = 0;
+            // 2. stat contest window
+            if ((Effect.MinStatContestResult != 0 && Tier < Effect.MinStatContestResult) ||
+                (Effect.MaxStatContestResult != 0 && Tier > Effect.MaxStatContestResult))
+                continue;
 
-        // 4. Compute probability
-        for (Tier = 1; Tier <= MaxTier; ++Tier)
-        {
-            if ((Effect.MinStatContestResult == 0 || Tier >= Effect.MinStatContestResult) &&
-                (Effect.MaxStatContestResult == 0 || Tier <= Effect.MaxStatContestResult))
+            // 3. simulate conditions
+            if (!DoesEffectPassConditions(Effect, AbilityState, TargetUnit, SourceUnit))
             {
-                Info.Chance += TierValues[Tier - 1];
+                `DEBUG("Effect failed conditions:" @ string(Effect.Class.Name));
+                continue;
             }
-        }
 
-        Info.Chance *= 100.0f;
+            // 4. resolve label
+            Label = ResolveEffectLabel(Effect);
 
-        `DEBUG("ADDING Effect:" @ Info.Label @ "RawChance:" @ Info.Chance);
+			OutTierBuckets[Tier - 1].Labels.AddItem(Label);
 
-        // 5. Merge duplicate labels (e.g. multiple Disorients)
-        bFound = false;
+            // 5. accumulate probability
+            Idx = Labels.Find(Label);
 
-        for (ExistingIdx = 0; ExistingIdx < OutInfos.Length; ++ExistingIdx)
-        {
-            if (OutInfos[ExistingIdx].Label == Info.Label)
+            if (Idx == INDEX_NONE)
             {
-                OutInfos[ExistingIdx].Chance += Info.Chance;
-                bFound = true;
+                Labels.AddItem(Label);
+                Chances.AddItem(TierValues[Tier - 1] * 100.0f);
 
-                `DEBUG("MERGED Effect:" @ Info.Label @ "NewTotal:" @ OutInfos[ExistingIdx].Chance);
-                break;
+                `DEBUG("ADD:" @ Label @ Chances[Chances.Length - 1]);
             }
-        }
+            else
+            {
+                Chances[Idx] += TierValues[Tier - 1] * 100.0f;
 
-        if (!bFound)
-        {
-            OutInfos.AddItem(Info);
-            `DEBUG("ADDED NEW Effect:" @ Info.Label @ "Chance:" @ Info.Chance);
+                `DEBUG("ACCUM:" @ Label @ Chances[Idx]);
+            }
         }
     }
 
-    // 6. Final summary debug
-    for (ExistingIdx = 0; ExistingIdx < OutInfos.Length; ++ExistingIdx)
+    // === Convert to OutInfos ===
+    for (i = 0; i < Labels.Length; i++)
     {
-        `DEBUG("FINAL Effect:" @ OutInfos[ExistingIdx].Label @ "TotalChance:" @ OutInfos[ExistingIdx].Chance);
+        OutInfos.AddItem(MakeEffectInfo(Labels[i], Chances[i]));
+        `DEBUG("FINAL:" @ Labels[i] @ Chances[i]);
     }
 
     `TRACE_EXIT("");
+}
+
+static function bool AreEffectInfosMutuallyExclusive(
+    array<TierEffectBucket> Buckets
+)
+{
+    local int Tier;
+
+    `TRACE_ENTRY("");
+
+    for (Tier = 0; Tier < Buckets.Length; Tier++)
+    {
+        if (Buckets[Tier].Labels.Length > 1)
+        {
+            `DEBUG("Overlap detected in tier" @ (Tier + 1));
+            return false;
+        }
+    }
+
+    `TRACE_EXIT("Mutually exclusive");
+    return true;
+}
+
+static function bool DoesEffectPassConditions(
+    X2Effect Effect,
+    XComGameState_Ability AbilityState,
+    XComGameState_Unit TargetUnit,
+    XComGameState_Unit SourceUnit
+)
+{
+    local X2Condition Condition;
+    local name Result;
+
+    foreach Effect.TargetConditions(Condition)
+    {
+        Result = Condition.AbilityMeetsCondition(AbilityState, TargetUnit);
+        if (Result != 'AA_Success')
+            return false;
+
+        Result = Condition.MeetsCondition(TargetUnit);
+        if (Result != 'AA_Success')
+            return false;
+
+        Result = Condition.MeetsConditionWithSource(TargetUnit, SourceUnit);
+        if (Result != 'AA_Success')
+            return false;
+    }
+
+    return true;
+}
+
+static function string ResolveEffectLabel(X2Effect Effect)
+{
+    local X2Effect_Persistent PersistentEffect;
+
+    PersistentEffect = X2Effect_Persistent(Effect);
+
+    if (PersistentEffect != none && PersistentEffect.FriendlyName != "")
+        return PersistentEffect.FriendlyName;
+
+    return class'EffectLib'.static.GetFallbackEffectLabel(Effect);
+}
+
+static function StatContestEffectInfo MakeEffectInfo(string Label, float Chance)
+{
+    local StatContestEffectInfo Info;
+
+    Info.Label = Label;
+    Info.Chance = Chance;
+
+    return Info;
 }
 
 static function bool IsRelevant(X2Effect Effect, optional name AbilityName)
@@ -452,4 +571,38 @@ static function int GetHighestTierPossibleFromEffects(array<X2Effect> Effects)
     }
 
     return Highest;
+}
+
+static function int GetEffectPriority(string Label)
+{
+    // Hardcoded priorities (safe + simple)
+    if (InStr(Label, "Chilled") != INDEX_NONE && InStr(Label, "Bitter") == INDEX_NONE)
+        return 0;
+
+    if (InStr(Label, "Bitter") != INDEX_NONE)
+        return 1;
+
+    if (InStr(Label, "Frozen") != INDEX_NONE)
+        return 2;
+
+    return 100; // everything else
+}
+
+static function SortEffectInfos(out array<StatContestEffectInfo> Infos)
+{
+    local int i, j;
+    local StatContestEffectInfo Temp;
+
+    for (i = 0; i < Infos.Length; i++)
+    {
+        for (j = i + 1; j < Infos.Length; j++)
+        {
+            if (GetEffectPriority(Infos[j].Label) < GetEffectPriority(Infos[i].Label))
+            {
+                Temp = Infos[i];
+                Infos[i] = Infos[j];
+                Infos[j] = Temp;
+            }
+        }
+    }
 }
