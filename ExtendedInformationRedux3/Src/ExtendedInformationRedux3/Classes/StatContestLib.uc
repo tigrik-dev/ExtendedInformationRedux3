@@ -133,9 +133,6 @@ static function string GetStatContestEffectChancesString(
 	`DEBUG("MutuallyExclusive:" @ bMutuallyExclusive);
     ApplySmartRounding(EffectInfos, HitChance, bMutuallyExclusive);
 
-	// === SORT ===
-	SortEffectInfos(EffectInfos);
-
     // === FORMAT ===
     Result = FormatEffectInfos(EffectInfos);
 
@@ -322,13 +319,14 @@ static function BuildEffectInfos(
 	out array<TierEffectBucket> OutTierBuckets
 )
 {
-    local int Tier, i, Idx;
+    local int Tier, i, Idx, EffectOrderIndex, CurrentEffectOrder;
     local X2Effect Effect;
     local XComGameState_Unit TargetUnit, SourceUnit;
     local string Label;
 
     local array<string> Labels;
     local array<float> Chances;
+	local array<int> FirstSeenOrder;
 
     `TRACE_ENTRY("SIMULATED MODE Ability:" @ AbilityState.GetMyTemplateName());
 
@@ -349,13 +347,17 @@ static function BuildEffectInfos(
         OutTierBuckets[Tier].Labels.Length = 0;
     }
 
+	EffectOrderIndex = 0;
     // === Iterate tiers ===
     for (Tier = 1; Tier <= MaxTier; ++Tier)
     {
         `DEBUG("=== Tier" @ Tier @ "Weight:" @ TierValues[Tier - 1]);
 
-        foreach Effects(Effect)
-        {
+        for (i = 0; i < Effects.Length; i++)
+		{
+			Effect = Effects[i];
+			CurrentEffectOrder = i;
+
             // 1. relevance
             if (!IsRelevant(Effect, AbilityState.GetMyTemplateName()))
                 continue;
@@ -384,6 +386,7 @@ static function BuildEffectInfos(
             {
                 Labels.AddItem(Label);
                 Chances.AddItem(TierValues[Tier - 1] * 100.0f);
+				FirstSeenOrder.AddItem(CurrentEffectOrder);
 
                 `DEBUG("ADD:" @ Label @ Chances[Chances.Length - 1]);
             }
@@ -391,10 +394,18 @@ static function BuildEffectInfos(
             {
                 Chances[Idx] += TierValues[Tier - 1] * 100.0f;
 
+				// Preserve earliest occurrence
+				if (CurrentEffectOrder < FirstSeenOrder[Idx])
+				{
+					FirstSeenOrder[Idx] = CurrentEffectOrder;
+				}
+
                 `DEBUG("ACCUM:" @ Label @ Chances[Idx]);
             }
         }
     }
+
+	SortByFirstSeen(Labels, Chances, FirstSeenOrder);
 
     // === Convert to OutInfos ===
     for (i = 0; i < Labels.Length; i++)
@@ -573,35 +584,34 @@ static function int GetHighestTierPossibleFromEffects(array<X2Effect> Effects)
     return Highest;
 }
 
-static function int GetEffectPriority(string Label)
-{
-    // Hardcoded priorities (safe + simple)
-    if (InStr(Label, "Chilled") != INDEX_NONE && InStr(Label, "Bitter") == INDEX_NONE)
-        return 0;
-
-    if (InStr(Label, "Bitter") != INDEX_NONE)
-        return 1;
-
-    if (InStr(Label, "Frozen") != INDEX_NONE)
-        return 2;
-
-    return 100; // everything else
-}
-
-static function SortEffectInfos(out array<StatContestEffectInfo> Infos)
+static function SortByFirstSeen(
+    out array<string> Labels,
+    out array<float> Chances,
+    out array<int> Orders
+)
 {
     local int i, j;
-    local StatContestEffectInfo Temp;
+    local string TempLabel;
+    local float TempChance;
+    local int TempOrder;
 
-    for (i = 0; i < Infos.Length; i++)
+    for (i = 0; i < Orders.Length; i++)
     {
-        for (j = i + 1; j < Infos.Length; j++)
+        for (j = i + 1; j < Orders.Length; j++)
         {
-            if (GetEffectPriority(Infos[j].Label) < GetEffectPriority(Infos[i].Label))
+            if (Orders[j] < Orders[i])
             {
-                Temp = Infos[i];
-                Infos[i] = Infos[j];
-                Infos[j] = Temp;
+                TempOrder = Orders[i];
+                Orders[i] = Orders[j];
+                Orders[j] = TempOrder;
+
+                TempLabel = Labels[i];
+                Labels[i] = Labels[j];
+                Labels[j] = TempLabel;
+
+                TempChance = Chances[i];
+                Chances[i] = Chances[j];
+                Chances[j] = TempChance;
             }
         }
     }
