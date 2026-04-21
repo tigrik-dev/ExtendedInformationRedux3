@@ -138,3 +138,6 @@ HackDefenceLabel = "HACK DEFENCE";
 MindSpinHit = "Mind Spun!"
 ShortCounterAttack = "Counter"
 Grappled = "Grappled!"
+
+[EffectLib]
+sUnknownEffect = "Unknown"

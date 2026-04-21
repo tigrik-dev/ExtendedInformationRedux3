@@ -1,5 +1,5 @@
 *.lnk
 BuildCache/
 **/PublishedFileId.ID
-.XCOM_suo
+*.XCOM_suo
 *.suo

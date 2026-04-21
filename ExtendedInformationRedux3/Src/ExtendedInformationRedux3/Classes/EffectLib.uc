@@ -2,6 +2,8 @@ class EffectLib extends Object;
 
 `include(ExtendedInformationRedux3\Src\ExtendedInformationRedux3\EIR_LoggerMacros.uci)
 
+var localized string sUnknownEffect;
+
 static function string GetFallbackEffectLabel(X2Effect Effect)
 {
     local string Label, LocalizedLabel;
@@ -62,8 +64,8 @@ static function string GetFallbackEffectLabel(X2Effect Effect)
         if (!class'StringLib'.static.IsUpper(Char) && !class'StringLib'.static.IsLower(Char))
         {
             `DEBUG("Invalid characters detected, returning fallback");
-            `TRACE_EXIT("Return: Unknown");
-            return "Unknown";
+            `TRACE_EXIT("Return:" @ default.sUnknownEffect);
+            return default.sUnknownEffect;
         }
     }
 
