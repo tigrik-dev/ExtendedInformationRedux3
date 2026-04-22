@@ -1,0 +1,20 @@
+{	
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"name": "XCOM 2",
+			"path": "Path/To/X2WotC-SDK/Development/SrcOrig"
+		},
+		{
+			"name": "Highlander",
+			"path": "Path/To/Highlander/Src"
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"*.int":"ini"
+		}
+	}
+}

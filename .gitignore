@@ -1,5 +1,6 @@
 *.lnk
 BuildCache/
+*.code-workspace
 **/PublishedFileId.ID
 *.XCOM_suo
 *.suo
