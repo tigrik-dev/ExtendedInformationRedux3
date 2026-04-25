@@ -228,23 +228,17 @@ static function bool DoesEffectPassConditionsStrict(
     {
         // === ALWAYS evaluate AbilityProperty (no target needed) ===
         AbilityCondition = X2Condition_AbilityProperty(Condition);
-        if (AbilityCondition != none)
+        if (AbilityCondition != none && SourceUnit != none && AbilityCondition.OwnerHasSoldierAbilities.Length > 0)
         {
-            if (SourceUnit != none && AbilityCondition.OwnerHasSoldierAbilities.Length > 0)
+            foreach AbilityCondition.OwnerHasSoldierAbilities(RequiredAbility)
             {
-                foreach AbilityCondition.OwnerHasSoldierAbilities(RequiredAbility)
+                if (!SourceUnit.HasSoldierAbility(RequiredAbility))
                 {
-                    if (!SourceUnit.HasSoldierAbility(RequiredAbility))
-                    {
-                        `DEBUG("Condition failed: missing ability" @ RequiredAbility);
-						`TRACE_EXIT("Return: false");
-                        return false;
-                    }
-					else
-					{
-						`DEBUG("Condition passed: ability found" @ RequiredAbility);
-					}
+                    `DEBUG("Condition failed: missing ability" @ RequiredAbility);
+					`TRACE_EXIT("Return: false");
+                    return false;
                 }
+				`DEBUG("Condition passed: ability found" @ RequiredAbility);
             }
         }
 
