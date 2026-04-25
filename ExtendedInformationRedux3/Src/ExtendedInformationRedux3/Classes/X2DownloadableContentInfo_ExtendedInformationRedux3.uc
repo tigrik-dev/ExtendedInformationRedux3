@@ -129,11 +129,22 @@ static event OnPostTemplatesCreated()
 
 	`IFGETAB(MindScorch)
 	{
-		NewVis=new class'HitChanceBuildVisualization';
-		Ability.BuildVisualizationFn = NewVis.BuildVisualization;
-		Abilities.FindAbilityTemplate('MindScorch').LocHitMessage=Ability.LocFriendlyName;
-		NewVis.FlyoverMessages.additem(Ability.LocHitMessage);
-		NewVis.FlyoverMessages.additem(Ability.LocMissMessage); //Mr. Nice: I'm assuming MindScorch can fail!
+		bSetMiss=true;
+		for (i=0; i < Ability.AbilityMultiTargetEffects.length; i++)
+		{
+			DazedEffect=X2Effect_Dazed(Ability.AbilityMultiTargetEffects[i]);
+			if (DazedEffect==none) continue;
+			if (bSetMiss)
+			{
+				DazedEffect.VisualizationFn = static.DazedVisualizationShowMiss;
+				bSetMiss=false;
+			}
+			else
+			{
+				DazedEffect.VisualizationFn = static.DazedVisualization;
+				break;
+			}
+		}
 	}
 
 	//Added in DEV by Mr.Nice
