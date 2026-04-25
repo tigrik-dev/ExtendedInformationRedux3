@@ -43,8 +43,8 @@ var config bool				TH_PREVIEW_MINIMUM;
 var config bool				TH_PREVIEW_HACKING;
 var config bool				TH_ASSIST_BAR;
 
-var config bool				PREVIEW_STAT_CONTEST;
-var config bool				PREVIEW_APPLY_CHANCE;
+var config bool				HIDE_STAT_CONTEST;
+var config bool				HIDE_APPLY_CHANCE;
 var config bool				SHOW_APPLY_CHANCE_MISS;
 var config bool				SHOW_APPLY_CHANCE_GUARANTEED;
 
@@ -183,8 +183,8 @@ var MCM_API_Slider			ToolTipAlpha_MCMUI;
 var MCM_API_Checkbox			ShowEnemyToolTip_MCMUI;
 var MCM_API_Checkbox			ShowExtraWeaponStats_MCMUI;
 
-var MCM_API_Checkbox			PREVIEW_STAT_CONTEST_MCMUI;
-var MCM_API_Checkbox			PREVIEW_APPLY_CHANCE_MCMUI;
+var MCM_API_Checkbox			HIDE_STAT_CONTEST_MCMUI;
+var MCM_API_Checkbox			HIDE_APPLY_CHANCE_MCMUI;
 var MCM_API_Checkbox			SHOW_APPLY_CHANCE_MISS_MCMUI;
 var MCM_API_Checkbox			SHOW_APPLY_CHANCE_GUARANTEED_MCMUI;
 
@@ -253,8 +253,8 @@ event OnInit(UIScreen Screen)
 `MCM_API_BasicCheckboxSaveHandler(ShowEnemyToolTipHandler,		ES_TOOLTIP)
 `MCM_API_BasicCheckboxSaveHandler(ShowExtraWeaponStatsHandler,		SHOW_EXTRA_WEAPONSTATS)
 
-`MCM_API_BasicCheckboxSaveHandler(PreviewStatContestHandler, PREVIEW_STAT_CONTEST)
-`MCM_API_BasicCheckboxSaveHandler(PreviewApplyChanceHandler, PREVIEW_APPLY_CHANCE)
+`MCM_API_BasicCheckboxSaveHandler(PreviewStatContestHandler, HIDE_STAT_CONTEST)
+`MCM_API_BasicCheckboxSaveHandler(PreviewApplyChanceHandler, HIDE_APPLY_CHANCE)
 `MCM_API_BasicCheckboxSaveHandler(ShowApplyChanceMissHandler, SHOW_APPLY_CHANCE_MISS)
 `MCM_API_BasicCheckboxSaveHandler(ShowApplyChanceGuaranteedHandler, SHOW_APPLY_CHANCE_GUARANTEED)
 
@@ -375,8 +375,8 @@ simulated function ClientModCallback(MCM_API_Instance ConfigAPI, int GameMode)
 	Group2.AddLabel('empty_line',"","");
 
 	Group2Point2 = Page.AddGroup('Group2Point2', sPreviewStatusEffects_MCMText);
-	PREVIEW_STAT_CONTEST_MCMUI			= Group2Point2.AddCheckbox('PreviewStatContest', sPreviewStatContest_MCMText, sPreviewStatContest_MCMText, PREVIEW_STAT_CONTEST, PreviewStatContestHandler, );
-	PREVIEW_APPLY_CHANCE_MCMUI			= Group2Point2.AddCheckbox('PreviewApplyChance', sPreviewApplyChance_MCMText, sPreviewApplyChance_MCMText, PREVIEW_APPLY_CHANCE, PreviewApplyChanceHandler, );
+	HIDE_STAT_CONTEST_MCMUI			= Group2Point2.AddCheckbox('PreviewStatContest', sPreviewStatContest_MCMText, sPreviewStatContest_MCMText, HIDE_STAT_CONTEST, PreviewStatContestHandler, );
+	HIDE_APPLY_CHANCE_MCMUI			= Group2Point2.AddCheckbox('PreviewApplyChance', sPreviewApplyChance_MCMText, sPreviewApplyChance_MCMText, HIDE_APPLY_CHANCE, PreviewApplyChanceHandler, );
 	SHOW_APPLY_CHANCE_MISS_MCMUI		= Group2Point2.AddCheckbox('PreviewApplyChanceMiss', sPreviewApplyChanceMiss_MCMText, sPreviewApplyChanceMiss_MCMText, SHOW_APPLY_CHANCE_MISS, ShowApplyChanceMissHandler, );
 	SHOW_APPLY_CHANCE_GUARANTEED_MCMUI	= Group2Point2.AddCheckbox('PreviewApplyChanceGuaranteed', sPreviewApplyChanceGuaranteed_MCMText, sPreviewApplyChanceGuaranteed_MCMText, SHOW_APPLY_CHANCE_GUARANTEED, ShowApplyChanceGuaranteedHandler, );
 	Group2Point2.AddLabel('empty_line',"","");
@@ -482,8 +482,8 @@ simulated function LoadSavedSettings()
 	SHOTHUD_LAYOUT_LEFT_2 =		`MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_LAYOUT_LEFT_2,SHOTHUD_LAYOUT_LEFT_2);
 	SHOTHUD_LAYOUT_RIGHT_1 =	`MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_LAYOUT_RIGHT_1,SHOTHUD_LAYOUT_RIGHT_1);
 	SHOTHUD_LAYOUT_RIGHT_2 =	`MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_LAYOUT_RIGHT_2,SHOTHUD_LAYOUT_RIGHT_2);
-	PREVIEW_STAT_CONTEST =			`MCM_CH_GetValue(class'MCM_Defaults'.default.PREVIEW_STAT_CONTEST,PREVIEW_STAT_CONTEST);
-	PREVIEW_APPLY_CHANCE =			`MCM_CH_GetValue(class'MCM_Defaults'.default.PREVIEW_APPLY_CHANCE,PREVIEW_APPLY_CHANCE);
+	HIDE_STAT_CONTEST =			`MCM_CH_GetValue(class'MCM_Defaults'.default.HIDE_STAT_CONTEST,HIDE_STAT_CONTEST);
+	HIDE_APPLY_CHANCE =			`MCM_CH_GetValue(class'MCM_Defaults'.default.HIDE_APPLY_CHANCE,HIDE_APPLY_CHANCE);
 	SHOW_APPLY_CHANCE_MISS =		`MCM_CH_GetValue(class'MCM_Defaults'.default.SHOW_APPLY_CHANCE_MISS,SHOW_APPLY_CHANCE_MISS);
 	SHOW_APPLY_CHANCE_GUARANTEED =	`MCM_CH_GetValue(class'MCM_Defaults'.default.SHOW_APPLY_CHANCE_GUARANTEED,SHOW_APPLY_CHANCE_GUARANTEED);
 	//DEBUG
@@ -538,8 +538,8 @@ simulated function ResetButtonClicked(MCM_API_SettingsPage Page)
 	LeftSide2_MCMUI.SetValue(SlotOptions[class'MCM_Defaults'.default.SHOTHUD_LAYOUT_LEFT_2], false);
 	RightSide1_MCMUI.SetValue(SlotOptions[class'MCM_Defaults'.default.SHOTHUD_LAYOUT_RIGHT_1], false);
 	RightSide2_MCMUI.SetValue(SlotOptions[class'MCM_Defaults'.default.SHOTHUD_LAYOUT_RIGHT_2], false);
-	PREVIEW_STAT_CONTEST_MCMUI			.SetValue(class'MCM_Defaults'.default.PREVIEW_STAT_CONTEST, false);
-	PREVIEW_APPLY_CHANCE_MCMUI			.SetValue(class'MCM_Defaults'.default.PREVIEW_APPLY_CHANCE, false);
+	HIDE_STAT_CONTEST_MCMUI			.SetValue(class'MCM_Defaults'.default.HIDE_STAT_CONTEST, false);
+	HIDE_APPLY_CHANCE_MCMUI			.SetValue(class'MCM_Defaults'.default.HIDE_APPLY_CHANCE, false);
 	SHOW_APPLY_CHANCE_MISS_MCMUI		.SetValue(class'MCM_Defaults'.default.SHOW_APPLY_CHANCE_MISS, false);
 	SHOW_APPLY_CHANCE_GUARANTEED_MCMUI	.SetValue(class'MCM_Defaults'.default.SHOW_APPLY_CHANCE_GUARANTEED, false);
 

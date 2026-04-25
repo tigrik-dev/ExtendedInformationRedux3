@@ -56,7 +56,7 @@ var config bool		SHOW_EXTRA_WEAPONSTATS;
 //var config float		DODGE_OFFSET_Y;
 //DEBUG
 
-var config bool		PREVIEW_STAT_CONTEST;
-var config bool		PREVIEW_APPLY_CHANCE;
+var config bool		HIDE_STAT_CONTEST;
+var config bool		HIDE_APPLY_CHANCE;
 var config bool		SHOW_APPLY_CHANCE_MISS;
 var config bool		SHOW_APPLY_CHANCE_GUARANTEED;

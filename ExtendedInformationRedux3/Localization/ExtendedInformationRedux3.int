@@ -109,8 +109,8 @@ sShowEnemyToolTip_MCMText = "Show Extra Enemy ToolTips";
 sShowExtraWeaponStats_MCMText = "Show Weapon Upgrade Details";
 
 sPreviewStatusEffects_MCMText = "Preview Status Effects"
-sPreviewStatContest_MCMText = "Preview Status Effects for Stat Contest Abilities (e.g. Insanity)"
-sPreviewApplyChance_MCMText = "Preview Status Effects for Static Chance Abilities (e.g. Void Rift)"
+sPreviewStatContest_MCMText = "Hide Status Effects for Stat Contest Abilities (e.g. Insanity)"
+sPreviewApplyChance_MCMText = "Hide Status Effects for Static Chance Abilities (e.g. Void Rift)"
 sPreviewApplyChanceMiss_MCMText = "Show Miss Chance for Static Chance Abilities (e.g. Void Rift)"
 sPreviewApplyChanceGuaranteed_MCMText = "Show Guaranteed Status Effects for Static Chance Abilities (e.g. Void Rift)"
 
