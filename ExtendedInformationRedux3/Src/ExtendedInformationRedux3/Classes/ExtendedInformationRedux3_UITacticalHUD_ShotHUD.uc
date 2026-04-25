@@ -784,7 +784,7 @@ function string UpdateHackDescription(
     local int i;
     local int Chance;
     local string Label;
-    local EUIState Color;
+    local EUIState _Color;
 
     `TRACE_ENTRY("");
 
@@ -815,12 +815,12 @@ function string UpdateHackDescription(
 
         Label = RewardItem.RewardTemplate.GetFriendlyName();
         Chance = Clamp(RewardItem.Chance, 0, 100);
-        Color = RewardItem.RewardTemplate.bBadThing ? eUIState_Bad : eUIState_Good;
+        _Color = RewardItem.RewardTemplate.bBadThing ? eUIState_Bad : eUIState_Good;
 
         if (HackDescription == "")
         {
             HackDescription =
-                class'UIUtilities_Text'.static.GetColoredText(Label, Color);
+                class'UIUtilities_Text'.static.GetColoredText(Label, _Color);
         }
         else
         {
@@ -838,7 +838,7 @@ function string UpdateHackDescription(
             HackDescription $=
                 class'UIUtilities_Text'.static.GetColoredText(
                     Label $ ": " $ Chance $ "%",
-                    Color
+                    _Color
                 );
         }
     }

@@ -23,7 +23,8 @@ static function string GetApplyChancesString(
     local array<EffectInfo> Infos;
     local EffectInfo Info;
 
-    local int i, Idx;
+    local int i, Idx, NumShots;
+	local float p, finalP;
     local string Result, Label, MissLabel;
 
     local bool bHasTarget;
@@ -83,6 +84,10 @@ static function string GetApplyChancesString(
 
 	if (HitChance <= 0) return "";
 
+	// Number of times the ability will be applied.
+	// It's 1, except when it's X2AbilityMultiTarget_BurstFire with NumExtraShots > 0. 
+	NumShots = class'AbilityLib'.static.GetNumShots(Template);
+
     // === Build effect list ===
     for (i = 0; i < Effects.Length; i++)
     {
@@ -125,7 +130,12 @@ static function string GetApplyChancesString(
         Label = ResolveApplyChanceLabel(Effect);
 
         Info.Label = Label;
-        Info.Chance = float(Effect.ApplyChance) * float(HitChance) / 100.0f;
+
+		p = (float(Effect.ApplyChance) / 100.0f) * (float(HitChance) / 100.0f);
+
+		// Account for abilities that fire multiple times, e.g. NumExtraShots > 0
+		finalP = (NumShots <= 1) ? p : (1.0f - ((1.0f - p) ** NumShots)); 
+		Info.Chance = finalP * 100.0f;
 
         Idx = class'_EffectLib'.static.FindEffectInfoByLabel(Infos, Label);
 

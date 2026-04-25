@@ -25,3 +25,31 @@ static function bool IsAbilityBlacklisted(XComGameState_Ability AbilityState)
 	`TRACE_EXIT("Ability is not blacklisted:" @ FullKey);
     return false;
 }
+
+static function int GetNumShots(X2AbilityTemplate Template)
+{
+    local X2AbilityMultiTarget_BurstFire Burst;
+	local int Result;
+
+	`TRACE_ENTRY("");
+	Result = 1;
+
+	if (Template == none)
+	{
+		`DEBUG("Template == none. Return: 1");
+		return Result;
+	}
+
+    Burst = X2AbilityMultiTarget_BurstFire(Template.AbilityMultiTargetStyle);
+
+    if (Burst != none)
+    {
+		Result += Burst.NumExtraShots;
+		`DEBUG("X2AbilityMultiTarget_BurstFire detected. NumExtraShots:" @ Burst.NumExtraShots);
+		`TRACE_EXIT("Return:" @ Result);
+        return Result;
+    }
+
+	`TRACE_EXIT("Return: 1");
+    return Result;
+}
