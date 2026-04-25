@@ -253,19 +253,38 @@ static function ApplyIndependentRounding(out array<EffectInfo> Infos)
 {
     local int i;
     local int Rounded;
+    local float Chance;
 
     `TRACE_ENTRY("Independent rounding");
 
     for (i = 0; i < Infos.Length; i++)
     {
-        Rounded = int(Infos[i].Chance + 0.5f); // standard rounding
+        Chance = Infos[i].Chance;
 
-        if (Infos[i].Chance > 0.0f && Rounded == 0)
+        // Standard rounding first
+        Rounded = int(Chance + 0.5f);
+
+        // === Force minimum 1% for any non-zero chance < 1% ===
+        if (Chance > 0.0f && Chance < 1.0f)
+        {
             Rounded = 1;
+        }
+
+        // === Force maximum 99% for any chance < 100 but > 99 ===
+        else if (Chance > 99.0f && Chance < 100.0f)
+        {
+            Rounded = 99;
+        }
+
+        // Safety clamp (just in case)
+        if (Rounded < 0)
+            Rounded = 0;
+        else if (Rounded > 100)
+            Rounded = 100;
 
         Infos[i].RoundedChance = Rounded;
 
-        `DEBUG("Independent:" @ Infos[i].Label @ Infos[i].Chance @ "->" @ Rounded);
+        `DEBUG("Independent:" @ Infos[i].Label @ Chance @ "->" @ Rounded);
     }
 
     `TRACE_EXIT("");
