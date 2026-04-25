@@ -58,11 +58,12 @@ static function string GetApplyChancesString(
     if (bHasTarget)
     {
         TargetUnit = XComGameState_Unit(`XCOMHISTORY.GetGameStateForObjectID(TargetRef.ObjectID));
-        SourceUnit = XComGameState_Unit(`XCOMHISTORY.GetGameStateForObjectID(AbilityState.OwnerStateObject.ObjectID));
 
         if (TargetUnit == none)
             return "";
     }
+	
+	SourceUnit = XComGameState_Unit(`XCOMHISTORY.GetGameStateForObjectID(AbilityState.OwnerStateObject.ObjectID));
 
     // === HIT / MISS ===
     if (bHasTarget)
@@ -119,13 +120,12 @@ static function string GetApplyChancesString(
             continue;
 		}
 
-        // Conditions (ONLY if we have a target)
-        if (bHasTarget)
-        {
-            if (!class'_EffectLib'.static.DoesEffectPassConditionsStrict(Effect, AbilityState, TargetUnit, SourceUnit))
-                continue;
-        }
-
+        // Conditions
+        if (!class'_EffectLib'.static.DoesEffectPassConditionsStrict(Effect, AbilityState, TargetUnit, SourceUnit, bHasTarget))
+		{
+			`DEBUG("SKIPPING EFFECT: TargetConditions are not met.");
+			continue;
+		}
         // Label
         Label = ResolveApplyChanceLabel(Effect);
 

@@ -213,15 +213,42 @@ static function bool DoesEffectPassConditionsStrict(
     X2Effect Effect,
     XComGameState_Ability AbilityState,
     XComGameState_Unit TargetUnit,
-    XComGameState_Unit SourceUnit
+    XComGameState_Unit SourceUnit,
+    bool bHasTarget
 )
 {
     local X2Condition Condition;
+    local X2Condition_AbilityProperty AbilityCondition;
+    local name RequiredAbility;
     local name Result;
+
+	`TRACE_ENTRY("");
 
     foreach Effect.TargetConditions(Condition)
     {
-        // 1. Ability-based check (important for AbilityProperty)
+        // === ALWAYS evaluate AbilityProperty (no target needed) ===
+        AbilityCondition = X2Condition_AbilityProperty(Condition);
+        if (AbilityCondition != none)
+        {
+            if (SourceUnit != none && AbilityCondition.OwnerHasSoldierAbilities.Length > 0)
+            {
+                foreach AbilityCondition.OwnerHasSoldierAbilities(RequiredAbility)
+                {
+                    if (!SourceUnit.HasSoldierAbility(RequiredAbility))
+                    {
+                        `DEBUG("Condition failed: missing ability" @ RequiredAbility);
+						`TRACE_EXIT("Return: false");
+                        return false;
+                    }
+					else
+					{
+						`DEBUG("Condition passed: ability found" @ RequiredAbility);
+					}
+                }
+            }
+        }
+
+        // === Ability-level check (safe even without target in most cases) ===
         if (AbilityState != none)
         {
             Result = Condition.AbilityMeetsCondition(AbilityState, TargetUnit);
@@ -229,23 +256,26 @@ static function bool DoesEffectPassConditionsStrict(
                 return false;
         }
 
-        // 2. Target-only check
-        if (TargetUnit != none)
+        // === Target-dependent checks ONLY if we have a target ===
+        if (bHasTarget)
         {
-            Result = Condition.MeetsCondition(TargetUnit);
-            if (Result != 'AA_Success')
-                return false;
-        }
+            if (TargetUnit != none)
+            {
+                Result = Condition.MeetsCondition(TargetUnit);
+                if (Result != 'AA_Success')
+                    return false;
+            }
 
-        // 3. Source-based check (CRITICAL for OwnerDoesNotHaveAbility)
-        if (SourceUnit != none)
-        {
-            Result = Condition.MeetsConditionWithSource(TargetUnit, SourceUnit);
-            if (Result != 'AA_Success')
-                return false;
+            if (SourceUnit != none)
+            {
+                Result = Condition.MeetsConditionWithSource(TargetUnit, SourceUnit);
+                if (Result != 'AA_Success')
+                    return false;
+            }
         }
     }
 
+	`TRACE_EXIT("Return: true");
     return true;
 }
 

@@ -345,7 +345,7 @@ static function BuildEffectInfos(
                 continue;
 
             // 3. simulate conditions
-            if (!class'_EffectLib'.static.DoesEffectPassConditionsStrict(Effect, AbilityState, TargetUnit, SourceUnit))
+            if (!class'_EffectLib'.static.DoesEffectPassConditionsStrict(Effect, AbilityState, TargetUnit, SourceUnit, (TargetRef.ObjectID != 0)))
             {
                 `DEBUG("Effect failed conditions:" @ string(Effect.Class.Name));
                 continue;
