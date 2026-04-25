@@ -255,7 +255,7 @@ simulated function FindClosestRes(out int ResX, out int ResY)
 simulated function Update() 
 {
     local bool isValidShot, IsSkPostMelee;
-    local string ShotName, ShotDescription, StatContestEffectChances;
+    local string ShotName, ShotDescription, StatContestEffectChances, ApplyChanceAbilityChances;
     local int HitChance, skHitChance, CritChance, GrazeChance, TargetIndex, AimBonus, skAimBonus, BarOffsetY;
     local ShotBreakdown kBreakdown;
     local StateObjectReference Target, EmptyRef;
@@ -337,9 +337,17 @@ simulated function Update()
  
 		WillBreakConcealment = SelectedAbilityState.MayBreakConcealmentOnActivation(Target.ObjectID);
 		WillEndTurn = SelectedAbilityState.WillEndTurn();
- 
-		StatContestEffectChances = class'StatContestLib'.static.GetStatContestEffectChancesString(SelectedAbilityState, Target, kTarget);
-		if (StatContestEffectChances != "") ShotDescription = StatContestEffectChances $ "\n" $ ShotDescription;
+
+		StatContestEffectChances = getPREVIEW_STAT_CONTEST() ? class'StatContestLib'.static.GetStatContestEffectChancesString(SelectedAbilityState, Target, kTarget) : "";
+		if (StatContestEffectChances != "")
+		{
+			ShotDescription = StatContestEffectChances $ "\n" $ ShotDescription;
+		} 
+		else
+		{
+			ApplyChanceAbilityChances = getPREVIEW_APPLY_CHANCE() ? class'ApplyChanceLib'.static.GetApplyChancesString(SelectedAbilityState, Target, kTarget) : "";
+			if (ApplyChanceAbilityChances != "") ShotDescription = ApplyChanceAbilityChances $ "\n" $ ShotDescription;
+		}
 
 		//AS_SetShotInfo(ShotName, ShotDescription, WillBreakConcealment, WillEndTurn);
 		// Display Hack Info if relevant
@@ -1009,6 +1017,15 @@ function bool getEXPECTED_DAMAGE()
 	return `MCM_CH_GetValue(class'MCM_Defaults'.default.EXPECTED_DAMAGE, class'ExtendedInformationRedux3_MCMScreen'.default.EXPECTED_DAMAGE);
 }
 
+function bool getPREVIEW_STAT_CONTEST()
+{
+	return `MCM_CH_GetValue(class'MCM_Defaults'.default.PREVIEW_STAT_CONTEST, class'ExtendedInformationRedux3_MCMScreen'.default.PREVIEW_STAT_CONTEST);
+}
+
+function bool getPREVIEW_APPLY_CHANCE()
+{
+	return `MCM_CH_GetValue(class'MCM_Defaults'.default.PREVIEW_APPLY_CHANCE, class'ExtendedInformationRedux3_MCMScreen'.default.PREVIEW_APPLY_CHANCE);
+}
 
 //DEBUG
 /*function float getDODGE_OFFSET_Y()

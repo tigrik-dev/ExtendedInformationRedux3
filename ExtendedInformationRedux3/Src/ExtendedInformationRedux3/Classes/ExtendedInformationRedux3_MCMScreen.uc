@@ -43,6 +43,11 @@ var config bool				TH_PREVIEW_MINIMUM;
 var config bool				TH_PREVIEW_HACKING;
 var config bool				TH_ASSIST_BAR;
 
+var config bool				PREVIEW_STAT_CONTEST;
+var config bool				PREVIEW_APPLY_CHANCE;
+var config bool				SHOW_APPLY_CHANCE_MISS;
+var config bool				SHOW_APPLY_CHANCE_GUARANTEED;
+
 //var config bool				SHOW_ALWAYS_SHOT_BREAKDOWN_HUD;
 
 var config int				TOOLTIP_ALPHA;
@@ -131,6 +136,12 @@ var localized string			sShowExtraWeaponStats_MCMText;
 var localized string			sExpectedDamage_MCMText;
 var localized string			sExpectedDamage_MCMTooltip;
 
+var localized string			sPreviewStatusEffects_MCMText;
+var localized string			sPreviewStatContest_MCMText;
+var localized string			sPreviewApplyChance_MCMText;
+var localized string			sPreviewApplyChanceMiss_MCMText;
+var localized string			sPreviewApplyChanceGuaranteed_MCMText;
+
 var MCM_API_Checkbox			ShowHitChance_MCMUI;
 var MCM_API_Checkbox			VerboseText_MCMUI;
 var MCM_API_Checkbox			DisplayMissChance_MCMUI;
@@ -172,6 +183,10 @@ var MCM_API_Slider			ToolTipAlpha_MCMUI;
 var MCM_API_Checkbox			ShowEnemyToolTip_MCMUI;
 var MCM_API_Checkbox			ShowExtraWeaponStats_MCMUI;
 
+var MCM_API_Checkbox			PREVIEW_STAT_CONTEST_MCMUI;
+var MCM_API_Checkbox			PREVIEW_APPLY_CHANCE_MCMUI;
+var MCM_API_Checkbox			SHOW_APPLY_CHANCE_MISS_MCMUI;
+var MCM_API_Checkbox			SHOW_APPLY_CHANCE_GUARANTEED_MCMUI;
 
 var string					HIT_HEX_COLOR_MCM, CRIT_HEX_COLOR_MCM, DODGE_HEX_COLOR_MCM, MISS_HEX_COLOR_MCM, ASSIST_HEX_COLOR_MCM;
 
@@ -238,6 +253,11 @@ event OnInit(UIScreen Screen)
 `MCM_API_BasicCheckboxSaveHandler(ShowEnemyToolTipHandler,		ES_TOOLTIP)
 `MCM_API_BasicCheckboxSaveHandler(ShowExtraWeaponStatsHandler,		SHOW_EXTRA_WEAPONSTATS)
 
+`MCM_API_BasicCheckboxSaveHandler(PreviewStatContestHandler, PREVIEW_STAT_CONTEST)
+`MCM_API_BasicCheckboxSaveHandler(PreviewApplyChanceHandler, PREVIEW_APPLY_CHANCE)
+`MCM_API_BasicCheckboxSaveHandler(ShowApplyChanceMissHandler, SHOW_APPLY_CHANCE_MISS)
+`MCM_API_BasicCheckboxSaveHandler(ShowApplyChanceGuaranteedHandler, SHOW_APPLY_CHANCE_GUARANTEED)
+
 /**
  * Handles checkbox value changes and updates dependent UI elements and config values.
  *
@@ -288,6 +308,7 @@ simulated function ClientModCallback(MCM_API_Instance ConfigAPI, int GameMode)
 	local MCM_API_SettingsGroup Group0;
 	local MCM_API_SettingsGroup Group1;
 	local MCM_API_SettingsGroup Group2;
+	local MCM_API_SettingsGroup Group2Point2;
 	local MCM_API_SettingsGroup Group2Point5;
 	local MCM_API_SettingsGroup Group3;
 	local MCM_API_SettingsGroup Group4;
@@ -353,12 +374,18 @@ simulated function ClientModCallback(MCM_API_Instance ConfigAPI, int GameMode)
 	PreviewHacking_MCMUI				= Group2.AddCheckbox('PreviewHacking', sPreviewHacking_MCMText, sPreviewHacking_MCMText, TH_PREVIEW_HACKING, PreviewHackingHandler, );
 	Group2.AddLabel('empty_line',"","");
 
+	Group2Point2 = Page.AddGroup('Group2Point2', sPreviewStatusEffects_MCMText);
+	PREVIEW_STAT_CONTEST_MCMUI			= Group2Point2.AddCheckbox('PreviewStatContest', sPreviewStatContest_MCMText, sPreviewStatContest_MCMText, PREVIEW_STAT_CONTEST, PreviewStatContestHandler, );
+	PREVIEW_APPLY_CHANCE_MCMUI			= Group2Point2.AddCheckbox('PreviewApplyChance', sPreviewApplyChance_MCMText, sPreviewApplyChance_MCMText, PREVIEW_APPLY_CHANCE, PreviewApplyChanceHandler, );
+	SHOW_APPLY_CHANCE_MISS_MCMUI		= Group2Point2.AddCheckbox('PreviewApplyChanceMiss', sPreviewApplyChanceMiss_MCMText, sPreviewApplyChanceMiss_MCMText, SHOW_APPLY_CHANCE_MISS, ShowApplyChanceMissHandler, );
+	SHOW_APPLY_CHANCE_GUARANTEED_MCMUI	= Group2Point2.AddCheckbox('PreviewApplyChanceGuaranteed', sPreviewApplyChanceGuaranteed_MCMText, sPreviewApplyChanceGuaranteed_MCMText, SHOW_APPLY_CHANCE_GUARANTEED, ShowApplyChanceGuaranteedHandler, );
+	Group2Point2.AddLabel('empty_line',"","");
+
 	Group2Point5 = Page.AddGroup('Group2Point5', sShotHudDisplayLayout_MCMText);
 	LeftSide1_MCMUI						= Group2Point5.AddDropdown('LeftSide1', sLeftSide1_MCMText, sLeftSide1_MCMText, SlotOptions, SlotOptions[SHOTHUD_LAYOUT_LEFT_1], SlotLayoutHandler0, );
 	LeftSide2_MCMUI						= Group2Point5.AddDropdown('LeftSide2', sLeftSide2_MCMText, sLeftSide2_MCMText, SlotOptions, SlotOptions[SHOTHUD_LAYOUT_LEFT_2], SlotLayoutHandler1, );
 	RightSide1_MCMUI					= Group2Point5.AddDropdown('RightSide1', sRightSide1_MCMText, sRightSide1_MCMText, SlotOptions, SlotOptions[SHOTHUD_LAYOUT_RIGHT_1], SlotLayoutHandler2, );
 	RightSide2_MCMUI					= Group2Point5.AddDropdown('RightSide2', sRightSide2_MCMText, sRightSide2_MCMText, SlotOptions, SlotOptions[SHOTHUD_LAYOUT_RIGHT_2], SlotLayoutHandler3, );
-
 	Group2Point5.AddLabel('empty_line',"","");
 
 	Group3 = Page.AddGroup('Group3', sGroupShotBar_MCMText);
@@ -455,7 +482,10 @@ simulated function LoadSavedSettings()
 	SHOTHUD_LAYOUT_LEFT_2 =		`MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_LAYOUT_LEFT_2,SHOTHUD_LAYOUT_LEFT_2);
 	SHOTHUD_LAYOUT_RIGHT_1 =	`MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_LAYOUT_RIGHT_1,SHOTHUD_LAYOUT_RIGHT_1);
 	SHOTHUD_LAYOUT_RIGHT_2 =	`MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_LAYOUT_RIGHT_2,SHOTHUD_LAYOUT_RIGHT_2);
-
+	PREVIEW_STAT_CONTEST =			`MCM_CH_GetValue(class'MCM_Defaults'.default.PREVIEW_STAT_CONTEST,PREVIEW_STAT_CONTEST);
+	PREVIEW_APPLY_CHANCE =			`MCM_CH_GetValue(class'MCM_Defaults'.default.PREVIEW_APPLY_CHANCE,PREVIEW_APPLY_CHANCE);
+	SHOW_APPLY_CHANCE_MISS =		`MCM_CH_GetValue(class'MCM_Defaults'.default.SHOW_APPLY_CHANCE_MISS,SHOW_APPLY_CHANCE_MISS);
+	SHOW_APPLY_CHANCE_GUARANTEED =	`MCM_CH_GetValue(class'MCM_Defaults'.default.SHOW_APPLY_CHANCE_GUARANTEED,SHOW_APPLY_CHANCE_GUARANTEED);
 	//DEBUG
 	//DODGE_OFFSET_Y =			`MCM_CH_GetValue(class'MCM_Defaults'.default.DODGE_OFFSET_Y,DODGE_OFFSET_Y);
 	//DEBUG
@@ -508,6 +538,10 @@ simulated function ResetButtonClicked(MCM_API_SettingsPage Page)
 	LeftSide2_MCMUI.SetValue(SlotOptions[class'MCM_Defaults'.default.SHOTHUD_LAYOUT_LEFT_2], false);
 	RightSide1_MCMUI.SetValue(SlotOptions[class'MCM_Defaults'.default.SHOTHUD_LAYOUT_RIGHT_1], false);
 	RightSide2_MCMUI.SetValue(SlotOptions[class'MCM_Defaults'.default.SHOTHUD_LAYOUT_RIGHT_2], false);
+	PREVIEW_STAT_CONTEST_MCMUI			.SetValue(class'MCM_Defaults'.default.PREVIEW_STAT_CONTEST, false);
+	PREVIEW_APPLY_CHANCE_MCMUI			.SetValue(class'MCM_Defaults'.default.PREVIEW_APPLY_CHANCE, false);
+	SHOW_APPLY_CHANCE_MISS_MCMUI		.SetValue(class'MCM_Defaults'.default.SHOW_APPLY_CHANCE_MISS, false);
+	SHOW_APPLY_CHANCE_GUARANTEED_MCMUI	.SetValue(class'MCM_Defaults'.default.SHOW_APPLY_CHANCE_GUARANTEED, false);
 
 	`TRACE_EXIT("");
 }

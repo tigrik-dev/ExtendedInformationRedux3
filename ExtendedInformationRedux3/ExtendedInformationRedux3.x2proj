@@ -26,7 +26,7 @@
     <Folder Include="Src\ExtendedInformationRedux3\Classes\" />
     <Folder Include="Src\ModConfigMenuAPI\" />
     <Folder Include="Src\ModConfigMenuAPI\Classes\" />
-    <Content Include="Config\XComExtendedInformationRedux3_EffectLib.ini">
+    <Content Include="Config\XComEffectChancePreview.ini">
       <SubType>Content</SubType>
     </Content>
     <Content Include="Config\XComExtendedInformationRedux3_Logger.ini">
@@ -60,13 +60,16 @@
     <Content Include="Src\ExtendedInformationAPI\Classes\EI_DamagePreviewTemplateAPI.uc">
       <SubType>Content</SubType>
     </Content>
+    <Content Include="Src\ExtendedInformationRedux3\Classes\AbilityLib.uc">
+      <SubType>Content</SubType>
+    </Content>
     <Content Include="Src\ExtendedInformationRedux3\Classes\AimAssistLib.uc">
       <SubType>Content</SubType>
     </Content>
-    <Content Include="Src\ExtendedInformationRedux3\Classes\DamagePreviewLib.uc">
+    <Content Include="Src\ExtendedInformationRedux3\Classes\ApplyChanceLib.uc">
       <SubType>Content</SubType>
     </Content>
-    <Content Include="Src\ExtendedInformationRedux3\Classes\EffectLib.uc">
+    <Content Include="Src\ExtendedInformationRedux3\Classes\DamagePreviewLib.uc">
       <SubType>Content</SubType>
     </Content>
     <Content Include="Src\ExtendedInformationRedux3\Classes\EIR_Logger.uc">
@@ -144,6 +147,9 @@
       <SubType>Content</SubType>
     </Content>
     <Content Include="Src\ExtendedInformationRedux3\Classes\X2TemplatePatch.uc">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Src\ExtendedInformationRedux3\Classes\_EffectLib.uc">
       <SubType>Content</SubType>
     </Content>
     <Content Include="Src\ExtendedInformationRedux3\EIR_LoggerMacros.uci">

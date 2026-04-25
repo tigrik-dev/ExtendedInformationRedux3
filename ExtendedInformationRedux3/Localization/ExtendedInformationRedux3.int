@@ -66,7 +66,7 @@ sPreviewMinimum_MCMText = "Preview Minimum Damage";
 sPreviewHacking_MCMText = "Preview Hacking";
 sWarningMessage_MCMText = "Please note any change to Offset might result in bad display!";
 sExpectedDamage_MCMText = "Show Expected Damage"
-sExpectedDamage_MCMTooltip = "Enable to see Expected Damage in Shot HUD next to damage. e.g. 'Damage: 3-5 (2.6)'\n\n\Expected Damage is a weighted average damage. When aiming at the current enemy with the selected ability, what is the average damage you will do, considering hit chance, crit chance, dodge, graze band, weapon damage with all damage modifiers, and bonus crit damage."
+sExpectedDamage_MCMTooltip = "Enable to see Expected Damage in Shot HUD next to damage. e.g. 'Damage: 3-5 (2.6)'\n\nExpected Damage is a weighted average damage. When aiming at the current enemy with the selected ability, what is the average damage you will do, considering hit chance, crit chance, dodge, graze band, weapon damage with all damage modifiers, and bonus crit damage."
 
 ;DEBUG
 sDodgeOffsetY_MCMText = "Dodge Offset Y";
@@ -108,6 +108,11 @@ sToolTipAlpha_MCMText = "ToolTip Background Transparency";
 sShowEnemyToolTip_MCMText = "Show Extra Enemy ToolTips";
 sShowExtraWeaponStats_MCMText = "Show Weapon Upgrade Details";
 
+sPreviewStatusEffects_MCMText = "Preview Status Effects"
+sPreviewStatContest_MCMText = "Preview Status Effects for Stat Contest Abilities (e.g. Insanity)"
+sPreviewApplyChance_MCMText = "Preview Status Effects for Static Chance Abilities (e.g. Void Rift)"
+sPreviewApplyChanceMiss_MCMText = "Show Miss Chance for Static Chance Abilities (e.g. Void Rift)"
+sPreviewApplyChanceGuaranteed_MCMText = "Show Guaranteed Status Effects for Static Chance Abilities (e.g. Void Rift)"
 
 [HitCalcLib]
 LOWER_DIFFICULTY_MSG = "Lower Difficulty";
@@ -139,5 +144,6 @@ MindSpinHit = "Mind Spun!"
 ShortCounterAttack = "Counter"
 Grappled = "Grappled!"
 
-[EffectLib]
+[_EffectLib]
 sUnknownEffect = "Unknown"
+sFuseTriggered = "Detonation"

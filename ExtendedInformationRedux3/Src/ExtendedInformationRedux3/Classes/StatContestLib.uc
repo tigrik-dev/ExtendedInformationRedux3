@@ -1,13 +1,6 @@
-class StatContestLib extends Object config(ExtendedInformationRedux3_EffectLib);
+class StatContestLib extends Object dependson(_EffectLib) config(EffectChancePreview);
 
 `include(ExtendedInformationRedux3\Src\ExtendedInformationRedux3\EIR_LoggerMacros.uci)
-
-struct StatContestEffectInfo
-{
-    var string Label;
-    var float Chance;
-	var int RoundedChance;
-};
 
 struct RelevantEffectOverride
 {
@@ -47,13 +40,13 @@ static function string GetStatContestEffectChancesString(
     local array<float> TierValues;
     local float TierValue, LowTierValue, HighTierValue, TierValueSum;
 
-    local array<StatContestEffectInfo> EffectInfos;
+    local array<EffectInfo> EffectInfos;
     local string Result, MissLabel;
     local ShotBreakdown kBreakdown;
 	local bool bMutuallyExclusive;
 	local array<TierEffectBucket> TierEffectBuckets;
 
-    `TRACE_ENTRY("Ability:" @ AbilityState.GetMyTemplateName());
+    `TRACE_ENTRY("");
 
     if (AbilityState == none || TargetRef.ObjectID == 0)
         return "";
@@ -61,6 +54,14 @@ static function string GetStatContestEffectChancesString(
     Template = AbilityState.GetMyTemplate();
     if (Template == none)
         return "";
+
+	`TRACE("Ability:" @ AbilityState.GetMyTemplateName());
+
+	if (class'AbilityLib'.static.IsAbilityBlacklisted(AbilityState))
+	{
+		`DEBUG("Skipping ability due to blacklist:" @ AbilityState.GetMyTemplateName());
+		return "";
+	}
 
     Effects = Template.AbilityTargetEffects;
 
@@ -127,14 +128,13 @@ static function string GetStatContestEffectChancesString(
     // === SCALE by hit chance ===
     ScaleEffectInfosByHitChance(EffectInfos, HitChance);
 
-
     // === SMART ROUND ===
 	bMutuallyExclusive = AreEffectInfosMutuallyExclusive(TierEffectBuckets);
 	`DEBUG("MutuallyExclusive:" @ bMutuallyExclusive);
     ApplySmartRounding(EffectInfos, HitChance, bMutuallyExclusive);
 
     // === FORMAT ===
-    Result = FormatEffectInfos(EffectInfos);
+    Result = class'_EffectLib'.static.FormatEffectInfos(EffectInfos);
 
     // === MISS ===
     if (MissChance > 0)
@@ -153,7 +153,7 @@ static function string GetStatContestEffectChancesString(
 }
 
 static function ScaleEffectInfosByHitChance(
-    out array<StatContestEffectInfo> Infos,
+    out array<EffectInfo> Infos,
     int HitChance
 )
 {
@@ -170,7 +170,7 @@ static function ScaleEffectInfosByHitChance(
 }
 
 static function ApplySmartRounding(
-    out array<StatContestEffectInfo> Infos,
+    out array<EffectInfo> Infos,
     int TargetTotal,
     bool bForceTotal
 )
@@ -186,7 +186,7 @@ static function ApplySmartRounding(
 	if (!bForceTotal)
 	{
 		// Independent probabilities - just round normally, no normalization
-		ApplyIndependentRounding(Infos);
+		class'_EffectLib'.static.ApplyIndependentRounding(Infos);
 		return;
 	}
 
@@ -287,35 +287,13 @@ static function ApplySmartRounding(
     `TRACE_EXIT("");
 }
 
-static function ApplyIndependentRounding(out array<StatContestEffectInfo> Infos)
-{
-    local int i;
-    local int Rounded;
-
-    `TRACE_ENTRY("Independent rounding");
-
-    for (i = 0; i < Infos.Length; i++)
-    {
-        Rounded = int(Infos[i].Chance + 0.5f); // standard rounding
-
-        if (Infos[i].Chance > 0.0f && Rounded == 0)
-            Rounded = 1;
-
-        Infos[i].RoundedChance = Rounded;
-
-        `DEBUG("Independent:" @ Infos[i].Label @ Infos[i].Chance @ "->" @ Rounded);
-    }
-
-    `TRACE_EXIT("");
-}
-
 static function BuildEffectInfos(
     array<X2Effect> Effects,
     int MaxTier,
     array<float> TierValues,
     XComGameState_Ability AbilityState,
 	StateObjectReference TargetRef,
-    out array<StatContestEffectInfo> OutInfos,
+    out array<EffectInfo> OutInfos,
 	out array<TierEffectBucket> OutTierBuckets
 )
 {
@@ -367,14 +345,14 @@ static function BuildEffectInfos(
                 continue;
 
             // 3. simulate conditions
-            if (!class'EffectLib'.static.DoesEffectPassConditions(Effect, AbilityState, TargetUnit, SourceUnit))
+            if (!class'_EffectLib'.static.DoesEffectPassConditionsStrict(Effect, AbilityState, TargetUnit, SourceUnit))
             {
                 `DEBUG("Effect failed conditions:" @ string(Effect.Class.Name));
                 continue;
             }
 
             // 4. resolve label
-            Label = class'EffectLib'.static.ResolveEffectLabel(Effect);
+            Label = class'_EffectLib'.static.ResolveEffectLabel(Effect);
 
 			OutTierBuckets[Tier - 1].Labels.AddItem(Label);
 
@@ -409,7 +387,7 @@ static function BuildEffectInfos(
     // === Convert to OutInfos ===
     for (i = 0; i < Labels.Length; i++)
     {
-        OutInfos.AddItem(MakeEffectInfo(Labels[i], Chances[i]));
+        OutInfos.AddItem(class'_EffectLib'.static.MakeEffectInfo(Labels[i], Chances[i]));
         `DEBUG("FINAL:" @ Labels[i] @ Chances[i]);
     }
 
@@ -435,16 +413,6 @@ static function bool AreEffectInfosMutuallyExclusive(
 
     `TRACE_EXIT("Mutually exclusive");
     return true;
-}
-
-static function StatContestEffectInfo MakeEffectInfo(string Label, float Chance)
-{
-    local StatContestEffectInfo Info;
-
-    Info.Label = Label;
-    Info.Chance = Chance;
-
-    return Info;
 }
 
 static function bool IsRelevant(X2Effect Effect, optional name AbilityName)
@@ -481,25 +449,6 @@ static function bool IsRelevant(X2Effect Effect, optional name AbilityName)
 
     // TRUE only for subclasses, FALSE for base class itself
     return PersistentEffect.Class != class'X2Effect_Persistent';
-}
-
-static function string FormatEffectInfos(array<StatContestEffectInfo> Infos)
-{
-    local string Result;
-    local int i;
-
-    for (i = 0; i < Infos.Length; i++)
-    {
-        if (i > 0)
-            Result $= " | ";
-
-        Result $= class'UIUtilities_Text'.static.GetColoredText(
-            Infos[i].Label $ ": " $ Infos[i].RoundedChance $ "%",
-            class'EffectLib'.static.GetColorForIndex(i, Infos.Length)
-        );
-    }
-
-    return Result;
 }
 
 static function int GetHighestTierPossibleFromEffects(array<X2Effect> Effects)
