@@ -772,27 +772,85 @@ static function SetAbilityMinDamagePreview(UIUnitFlag kFlag, XComGameState_Abili
  *
  * @return string         Updated ShotDescription with hack info prepended
  */ 
-function string UpdateHackDescription( XComGameState_Ability AbilityState, StateObjectReference Target, string ShotDescription)
+function string UpdateHackDescription(
+    XComGameState_Ability AbilityState,
+    StateObjectReference Target,
+    string ShotDescription
+)
 {
-	local EIHackBreakdown HackBreakdown;
-	local HackRewardInfo RewardItem;
-	local string HackDescription;
+    local EIHackBreakdown HackBreakdown;
+    local HackRewardInfo RewardItem;
+    local string HackDescription;
+    local int i;
+    local int Chance;
+    local string Label;
+    local EUIState Color;
 
-	`TRACE_ENTRY("");
-	if(class'HackCalcLib'.static.GetHackBreakdown(AbilityState, Target, HackBreakdown))
-	{
-		RewardItem = HackBreakdown.RewardList[0];
-		HackDescription = class'UIUtilities_Text'.static.GetColoredText(RewardItem.RewardTemplate.GetFriendlyName(), RewardItem.RewardTemplate.bBadThing ? eUIState_Bad : eUIState_Good);
-		RewardItem = HackBreakdown.RewardList[1];
-		HackDescription $= " - " $ class'UIUtilities_Text'.static.GetColoredText(RewardItem.RewardTemplate.GetFriendlyName() $ ": " $ Clamp(RewardItem.Chance, 0, 100) $ "%", eUIState_Good);
-		RewardItem = HackBreakdown.RewardList[2];
-		HackDescription $= ", " $ class'UIUtilities_Text'.static.GetColoredText(RewardItem.RewardTemplate.GetFriendlyName() $ ": " $ Clamp(RewardItem.Chance, 0, 100) $ "%", eUIState_Good);
-		
-		// Tigrik: Display hack rewards and hack chances before the ability description, instead of after it.
-		ShotDescription = HackDescription $ "\n" $ ShotDescription;
-	}
-	`TRACE_EXIT("ShotDescription:" @ ShotDescription);
-	return ShotDescription;
+    `TRACE_ENTRY("");
+
+    if (!class'HackCalcLib'.static.GetHackBreakdown(AbilityState, Target, HackBreakdown))
+    {
+        `TRACE_EXIT("No hack breakdown");
+        return ShotDescription;
+    }
+
+    // Safety: no rewards
+    if (HackBreakdown.RewardList.Length == 0)
+    {
+        `DEBUG("No rewards in breakdown");
+        `TRACE_EXIT("ShotDescription:" @ ShotDescription);
+        return ShotDescription;
+    }
+
+    for (i = 0; i < HackBreakdown.RewardList.Length; i++)
+    {
+        RewardItem = HackBreakdown.RewardList[i];
+
+        // Safety: skip invalid entries
+        if (RewardItem.RewardTemplate == none)
+        {
+            `DEBUG("Skipping reward: no template at index" @ i);
+            continue;
+        }
+
+        Label = RewardItem.RewardTemplate.GetFriendlyName();
+        Chance = Clamp(RewardItem.Chance, 0, 100);
+        Color = RewardItem.RewardTemplate.bBadThing ? eUIState_Bad : eUIState_Good;
+
+        if (HackDescription == "")
+        {
+            HackDescription =
+                class'UIUtilities_Text'.static.GetColoredText(Label, Color);
+        }
+        else
+        {
+            // Separator logic:
+            // second item uses " - ", others use ", "
+            if (i == 1)
+            {
+                HackDescription $= " - ";
+            }
+            else
+            {
+                HackDescription $= ", ";
+            }
+
+            HackDescription $=
+                class'UIUtilities_Text'.static.GetColoredText(
+                    Label $ ": " $ Chance $ "%",
+                    Color
+                );
+        }
+    }
+
+    // Final safety: don't prepend empty string
+    if (HackDescription != "")
+    {
+        ShotDescription = HackDescription $ "\n" $ ShotDescription;
+    }
+
+    `TRACE_EXIT("ShotDescription:" @ ShotDescription);
+    return ShotDescription;
 }
 
 /**
