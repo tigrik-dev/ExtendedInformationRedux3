@@ -509,3 +509,48 @@ static function int FindEffectInfoByLabel(
 
     return INDEX_NONE;
 }
+
+/**
+ * Determines whether a Flamethrower effect branch should be applied
+ *
+ * Simplified logic:
+ * - If the effect has X2Condition_AbilityProperty (NapalmX) ? require ability
+ * - Otherwise ? treat as base (no NapalmX) branch
+ *
+ * This avoids needing X2Condition_OwnerDoesNotHaveAbility while still
+ * correctly resolving mutually exclusive Burning effects.
+ *
+ * @param Effect        The effect being evaluated
+ * @param SourceUnit    The unit using the ability
+ *
+ * @return bool         True if this effect should be used
+ */
+static function bool DoesFlamethrowerEffectPass(
+    X2Effect Effect,
+    XComGameState_Unit SourceUnit
+)
+{
+    local X2Condition Condition;
+    local X2Condition_AbilityProperty HasAbilityCond;
+    local bool bEffectRequiresNapalmX;
+    local bool bUnitHasNapalmX;
+
+    if (SourceUnit == none) return true;
+
+    // Detect if unit has NapalmX
+    bUnitHasNapalmX = SourceUnit.HasSoldierAbility('NapalmX');
+
+    // Detect if THIS effect is the NapalmX version
+    foreach Effect.TargetConditions(Condition)
+    {
+        HasAbilityCond = X2Condition_AbilityProperty(Condition);
+
+        if (HasAbilityCond != none && HasAbilityCond.OwnerHasSoldierAbilities.Length > 0)
+        {
+            bEffectRequiresNapalmX = true;
+            break;
+        }
+    }
+
+	return bEffectRequiresNapalmX ? bUnitHasNapalmX : !bUnitHasNapalmX;
+}

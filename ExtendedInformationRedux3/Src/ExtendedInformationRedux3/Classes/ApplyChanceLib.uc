@@ -175,6 +175,13 @@ static function string GetApplyChancesString(
             continue;
 		}
 
+		// === LWFlamethrower branch filtering ===
+		if (AbilityState.GetMyTemplateName() == 'LWFlamethrower' && !class'_EffectLib'.static.DoesFlamethrowerEffectPass(Effect, SourceUnit))
+		{
+			`DEBUG("SKIPPING EFFECT: LWFlamethrower branch not active.");
+			continue;
+		}
+
         // Conditions
         if (!class'_EffectLib'.static.DoesEffectPassConditionsStrict(Effect, AbilityState, TargetUnit, SourceUnit, bHasTarget))
 		{
