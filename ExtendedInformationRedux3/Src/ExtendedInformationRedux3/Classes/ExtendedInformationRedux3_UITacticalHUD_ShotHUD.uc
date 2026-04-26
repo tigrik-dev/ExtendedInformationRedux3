@@ -844,7 +844,7 @@ function string UpdateHackDescription(
             HackDescription $= ", " $
                 class'UIUtilities_Text'.static.GetColoredText(
                     Label $ ": " $ Chance $ "%",
-                    Color
+                    _Color
                 );
         }
 
