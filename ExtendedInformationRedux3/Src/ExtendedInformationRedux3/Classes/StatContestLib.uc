@@ -1,3 +1,27 @@
+/**
+ * StatContestLib
+ *
+ * Utility class responsible for calculating and displaying effect outcome
+ * probabilities for abilities that use stat contest mechanics
+ * (e.g. Insanity)
+ *
+ * Responsibilities:
+ * - Detect stat contest-based abilities and their associated effects
+ * - Compute probability distribution across contest tiers
+ * - Aggregate effect chances based on tier weights
+ * - Apply hit chance scaling to final probabilities
+ * - Perform smart rounding (with optional total normalization)
+ * - Format output string for UI display
+ * - Support config-driven overrides for effect relevance detection
+ *
+ * Key Concepts:
+ * - Stat contests divide outcomes into tiers (based on attack vs defense)
+ * - Each tier may trigger different effects
+ * - Final probability = (tier weight) * (hit chance)
+ * - Effects may be mutually exclusive or overlapping
+ *
+ * @author Tigrik
+ */
 class StatContestLib extends Object dependson(_EffectLib) config(EffectChancePreview);
 
 `include(ExtendedInformationRedux3\Src\ExtendedInformationRedux3\EIR_LoggerMacros.uci)
@@ -17,12 +41,13 @@ struct TierEffectBucket
 var config array<RelevantEffectOverride> RelevantEffects;
 
 /**
- * Returns formatted stat contest effect chances string for abilities like Insanity
+ * Calculates formatted stat contest effect chances string
  *
- * @param AbilityState   Ability being used
- * @param TargetRef      Target unit reference
+ * @param AbilityState   Ability being evaluated
+ * @param TargetRef      Target reference
+ * @param kTarget        Tactical targeting data
  *
- * @return string        Colored formatted chances string (or empty if not applicable)
+ * @return string        Formatted string containing effect chances and miss chance
  */
 static function string GetStatContestEffectChancesString(
     XComGameState_Ability AbilityState,
@@ -152,6 +177,12 @@ static function string GetStatContestEffectChancesString(
     return Result;
 }
 
+/**
+ * Scales all effect probabilities by hit chance
+ *
+ * @param Infos          Array of effect info structures (modified in-place)
+ * @param HitChance      Final hit chance (0–100)
+ */
 static function ScaleEffectInfosByHitChance(
     out array<EffectInfo> Infos,
     int HitChance
@@ -169,6 +200,17 @@ static function ScaleEffectInfosByHitChance(
 	`TRACE_EXIT("");
 }
 
+/**
+ * Applies smart rounding to effect probabilities
+ *
+ * Behavior:
+ * - If effects are NOT mutually exclusive ? uses independent rounding
+ * - If mutually exclusive ? normalizes values to match TargetTotal
+ *
+ * @param Infos          Effect info array (modified in-place)
+ * @param TargetTotal    Expected total sum (usually HitChance)
+ * @param bForceTotal    Whether to enforce total normalization
+ */
 static function ApplySmartRounding(
     out array<EffectInfo> Infos,
     int TargetTotal,
@@ -287,6 +329,23 @@ static function ApplySmartRounding(
     `TRACE_EXIT("");
 }
 
+/**
+ * Builds effect probability list based on tier distribution
+ *
+ * Process:
+ * - Iterates through all tiers
+ * - Filters effects by relevance and conditions
+ * - Accumulates probability per effect label
+ * - Tracks per-tier label distribution for exclusivity detection
+ *
+ * @param Effects            Ability effects list
+ * @param MaxTier            Maximum number of tiers
+ * @param TierValues         Probability weight per tier (normalized)
+ * @param AbilityState       Ability context
+ * @param TargetRef          Target reference
+ * @param OutInfos           Output aggregated effect info
+ * @param OutTierBuckets     Output tier-to-effect mapping
+ */
 static function BuildEffectInfos(
     array<X2Effect> Effects,
     int MaxTier,
@@ -394,6 +453,17 @@ static function BuildEffectInfos(
     `TRACE_EXIT("");
 }
 
+/**
+ * Determines whether effects across tiers are mutually exclusive
+ *
+ * Logic:
+ * - If any tier contains more than one effect ? NOT mutually exclusive
+ * - Otherwise ? mutually exclusive
+ *
+ * @param Buckets        Tier-based effect grouping
+ *
+ * @return bool          True if effects are mutually exclusive
+ */
 static function bool AreEffectInfosMutuallyExclusive(
     array<TierEffectBucket> Buckets
 )
@@ -415,6 +485,18 @@ static function bool AreEffectInfosMutuallyExclusive(
     return true;
 }
 
+/**
+ * Determines whether an effect is relevant for stat contest preview
+ *
+ * Priority:
+ * 1. Config overrides (RelevantEffects)
+ * 2. Default logic (persistent effects only, excluding base class)
+ *
+ * @param Effect         Effect to evaluate
+ * @param AbilityName    Ability template name (optional)
+ *
+ * @return bool          True if effect should be included
+ */
 static function bool IsRelevant(X2Effect Effect, optional name AbilityName)
 {
     local X2Effect_Persistent PersistentEffect;
@@ -451,6 +533,15 @@ static function bool IsRelevant(X2Effect Effect, optional name AbilityName)
     return PersistentEffect.Class != class'X2Effect_Persistent';
 }
 
+/**
+ * Determines the highest tier index used by effects
+ *
+ * Used to define total number of stat contest tiers
+ *
+ * @param Effects        Ability effects
+ *
+ * @return int           Highest tier index found
+ */
 static function int GetHighestTierPossibleFromEffects(array<X2Effect> Effects)
 {
     local int Highest, Idx;
@@ -469,6 +560,15 @@ static function int GetHighestTierPossibleFromEffects(array<X2Effect> Effects)
     return Highest;
 }
 
+/**
+ * Sorts effect arrays based on first occurrence order
+ *
+ * Ensures stable and intuitive UI ordering
+ *
+ * @param Labels         Effect labels (modified in-place)
+ * @param Chances        Effect chances (modified in-place)
+ * @param Orders         First occurrence indices (modified in-place)
+ */
 static function SortByFirstSeen(
     out array<string> Labels,
     out array<float> Chances,

@@ -1,3 +1,24 @@
+/**
+ * _EffectLib
+ *
+ * Core utility class responsible for:
+ * - Resolving effect labels (localized, fallback, and hardcoded)
+ * - Evaluating effect conditions (including strict ability-based checks)
+ * - Formatting effect chances for UI display
+ * - Applying rounding rules to probabilities
+ *
+ * This class is used by multiple preview systems (e.g. ApplyChance, StatContest)
+ * and acts as a shared foundation for effect-related logic.
+ *
+ * Responsibilities:
+ * - Convert X2Effect objects into readable UI labels
+ * - Handle localization fallback and formatting
+ * - Evaluate TargetConditions safely across different contexts
+ * - Apply consistent rounding rules (including edge-case corrections)
+ * - Provide helper utilities for formatting and lookup
+ *
+ * @author Tigrik
+ */
 class _EffectLib extends Object;
 
 `include(ExtendedInformationRedux3\Src\ExtendedInformationRedux3\EIR_LoggerMacros.uci)
@@ -5,6 +26,13 @@ class _EffectLib extends Object;
 var localized string sUnknownEffect;
 var localized string sFuseTriggered;
 
+/**
+ * Struct representing a single effect entry with probability data
+ *
+ * @field Label           Display name of the effect
+ * @field Chance          Raw calculated probability (float)
+ * @field RoundedChance   Final rounded probability (integer)
+ */
 struct EffectInfo
 {
     var string Label;
@@ -12,6 +40,23 @@ struct EffectInfo
     var int RoundedChance;
 };
 
+/**
+ * Resolves a fallback label for an effect when no explicit name is available.
+ *
+ * Resolution order:
+ * 1. Hardcoded overrides (special cases)
+ * 2. Fully-qualified localization key
+ * 3. Class-only localization key
+ * 4. Derived class name (with prefix stripping and formatting)
+ *
+ * Also performs validation and formatting (PascalCase ? spaced words).
+ *
+ * @param Effect       Effect object
+ * @param EffectName   Optional explicit effect/event name
+ * @param UnitName     Optional unit-based override identifier
+ *
+ * @return string      Resolved human-readable label
+ */
 static function string GetFallbackEffectLabel(X2Effect Effect, optional name EffectName, optional name UnitName)
 {
     local string Label, LocalizedLabel;
@@ -111,6 +156,20 @@ static function string GetFallbackEffectLabel(X2Effect Effect, optional name Eff
     return Result;
 }
 
+/**
+ * Returns hardcoded label overrides for special cases.
+ *
+ * Used for effects that:
+ * - Depend on triggered events (e.g. Void Rift, Fuse)
+ * - Require mapping to ability names
+ * - Have inconsistent or missing localization
+ *
+ * @param Effect       Effect object
+ * @param EffectName   Optional event/effect name
+ * @param UnitName     Optional unit-based identifier
+ *
+ * @return string      Override label or empty string if not applicable
+ */
 static function string GetHardcodedEffectLabelOverride(X2Effect Effect, optional name EffectName, optional name UnitName)
 {
     local name EffectClassName;
@@ -162,12 +221,34 @@ static function string GetHardcodedEffectLabelOverride(X2Effect Effect, optional
     return ""; // no override
 }
 
+/**
+ * Checks if a localization lookup failed.
+ *
+ * Unreal returns "?INT?..." when localization key is missing.
+ *
+ * @param Value    Localization result string
+ *
+ * @return bool    True if localization is missing
+ */
 static function bool IsMissingLocalization(string Value)
 {
     // Unreal returns "?INT?Package.Section.Key?" when missing
     return Left(Value, 5) == "?INT?";
 }
 
+/**
+ * Determines UI color for an effect based on its index and total count.
+ *
+ * Colors are distributed to provide visual clarity:
+ * - Good (green)
+ * - Warning (yellow)
+ * - Psionic (purple)
+ *
+ * @param Index    Position of effect in list
+ * @param Total    Total number of effects
+ *
+ * @return EUIState    UI color state
+ */
 static function EUIState GetColorForIndex(int Index, int Total)
 {
     local int GoodCount, WarningCount;
@@ -191,6 +272,19 @@ static function EUIState GetColorForIndex(int Index, int Total)
     return eUIState_Psyonic;
 }
 
+/**
+ * Resolves the final display label for an effect.
+ *
+ * Uses:
+ * - PersistentEffect.FriendlyName if available
+ * - Otherwise falls back to GetFallbackEffectLabel()
+ *
+ * @param Effect       Effect object
+ * @param EffectName   Optional effect/event name
+ * @param UnitName     Optional unit identifier
+ *
+ * @return string      Final resolved label
+ */
 static function string ResolveEffectLabel(X2Effect Effect, optional name EffectName, optional name UnitName)
 {
     local X2Effect_Persistent PersistentEffect;
@@ -209,6 +303,22 @@ static function string ResolveEffectLabel(X2Effect Effect, optional name EffectN
     return GetFallbackEffectLabel(Effect, EffectName, UnitName);
 }
 
+/**
+ * Evaluates whether an effect passes all conditions.
+ *
+ * This is a strict version that:
+ * - Always evaluates ability-based conditions (even without target)
+ * - Properly handles X2Condition_AbilityProperty
+ * - Safely skips target-dependent checks when no target exists
+ *
+ * @param Effect         Effect to evaluate
+ * @param AbilityState   Ability being used
+ * @param TargetUnit     Target unit (may be none)
+ * @param SourceUnit     Source unit (may be none)
+ * @param bHasTarget     Whether a valid target exists
+ *
+ * @return bool          True if all conditions pass
+ */
 static function bool DoesEffectPassConditionsStrict(
     X2Effect Effect,
     XComGameState_Ability AbilityState,
@@ -273,6 +383,19 @@ static function bool DoesEffectPassConditionsStrict(
     return true;
 }
 
+/**
+ * Applies independent rounding to effect chances.
+ *
+ * Rules:
+ * - Standard rounding (0.5 ? up)
+ * - Any non-zero value < 1% ? forced to 1%
+ * - Any value between 99% and 100% ? forced to 99%
+ * - Final result clamped to [0, 100]
+ *
+ * Used for non-mutually-exclusive probabilities.
+ *
+ * @param Infos    Array of effect info entries (modified in-place)
+ */
 static function ApplyIndependentRounding(out array<EffectInfo> Infos)
 {
     local int i;
@@ -314,6 +437,14 @@ static function ApplyIndependentRounding(out array<EffectInfo> Infos)
     `TRACE_EXIT("");
 }
 
+/**
+ * Creates a new EffectInfo struct.
+ *
+ * @param Label    Effect display label
+ * @param Chance   Raw probability value
+ *
+ * @return EffectInfo    Initialized struct
+ */
 static function EffectInfo MakeEffectInfo(string Label, float Chance)
 {
     local EffectInfo Info;
@@ -324,6 +455,18 @@ static function EffectInfo MakeEffectInfo(string Label, float Chance)
     return Info;
 }
 
+/**
+ * Formats effect infos into a UI string.
+ *
+ * Output format:
+ * "Effect A: 50% | Effect B: 25% | Effect C: 10%"
+ *
+ * Applies color formatting based on position.
+ *
+ * @param Infos    Array of effect info entries
+ *
+ * @return string  Formatted UI string
+ */
 static function string FormatEffectInfos(array<EffectInfo> Infos)
 {
     local string Result;
@@ -343,6 +486,14 @@ static function string FormatEffectInfos(array<EffectInfo> Infos)
     return Result;
 }
 
+/**
+ * Finds an effect entry by label.
+ *
+ * @param Infos    Array of effect info entries
+ * @param Label    Label to search for
+ *
+ * @return int     Index of matching entry or INDEX_NONE
+ */
 static function int FindEffectInfoByLabel(
     array<EffectInfo> Infos,
     string Label

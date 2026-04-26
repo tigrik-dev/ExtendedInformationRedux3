@@ -1,3 +1,33 @@
+/**
+ * ApplyChanceLib
+ *
+ * Utility class responsible for generating formatted UI strings for
+ * effects that use ApplyChance (non-stat-contest abilities).
+ *
+ * This system is used for abilities such as:
+ * - Void Rift (triggered events)
+ * - Status effects with ApplyChance
+ *
+ * Responsibilities:
+ * - Extract relevant effects with ApplyChance
+ * - Filter out unsupported effects (e.g. ApplyChanceFn)
+ * - Evaluate TargetConditions safely
+ * - Compute final probabilities (including multi-shot abilities)
+ * - Apply independent rounding rules
+ * - Format output string for UI display
+ *
+ * Additional Features:
+ * - Configurable effect blacklist
+ * - Optional display of guaranteed effects
+ * - Optional display of miss chance
+ * - Multi-shot probability correction (binomial stacking)
+ *
+ * Config:
+ * - EffectChancePreviewBlacklist:
+ *     List of effects excluded from ApplyChance preview
+ *
+ * @author Tigrik
+ */
 class ApplyChanceLib extends Object dependson(_EffectLib) config(EffectChancePreview);
 
 `include(ExtendedInformationRedux3\Src\ExtendedInformationRedux3\EIR_LoggerMacros.uci)
@@ -5,6 +35,31 @@ class ApplyChanceLib extends Object dependson(_EffectLib) config(EffectChancePre
 
 var config array<string> EffectChancePreviewBlacklist;
 
+/**
+ * Generates a formatted string describing ApplyChance-based effects.
+ *
+ * Output example:
+ * "Disoriented: 25% | Stunned: 10% | Miss: 20%"
+ *
+ * Behavior:
+ * - Only includes effects with ApplyChance > 0
+ * - Skips effects using ApplyChanceFn (dynamic logic)
+ * - Evaluates TargetConditions via strict validation
+ * - Accounts for multi-shot abilities (e.g. Burst Fire)
+ * - Merges duplicate labels (takes highest probability)
+ * - Applies independent rounding rules
+ *
+ * Special handling:
+ * - Works without a target (AOE abilities)
+ * - Defaults to 100% hit chance when no target exists
+ * - Applies blacklist filtering (ability + effect)
+ *
+ * @param AbilityState    Ability being used
+ * @param TargetRef       Target reference (can be empty for AOE)
+ * @param kTarget         Target data used for hit calculation
+ *
+ * @return string         Formatted UI string (empty if not applicable)
+ */
 static function string GetApplyChancesString(
     XComGameState_Ability AbilityState,
     StateObjectReference TargetRef,
@@ -179,6 +234,19 @@ static function string GetApplyChancesString(
     return Result;
 }
 
+/**
+ * Resolves a display label specifically for ApplyChance effects.
+ *
+ * Special cases:
+ * - X2Effect_TriggerEvent ? uses TriggerEventName
+ * - X2Effect_SetUnitValue ? uses UnitName
+ *
+ * Falls back to generic effect label resolution otherwise.
+ *
+ * @param Effect    Effect to resolve label for
+ *
+ * @return string   Display label
+ */
 static function string ResolveApplyChanceLabel(X2Effect Effect)
 {
     local X2Effect_TriggerEvent TriggerEffect;
@@ -206,6 +274,24 @@ static function string ResolveApplyChanceLabel(X2Effect Effect)
     return class'_EffectLib'.static.ResolveEffectLabel(Effect);
 }
 
+/**
+ * Checks whether an effect is blacklisted from ApplyChance preview.
+ *
+ * Effects are identified using a fully-qualified key:
+ * "<PackageName>.<EffectClassName>"
+ *
+ * Example:
+ * "XComGame.X2Effect_Burning"
+ * "MyMod.CustomEffect"
+ *
+ * Note:
+ * - This blacklist only applies to ApplyChance-based effects
+ * - Does NOT affect stat contest effects
+ *
+ * @param Effect    Effect to check
+ *
+ * @return bool     True if effect is blacklisted
+ */
 static function bool IsEffectBlacklisted(X2Effect Effect)
 {
     local string FullKey;
