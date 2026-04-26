@@ -110,9 +110,9 @@ sShowExtraWeaponStats_MCMText = "Show Weapon Upgrade Details";
 
 sPreviewStatusEffects_MCMText = "Preview Status Effects"
 sPreviewStatContest_MCMText = "Hide Status Effects for Stat Contest Abilities (e.g. Insanity)"
-sPreviewApplyChance_MCMText = "Hide Status Effects for Static Chance Abilities (e.g. Void Rift)"
-sPreviewApplyChanceMiss_MCMText = "Show Miss Chance for Static Chance Abilities (e.g. Void Rift)"
-sPreviewApplyChanceGuaranteed_MCMText = "Show Guaranteed Status Effects for Static Chance Abilities (e.g. Void Rift)"
+sPreviewApplyChance_MCMText = "Preview Status Effects for Static Chance Abilities (e.g. Void Rift)"
+sPreviewApplyChanceMiss_MCMText = "Show Miss Chance for Static Chance Abilities (e.g. Arc Pulser)"
+sPreviewApplyChanceGuaranteed_MCMText = "Show Guaranteed Status Effects for Static Chance Abilities (e.g. Stunned for Arc Pulser)"
 
 [HitCalcLib]
 LOWER_DIFFICULTY_MSG = "Lower Difficulty";
