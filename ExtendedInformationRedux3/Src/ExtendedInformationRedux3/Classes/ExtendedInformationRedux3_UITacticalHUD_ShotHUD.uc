@@ -345,7 +345,7 @@ simulated function Update()
 		} 
 		else
 		{
-			ApplyChanceAbilityChances = getHIDE_APPLY_CHANCE() ? "" : class'ApplyChanceLib'.static.GetApplyChancesString(SelectedAbilityState, Target, kTarget);
+			ApplyChanceAbilityChances = getPREVIEW_APPLY_CHANCE() ? class'ApplyChanceLib'.static.GetApplyChancesString(SelectedAbilityState, Target, kTarget) : "";
 			if (ApplyChanceAbilityChances != "") ShotDescription = ApplyChanceAbilityChances $ "\n" $ ShotDescription;
 		}
 
@@ -1080,9 +1080,9 @@ function bool getHIDE_STAT_CONTEST()
 	return `MCM_CH_GetValue(class'MCM_Defaults'.default.HIDE_STAT_CONTEST, class'ExtendedInformationRedux3_MCMScreen'.default.HIDE_STAT_CONTEST);
 }
 
-function bool getHIDE_APPLY_CHANCE()
+function bool getPREVIEW_APPLY_CHANCE()
 {
-	return `MCM_CH_GetValue(class'MCM_Defaults'.default.HIDE_APPLY_CHANCE, class'ExtendedInformationRedux3_MCMScreen'.default.HIDE_APPLY_CHANCE);
+	return `MCM_CH_GetValue(class'MCM_Defaults'.default.PREVIEW_APPLY_CHANCE, class'ExtendedInformationRedux3_MCMScreen'.default.PREVIEW_APPLY_CHANCE);
 }
 
 //DEBUG
