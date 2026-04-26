@@ -777,6 +777,8 @@ function string UpdateHackDescription(
     local string Label;
     local EUIState Color;
 
+    local int AddedCount; // how many valid rewards we actually used
+
     `TRACE_ENTRY("");
 
     if (!class'HackCalcLib'.static.GetHackBreakdown(AbilityState, Target, HackBreakdown))
@@ -785,7 +787,6 @@ function string UpdateHackDescription(
         return ShotDescription;
     }
 
-    // Safety: no rewards
     if (HackBreakdown.RewardList.Length == 0)
     {
         `DEBUG("No rewards in breakdown");
@@ -793,11 +794,16 @@ function string UpdateHackDescription(
         return ShotDescription;
     }
 
+    AddedCount = 0;
+
     for (i = 0; i < HackBreakdown.RewardList.Length; i++)
     {
+        // Stop after 3 valid rewards (matches game UI)
+        if (AddedCount >= 3)
+            break;
+
         RewardItem = HackBreakdown.RewardList[i];
 
-        // Safety: skip invalid entries
         if (RewardItem.RewardTemplate == none)
         {
             `DEBUG("Skipping reward: no template at index" @ i);
@@ -808,33 +814,34 @@ function string UpdateHackDescription(
         Chance = Clamp(RewardItem.Chance, 0, 100);
         Color = RewardItem.RewardTemplate.bBadThing ? eUIState_Bad : eUIState_Good;
 
-        if (HackDescription == "")
+        if (AddedCount == 0)
         {
+            // First reward: label only
             HackDescription =
                 class'UIUtilities_Text'.static.GetColoredText(Label, Color);
         }
-        else
+        else if (AddedCount == 1)
         {
-            // Separator logic:
-            // second item uses " - ", others use ", "
-            if (i == 1)
-            {
-                HackDescription $= " - ";
-            }
-            else
-            {
-                HackDescription $= ", ";
-            }
-
-            HackDescription $=
+            // Second reward: " - "
+            HackDescription $= " - " $
                 class'UIUtilities_Text'.static.GetColoredText(
                     Label $ ": " $ Chance $ "%",
                     Color
                 );
         }
+        else // AddedCount == 2
+        {
+            // Third reward: ", "
+            HackDescription $= ", " $
+                class'UIUtilities_Text'.static.GetColoredText(
+                    Label $ ": " $ Chance $ "%",
+                    Color
+                );
+        }
+
+        AddedCount++;
     }
 
-    // Final safety: don't prepend empty string
     if (HackDescription != "")
     {
         ShotDescription = HackDescription $ "\n" $ ShotDescription;
