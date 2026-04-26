@@ -26,10 +26,10 @@
     <Folder Include="Src\ExtendedInformationRedux3\Classes\" />
     <Folder Include="Src\ModConfigMenuAPI\" />
     <Folder Include="Src\ModConfigMenuAPI\Classes\" />
-    <Content Include="Config\XComEffectChancePreview.ini">
+    <Content Include="Config\XComExtendedInformationRedux3_Logger.ini">
       <SubType>Content</SubType>
     </Content>
-    <Content Include="Config\XComExtendedInformationRedux3_Logger.ini">
+    <Content Include="Config\XComExtendedInformationRedux3_StatusEffects.ini">
       <SubType>Content</SubType>
     </Content>
     <Content Include="Config\XComIntLoc.ini">

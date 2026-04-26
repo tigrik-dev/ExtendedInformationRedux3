@@ -17,7 +17,7 @@
  *
  * @author Tigrik
  */
-class AbilityLib extends Object config(EffectChancePreview);
+class AbilityLib extends Object config(ExtendedInformationRedux3_StatusEffects);
 
 `include(ExtendedInformationRedux3\Src\ExtendedInformationRedux3\EIR_LoggerMacros.uci)
 

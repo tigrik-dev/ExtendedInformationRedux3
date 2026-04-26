@@ -22,7 +22,7 @@
  *
  * @author Tigrik
  */
-class StatContestLib extends Object dependson(_EffectLib) config(EffectChancePreview);
+class StatContestLib extends Object dependson(_EffectLib) config(ExtendedInformationRedux3_StatusEffects);
 
 `include(ExtendedInformationRedux3\Src\ExtendedInformationRedux3\EIR_LoggerMacros.uci)
 

@@ -28,7 +28,7 @@
  *
  * @author Tigrik
  */
-class ApplyChanceLib extends Object dependson(_EffectLib) config(EffectChancePreview);
+class ApplyChanceLib extends Object dependson(_EffectLib) config(ExtendedInformationRedux3_StatusEffects);
 
 `include(ExtendedInformationRedux3\Src\ExtendedInformationRedux3\EIR_LoggerMacros.uci)
 `include(ExtendedInformationRedux3\Src\ModConfigMenuAPI\MCM_API_CfgHelpers.uci)
