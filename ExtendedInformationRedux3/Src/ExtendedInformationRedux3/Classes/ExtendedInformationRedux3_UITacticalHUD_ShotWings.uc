@@ -16,7 +16,7 @@
  */
 class ExtendedInformationRedux3_UITacticalHUD_ShotWings extends UITacticalHUD_ShotWings dependson(HackCalcLib);
 
-`define RANGESTRING(MIN, MAX)  ( `MIN == `MAX ? string(`MIN) : string(`MIN) $ "-" $ string(`MAX) )
+`define RANGESTRING(MIN, MAX)  ( `MIN == `MAX ? string(`MIN) : string(`MIN) $ " – " $ string(`MAX) )
 //`define RANGESTRINGO(WEPDAM) `RANGESTRING( `MINDAM(`WEPDAM), `MAXDAM(`WEPDAM) )
 //`define RANGESTRINGN(WEPITEM) `RANGESTRING(`WEPITEM.min, `WEPITEM.max)
 //`define SETCOLOR(VAL) IF(`VAL<0) {eState = eUIState_Bad;prefix="";}else {eState=eUIState_Good;prefix="+";}
