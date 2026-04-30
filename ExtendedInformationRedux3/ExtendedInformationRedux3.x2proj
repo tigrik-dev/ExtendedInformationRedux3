@@ -39,8 +39,11 @@
       <SubType>Content</SubType>
     </Content>
     <Content Include="Localization\ExtendedInformationRedux3.cht">
-	  <SubType>Content</SubType>
-	</Content>
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Localization\ExtendedInformationRedux3.esn">
+      <SubType>Content</SubType>
+    </Content>
     <Content Include="Localization\ExtendedInformationRedux3.rus">
       <SubType>Content</SubType>
     </Content>
