@@ -34,6 +34,10 @@ var config int				SHOTHUD_LAYOUT_LEFT_1;
 var config int				SHOTHUD_LAYOUT_LEFT_2;
 var config int				SHOTHUD_LAYOUT_RIGHT_1;
 var config int				SHOTHUD_LAYOUT_RIGHT_2;
+var config int				SHOTHUD_LEFT_1_OFFSET_X;
+var config int				SHOTHUD_LEFT_2_OFFSET_X;
+var config int				SHOTHUD_RIGHT_1_OFFSET_X;
+var config int				SHOTHUD_RIGHT_2_OFFSET_X;
 
 var config bool				TH_SHOW_GRAZED;
 var config bool				TH_SHOW_CRIT_DMG;
@@ -124,6 +128,10 @@ var localized string			sLeftSide1_MCMText;
 var localized string			sLeftSide2_MCMText;
 var localized string			sRightSide1_MCMText;
 var localized string			sRightSide2_MCMText;
+var localized string			sLeftSide1Offset_MCMText;
+var localized string			sLeftSide2Offset_MCMText;
+var localized string			sRightSide1Offset_MCMText;
+var localized string			sRightSide2Offset_MCMText;
 
 //var localized string			sShowAlwaysShotBreakdownHUD_MCMText;
 var localized string			sShowAssistAimBreakdownHUD_MCMText;
@@ -170,6 +178,10 @@ var MCM_API_Dropdown			LeftSide2_MCMUI;
 var MCM_API_Dropdown			RightSide1_MCMUI;
 var MCM_API_Dropdown			RightSide2_MCMUI;
 
+var MCM_API_Slider				LeftSide1OffsetX_MCMUI;
+var MCM_API_Slider				LeftSide2OffsetX_MCMUI;
+var MCM_API_Slider				RightSide1OffsetX_MCMUI;
+var MCM_API_Slider				RightSide2OffsetX_MCMUI;
 
 var MCM_API_Dropdown			HitHexColor_MCMUI;
 var MCM_API_Dropdown			CritHexColor_MCMUI;
@@ -239,6 +251,11 @@ event OnInit(UIScreen Screen)
 `MCM_API_BasicIndexSaveHandler(SlotLayoutHandler1,	SHOTHUD_LAYOUT_LEFT_2, SlotOptions)
 `MCM_API_BasicIndexSaveHandler(SlotLayoutHandler2,	SHOTHUD_LAYOUT_RIGHT_1, SlotOptions)
 `MCM_API_BasicIndexSaveHandler(SlotLayoutHandler3,	SHOTHUD_LAYOUT_RIGHT_2, SlotOptions)
+
+`MCM_API_BasicSliderSaveHandler(Left1OffsetHandler,	BAR_HEIGHT)
+`MCM_API_BasicSliderSaveHandler(Left2OffsetHandler, BAR_HEIGHT)
+`MCM_API_BasicSliderSaveHandler(Right1OffsetHandler, BAR_HEIGHT)
+`MCM_API_BasicSliderSaveHandler(Right2OffsetHandler, BAR_HEIGHT)
 
 `MCM_API_BasicDropdownSaveHandler(HitHexColorHandler,	HIT_HEX_COLOR_MCM)
 `MCM_API_BasicDropdownSaveHandler(CritHexColorHandler,	CRIT_HEX_COLOR_MCM)
@@ -386,6 +403,12 @@ simulated function ClientModCallback(MCM_API_Instance ConfigAPI, int GameMode)
 	LeftSide2_MCMUI						= Group2Point5.AddDropdown('LeftSide2', sLeftSide2_MCMText, sLeftSide2_MCMText, SlotOptions, SlotOptions[SHOTHUD_LAYOUT_LEFT_2], SlotLayoutHandler1, );
 	RightSide1_MCMUI					= Group2Point5.AddDropdown('RightSide1', sRightSide1_MCMText, sRightSide1_MCMText, SlotOptions, SlotOptions[SHOTHUD_LAYOUT_RIGHT_1], SlotLayoutHandler2, );
 	RightSide2_MCMUI					= Group2Point5.AddDropdown('RightSide2', sRightSide2_MCMText, sRightSide2_MCMText, SlotOptions, SlotOptions[SHOTHUD_LAYOUT_RIGHT_2], SlotLayoutHandler3, );
+	
+	LeftSide1OffsetX_MCMUI				= Group2Point5.AddSlider('LeftSide1Offset', sLeftSide1Offset_MCMText, sLeftSide1Offset_MCMText, -200, 200, 1, SHOTHUD_LEFT_1_OFFSET_X, Left1OffsetHandler, );
+	LeftSide2OffsetX_MCMUI				= Group2Point5.AddSlider('LeftSide2Offset', sLeftSide2Offset_MCMText, sLeftSide2Offset_MCMText, -200, 200, 1, SHOTHUD_LEFT_2_OFFSET_X, Left2OffsetHandler, );
+	RightSide1OffsetX_MCMUI				= Group2Point5.AddSlider('RightSide1Offset', sRightSide1Offset_MCMText, sRightSide1Offset_MCMText, -200, 200, 1, SHOTHUD_RIGHT_1_OFFSET_X, Right1OffsetHandler, );
+	RightSide2OffsetX_MCMUI				= Group2Point5.AddSlider('RightSide2Offset', sRightSide2Offset_MCMText, sRightSide2Offset_MCMText, -200, 200, 1, SHOTHUD_RIGHT_2_OFFSET_X, Right2OffsetHandler, );
+	
 	Group2Point5.AddLabel('empty_line',"","");
 
 	Group3 = Page.AddGroup('Group3', sGroupShotBar_MCMText);
@@ -482,6 +505,10 @@ simulated function LoadSavedSettings()
 	SHOTHUD_LAYOUT_LEFT_2 =		`MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_LAYOUT_LEFT_2,SHOTHUD_LAYOUT_LEFT_2);
 	SHOTHUD_LAYOUT_RIGHT_1 =	`MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_LAYOUT_RIGHT_1,SHOTHUD_LAYOUT_RIGHT_1);
 	SHOTHUD_LAYOUT_RIGHT_2 =	`MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_LAYOUT_RIGHT_2,SHOTHUD_LAYOUT_RIGHT_2);
+	SHOTHUD_LEFT_1_OFFSET_X =	`MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_LEFT_1_OFFSET_X,SHOTHUD_LEFT_1_OFFSET_X);
+	SHOTHUD_LEFT_2_OFFSET_X =	`MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_LEFT_2_OFFSET_X,SHOTHUD_LEFT_2_OFFSET_X);
+	SHOTHUD_RIGHT_1_OFFSET_X =	`MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_RIGHT_1_OFFSET_X,SHOTHUD_RIGHT_1_OFFSET_X);
+	SHOTHUD_RIGHT_2_OFFSET_X =	`MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_RIGHT_2_OFFSET_X,SHOTHUD_RIGHT_2_OFFSET_X);
 	HIDE_STAT_CONTEST =			`MCM_CH_GetValue(class'MCM_Defaults'.default.HIDE_STAT_CONTEST,HIDE_STAT_CONTEST);
 	PREVIEW_APPLY_CHANCE =			`MCM_CH_GetValue(class'MCM_Defaults'.default.PREVIEW_APPLY_CHANCE,PREVIEW_APPLY_CHANCE);
 	SHOW_APPLY_CHANCE_MISS =		`MCM_CH_GetValue(class'MCM_Defaults'.default.SHOW_APPLY_CHANCE_MISS,SHOW_APPLY_CHANCE_MISS);
@@ -538,6 +565,10 @@ simulated function ResetButtonClicked(MCM_API_SettingsPage Page)
 	LeftSide2_MCMUI.SetValue(SlotOptions[class'MCM_Defaults'.default.SHOTHUD_LAYOUT_LEFT_2], false);
 	RightSide1_MCMUI.SetValue(SlotOptions[class'MCM_Defaults'.default.SHOTHUD_LAYOUT_RIGHT_1], false);
 	RightSide2_MCMUI.SetValue(SlotOptions[class'MCM_Defaults'.default.SHOTHUD_LAYOUT_RIGHT_2], false);
+	LeftSide1OffsetX_MCMUI.SetValue(class'MCM_Defaults'.default.SHOTHUD_LEFT_1_OFFSET_X, false);
+	LeftSide2OffsetX_MCMUI.SetValue(class'MCM_Defaults'.default.SHOTHUD_LEFT_2_OFFSET_X, false);
+	RightSide1OffsetX_MCMUI.SetValue(class'MCM_Defaults'.default.SHOTHUD_RIGHT_1_OFFSET_X, false);
+	RightSide2OffsetX_MCMUI.SetValue(class'MCM_Defaults'.default.SHOTHUD_RIGHT_2_OFFSET_X, false);
 	HIDE_STAT_CONTEST_MCMUI			.SetValue(class'MCM_Defaults'.default.HIDE_STAT_CONTEST, false);
 	PREVIEW_APPLY_CHANCE_MCMUI			.SetValue(class'MCM_Defaults'.default.PREVIEW_APPLY_CHANCE, false);
 	SHOW_APPLY_CHANCE_MISS_MCMUI		.SetValue(class'MCM_Defaults'.default.SHOW_APPLY_CHANCE_MISS, false);

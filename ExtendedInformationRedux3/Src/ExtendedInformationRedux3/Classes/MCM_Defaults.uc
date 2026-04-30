@@ -35,6 +35,10 @@ var config int		SHOTHUD_LAYOUT_LEFT_1;
 var config int		SHOTHUD_LAYOUT_LEFT_2;
 var config int		SHOTHUD_LAYOUT_RIGHT_1;
 var config int		SHOTHUD_LAYOUT_RIGHT_2;
+var config int		SHOTHUD_LEFT_1_OFFSET_X;
+var config int		SHOTHUD_LEFT_2_OFFSET_X;
+var config int		SHOTHUD_RIGHT_1_OFFSET_X;
+var config int		SHOTHUD_RIGHT_2_OFFSET_X;
 
 var config string	ASSIST_HEX_COLOR;
 

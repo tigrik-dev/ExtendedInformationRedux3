@@ -99,6 +99,10 @@ SlotOptions[0] = "None"
 SlotOptions[1] = "Graze Chance"
 SlotOptions[2] = "Critical Damage"
 SlotOptions[3] = "Expected Damage"
+sLeftSide1Offset_MCMText = "Left Side 1 Horizontal Shift"
+sLeftSide2Offset_MCMText = "Left Side 2 Horizontal Shift"
+sRightSide1Offset_MCMText = "Right Side 1 Horizontal Shift"
+sRightSide2Offset_MCMText = "Right Side 2 Horizontal Shift"
 
 ;sShowAlwaysShotBreakdownHUD_MCMText = "Always Show Shot Breakdown";
 sGroupShotWings_MCMText = "Shot Wings Settings";

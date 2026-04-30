@@ -460,13 +460,13 @@ simulated function Update()
 						FontString = "+" $ `RANGESTRING(CritDamage.Min, CritDamage.Max);
 						FontString = class'UIUtilities_Text'.static.GetColoredText(FontString, CRIT_STATE_COLOUR, , SlotOffsets[j].bAlignRight ? "right" : "left");
 						FontString = class'UIUtilities_Text'.static.AddFontInfo(FontString,false,true, , ValueFontSize);
-						SlotValues[j].SetPosition(SlotOffsets[j].OffsetX-TEXTWIDTH*int(SlotOffsets[j].bAlignRight),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) - 0.8);
+						SlotValues[j].SetPosition(SlotOffsets[j].OffsetX-(TEXTWIDTH*int(SlotOffsets[j].bAlignRight)+IndexToOffsetX(j)),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) - 0.8);
 						SlotValues[j].SetText(FontString);
 						SlotValues[j].Show();
 				
 						FontString = CRIT_DAMAGE_LABEL;
 						FontString = class'UIUtilities_Text'.static.GetColoredText(FontString,eUIState_Header, LabelFontSize, SlotOffsets[j].bAlignRight ? "right" : "left");
-						SlotLabels[j].SetPosition(SlotOffsets[j].OffsetX-TEXTWIDTH*int(SlotOffsets[j].bAlignRight),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) + LabelsOffset);
+						SlotLabels[j].SetPosition(SlotOffsets[j].OffsetX-(TEXTWIDTH*int(SlotOffsets[j].bAlignRight)+IndexToOffsetX(j)),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) + LabelsOffset);
 						SlotLabels[j].SetText(FontString);
 						SlotLabels[j].Show();
 					}
@@ -501,12 +501,12 @@ simulated function Update()
 					FontString = GrazeChance $ "%";
 					FontString = class'UIUtilities_Text'.static.GetColoredText(FontString, GRAZE_STATE_COLOUR, , SlotOffsets[j].bAlignRight ? "right" : "left");
 					FontString = class'UIUtilities_Text'.static.AddFontInfo(FontString,false,true, , ValueFontSize);
-					SlotValues[j].SetPosition(SlotOffsets[j].OffsetX-TEXTWIDTH*int(SlotOffsets[j].bAlignRight),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) - 0.8);
+					SlotValues[j].SetPosition(SlotOffsets[j].OffsetX-(TEXTWIDTH*int(SlotOffsets[j].bAlignRight))+IndexToOffsetX(j),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) - 0.8);
 					SlotValues[j].SetText(FontString);
 					SlotValues[j].Show();
 					FontString = Caps(class'X2TacticalGameRulesetDataStructures'.default.m_aAbilityHitResultStrings[eHit_Graze]);
 					FontString = class'UIUtilities_Text'.static.GetColoredText(FontString,eUIState_Header,LabelFontSize ,SlotOffsets[j].bAlignRight ? "right" : "left");
-					SlotLabels[j].SetPosition(SlotOffsets[j].OffsetX-TEXTWIDTH*int(SlotOffsets[j].bAlignRight),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) + LabelsOffset);
+					SlotLabels[j].SetPosition(SlotOffsets[j].OffsetX-(TEXTWIDTH*int(SlotOffsets[j].bAlignRight))+IndexToOffsetX(j),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) + LabelsOffset);
 					SlotLabels[j].SetText(FontString);
 					SlotLabels[j].Show();
 				}
@@ -605,12 +605,12 @@ simulated function Update()
 				FontString = class'ExpectedDamageLib'.static.FormatExpectedDamageString(fExpectedDamage);
 				FontString = class'UIUtilities_Text'.static.GetColoredText(FontString, eUIState_Normal, , SlotOffsets[j].bAlignRight ? "right" : "left");
 				FontString = class'UIUtilities_Text'.static.AddFontInfo(FontString,false,true, , ValueFontSize);
-				SlotValues[j].SetPosition(SlotOffsets[j].OffsetX-TEXTWIDTH*int(SlotOffsets[j].bAlignRight),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) - 0.8);
+				SlotValues[j].SetPosition(SlotOffsets[j].OffsetX-(TEXTWIDTH*int(SlotOffsets[j].bAlignRight))+IndexToOffsetX(j),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) - 0.8);
 				SlotValues[j].SetText(FontString);
 				SlotValues[j].Show();
 				FontString = EXPECTED_DAMAGE_LABEL;
 				FontString = class'UIUtilities_Text'.static.GetColoredText(FontString,eUIState_Header,LabelFontSize ,SlotOffsets[j].bAlignRight ? "right" : "left");
-				SlotLabels[j].SetPosition(SlotOffsets[j].OffsetX-TEXTWIDTH*int(SlotOffsets[j].bAlignRight),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) + LabelsOffset);
+				SlotLabels[j].SetPosition(SlotOffsets[j].OffsetX-(TEXTWIDTH*int(SlotOffsets[j].bAlignRight))+IndexToOffsetX(j),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) + LabelsOffset);
 				SlotLabels[j].SetText(FontString);
 				SlotLabels[j].Show();
 			}
@@ -960,6 +960,39 @@ private function UIText CreateShotHUDText(UITacticalHUD_ShotHUD ShotHUD)
     return Text;
 }
 
+/**
+ * Maps a slot index to its corresponding horizontal offset value
+ * for the Shot HUD elements. The offsets are retrieved from MCM
+ * configuration (or defaults if not set).
+ *
+ * Index mapping:
+ * - 0 ? Left Side 1 offset
+ * - 1 ? Left Side 2 offset
+ * - 2 ? Right Side 1 offset
+ * - 3 ? Right Side 2 offset
+ *
+ * If an invalid index is provided, the function returns 0 as a safe fallback.
+ *
+ * @param i
+ *     Zero-based index identifying the HUD slot.
+ *
+ * @return
+ *     The configured horizontal offset (in pixels) for the specified slot,
+ *     or 0 if the index is out of range.
+ */
+private function int IndexToOffsetX(int i)
+{
+    switch (i)
+    {
+        case 0: return getSHOTHUD_LEFT_1_OFFSET_X();
+        case 1: return getSHOTHUD_LEFT_2_OFFSET_X();
+        case 2: return getSHOTHUD_RIGHT_1_OFFSET_X();
+        case 3: return getSHOTHUD_RIGHT_2_OFFSET_X();
+    }
+
+    return 0; // fallback for unexpected indices
+}
+
 function bool GetDISPLAY_MISS_CHANCE()
 {
 	return `MCM_CH_GetValue(class'MCM_Defaults'.default.DISPLAY_MISS_CHANCE, class'ExtendedInformationRedux3_MCMScreen'.default.DISPLAY_MISS_CHANCE);
@@ -1090,6 +1123,26 @@ function bool getHIDE_STAT_CONTEST()
 function bool getPREVIEW_APPLY_CHANCE()
 {
 	return `MCM_CH_GetValue(class'MCM_Defaults'.default.PREVIEW_APPLY_CHANCE, class'ExtendedInformationRedux3_MCMScreen'.default.PREVIEW_APPLY_CHANCE);
+}
+
+function int getSHOTHUD_LEFT_1_OFFSET_X()
+{
+	return `MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_LEFT_1_OFFSET_X, class'ExtendedInformationRedux3_MCMScreen'.default.SHOTHUD_LEFT_1_OFFSET_X);
+}
+
+function int getSHOTHUD_LEFT_2_OFFSET_X()
+{
+	return `MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_LEFT_2_OFFSET_X, class'ExtendedInformationRedux3_MCMScreen'.default.SHOTHUD_LEFT_2_OFFSET_X);
+}
+
+function int getSHOTHUD_RIGHT_1_OFFSET_X()
+{
+	return `MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_RIGHT_1_OFFSET_X, class'ExtendedInformationRedux3_MCMScreen'.default.SHOTHUD_RIGHT_1_OFFSET_X);
+}
+
+function int getSHOTHUD_RIGHT_2_OFFSET_X()
+{
+	return `MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_RIGHT_2_OFFSET_X, class'ExtendedInformationRedux3_MCMScreen'.default.SHOTHUD_RIGHT_2_OFFSET_X);
 }
 
 //DEBUG
