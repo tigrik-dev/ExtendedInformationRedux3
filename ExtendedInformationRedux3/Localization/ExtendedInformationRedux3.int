@@ -126,6 +126,7 @@ sCdmgModeTexts[2] = "Only Show Total Damage for Crit on All Crit Ranges"
 sCdmgModeTexts[3] = "Only Show Total Damage for Crit on Crit Ranges Where Max Crit Bonus is Smaller than Min Crit Bonus"
 
 sSlotWidth_MCMText = "ShotHUD Slot Width"
+sDamageLabelWidth_MCMText = "Damage Label Width"
 
 sShotHudColorSettings_MCMText = "ShotHUD Color Settings"
 sShotHudDamageColor_MCMText = "Damage"
@@ -142,8 +143,8 @@ sHackPreviewColorSettings_MCMText = "Hack Preview Color Settings"
 sHackPreviewFailure_MCMText = "Failure"
 sHackPreviewReward_MCMText = "Reward"
 
-sFlyoverShowCrit0_MCMText = "Show crit chance in flyovers when it's 0%"
-sFlyoverShowGraze0_MCMText = "Show graze chance in flyovers when it's 0%"
+sFlyoverShowCrit0_MCMText = "Show Crit Chance in Flyovers When It's 0%""
+sFlyoverShowGraze0_MCMText = "Show Graze Chance in Flyovers When It's 0%"
 
 [HitCalcLib]
 LOWER_DIFFICULTY_MSG = "Lower Difficulty";

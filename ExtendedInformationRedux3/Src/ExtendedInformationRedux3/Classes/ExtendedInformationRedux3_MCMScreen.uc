@@ -62,6 +62,7 @@ var config int		C_DMG_MODE;
 
 var config int		SHOTBAR_SCALE;
 var config int		SHOTHUD_SLOT_WIDTH;
+var config int		DAMAGE_LABEL_WIDTH;
 
 var config int		SHOTHUD_COLOR_DAMAGE;
 var config int		SHOTHUD_COLOR_BONUS_DAMAGE;
@@ -175,10 +176,10 @@ var localized string			sPreviewApplyChanceGuaranteed_MCMText;
 
 var localized string			sCdmgMode_MCMText;
 var localized array<string>		sCdmgModeTexts;
-var localized array<string>		sCdmgModeTooltips;
 
 var localized string			sShotBarScale_MCMText;
 var localized string			sSlotWidth_MCMText;
+var localized string			sDamageLabelWidth_MCMText;
 
 var localized string			sShotHudColorSettings_MCMText;
 var localized string			sShotHudDamageColor_MCMText;
@@ -236,7 +237,7 @@ var MCM_API_Dropdown			AssistHexColor_MCMUI;
 
 //var MCM_API_Checkbox			ShowAlwaysShotBreakdownHUD_MCMUI;
 
-var MCM_API_Slider			ToolTipAlpha_MCMUI;
+var MCM_API_Slider				ToolTipAlpha_MCMUI;
 var MCM_API_Checkbox			ShowEnemyToolTip_MCMUI;
 var MCM_API_Checkbox			ShowExtraWeaponStats_MCMUI;
 
@@ -249,6 +250,7 @@ var MCM_API_Dropdown			C_DMG_MODE_MCMUI;
 
 var MCM_API_Slider				SHOTBAR_SCALE_MCMUI;
 var MCM_API_Slider				SHOTHUD_SLOT_WIDTH_MCMUI;
+var MCM_API_Slider				DAMAGE_LABEL_WIDTH_MCMUI;
 
 var MCM_API_Dropdown			SHOTHUD_COLOR_DAMAGE_MCMUI;
 var MCM_API_Dropdown			SHOTHUD_COLOR_BONUS_DAMAGE_MCMUI;
@@ -267,7 +269,7 @@ var MCM_API_Dropdown			HACK_COLOR_REWARD_MCMUI;
 var MCM_API_Checkbox			FLYOVER_SHOW_CRIT_0_MCMUI;
 var MCM_API_Checkbox			FLYOVER_SHOW_GRAZE_0_MCMUI;
 
-var string					HIT_HEX_COLOR_MCM, CRIT_HEX_COLOR_MCM, DODGE_HEX_COLOR_MCM, MISS_HEX_COLOR_MCM, ASSIST_HEX_COLOR_MCM;
+var string	HIT_HEX_COLOR_MCM, CRIT_HEX_COLOR_MCM, DODGE_HEX_COLOR_MCM, MISS_HEX_COLOR_MCM, ASSIST_HEX_COLOR_MCM;
 
 
 //DEBUG
@@ -342,24 +344,25 @@ event OnInit(UIScreen Screen)
 `MCM_API_BasicCheckboxSaveHandler(ShowApplyChanceMissHandler, SHOW_APPLY_CHANCE_MISS)
 `MCM_API_BasicCheckboxSaveHandler(ShowApplyChanceGuaranteedHandler, SHOW_APPLY_CHANCE_GUARANTEED)
 
-`MCM_API_BasicDropdownSaveHandler(C_DMG_MODE_HANDLER, C_DMG_MODE)
+`MCM_API_BasicIndexSaveHandler(C_DMG_MODE_HANDLER, C_DMG_MODE, sCdmgModeTexts)
 
 `MCM_API_BasicSliderSaveHandler(SHOTBAR_SCALE_HANDLER, SHOTBAR_SCALE)
 `MCM_API_BasicSliderSaveHandler(SHOTHUD_SLOT_WIDTH_HANDLER, SHOTHUD_SLOT_WIDTH)
+`MCM_API_BasicSliderSaveHandler(DAMAGE_LABEL_WIDTH_HANDLER, DAMAGE_LABEL_WIDTH)
 
-`MCM_API_BasicDropdownSaveHandler(SHOTHUD_COLOR_DAMAGE_HANDLER, SHOTHUD_COLOR_DAMAGE)
-`MCM_API_BasicDropdownSaveHandler(SHOTHUD_COLOR_BONUS_DAMAGE_HANDLER, SHOTHUD_COLOR_BONUS_DAMAGE)
-`MCM_API_BasicDropdownSaveHandler(SHOTHUD_COLOR_GRAZE_HANDLER, SHOTHUD_COLOR_GRAZE)
-`MCM_API_BasicDropdownSaveHandler(SHOTHUD_COLOR_CRIT_HANDLER, SHOTHUD_COLOR_CRIT)
-`MCM_API_BasicDropdownSaveHandler(SHOTHUD_COLOR_EXPECTED_HANDLER, SHOTHUD_COLOR_EXPECTED)
+`MCM_API_BasicIndexSaveHandler(SHOTHUD_COLOR_DAMAGE_HANDLER, SHOTHUD_COLOR_DAMAGE, UIStateColorArray)
+`MCM_API_BasicIndexSaveHandler(SHOTHUD_COLOR_BONUS_DAMAGE_HANDLER, SHOTHUD_COLOR_BONUS_DAMAGE, UIStateColorArray)
+`MCM_API_BasicIndexSaveHandler(SHOTHUD_COLOR_GRAZE_HANDLER, SHOTHUD_COLOR_GRAZE, UIStateColorArray)
+`MCM_API_BasicIndexSaveHandler(SHOTHUD_COLOR_CRIT_HANDLER, SHOTHUD_COLOR_CRIT, UIStateColorArray)
+`MCM_API_BasicIndexSaveHandler(SHOTHUD_COLOR_EXPECTED_HANDLER, SHOTHUD_COLOR_EXPECTED, UIStateColorArray)
 
-`MCM_API_BasicDropdownSaveHandler(STATUS_COLOR_1_HANDLER, STATUS_COLOR_1)
-`MCM_API_BasicDropdownSaveHandler(STATUS_COLOR_2_HANDLER, STATUS_COLOR_2)
-`MCM_API_BasicDropdownSaveHandler(STATUS_COLOR_3_HANDLER, STATUS_COLOR_3)
-`MCM_API_BasicDropdownSaveHandler(STATUS_COLOR_MISS_HANDLER, STATUS_COLOR_MISS)
+`MCM_API_BasicIndexSaveHandler(STATUS_COLOR_1_HANDLER, STATUS_COLOR_1, UIStateColorArray)
+`MCM_API_BasicIndexSaveHandler(STATUS_COLOR_2_HANDLER, STATUS_COLOR_2, UIStateColorArray)
+`MCM_API_BasicIndexSaveHandler(STATUS_COLOR_3_HANDLER, STATUS_COLOR_3, UIStateColorArray)
+`MCM_API_BasicIndexSaveHandler(STATUS_COLOR_MISS_HANDLER, STATUS_COLOR_MISS, UIStateColorArray)
 
-`MCM_API_BasicDropdownSaveHandler(HACK_COLOR_FAIL_HANDLER, HACK_COLOR_FAIL)
-`MCM_API_BasicDropdownSaveHandler(HACK_COLOR_REWARD_HANDLER, HACK_COLOR_REWARD)
+`MCM_API_BasicIndexSaveHandler(HACK_COLOR_FAIL_HANDLER, HACK_COLOR_FAIL, UIStateColorArray)
+`MCM_API_BasicIndexSaveHandler(HACK_COLOR_REWARD_HANDLER, HACK_COLOR_REWARD, UIStateColorArray)
 
 `MCM_API_BasicCheckboxSaveHandler(FLYOVER_SHOW_CRIT_0_HANDLER, FLYOVER_SHOW_CRIT_0)
 `MCM_API_BasicCheckboxSaveHandler(FLYOVER_SHOW_GRAZE_0_HANDLER, FLYOVER_SHOW_GRAZE_0)
@@ -514,8 +517,9 @@ simulated function ClientModCallback(MCM_API_Instance ConfigAPI, int GameMode)
 	RightSide1OffsetX_MCMUI				= Group2Point5.AddSlider('RightSide1Offset', sRightSide1Offset_MCMText, sRightSide1Offset_MCMText, -200, 200, 1, SHOTHUD_RIGHT_1_OFFSET_X, Right1OffsetHandler, );
 	RightSide2OffsetX_MCMUI				= Group2Point5.AddSlider('RightSide2Offset', sRightSide2Offset_MCMText, sRightSide2Offset_MCMText, -200, 200, 1, SHOTHUD_RIGHT_2_OFFSET_X, Right2OffsetHandler, );
 	
-	SHOTHUD_SLOT_WIDTH_MCMUI			= Group2Point5.AddSlider('SHOTHUD_SLOT_WIDTH', sSlotWidth_MCMText, sSlotWidth_MCMText, 10, 50, 100, SHOTHUD_SLOT_WIDTH, SHOTHUD_SLOT_WIDTH_HANDLER, );
-	
+	SHOTHUD_SLOT_WIDTH_MCMUI			= Group2Point5.AddSlider('SHOTHUD_SLOT_WIDTH', sSlotWidth_MCMText, sSlotWidth_MCMText, 10, 100, 1, SHOTHUD_SLOT_WIDTH, SHOTHUD_SLOT_WIDTH_HANDLER, );
+	DAMAGE_LABEL_WIDTH_MCMUI			= Group2Point5.AddSlider('DAMAGE_LABEL_WIDTH', sDamageLabelWidth_MCMText, sDamageLabelWidth_MCMText, 10, 500, 1, DAMAGE_LABEL_WIDTH, DAMAGE_LABEL_WIDTH_HANDLER, );
+
 	Group2Point5.AddLabel('empty_line',"","");
 
 	Group3 = Page.AddGroup('Group3', sGroupShotBar_MCMText);
@@ -558,7 +562,7 @@ simulated function ClientModCallback(MCM_API_Instance ConfigAPI, int GameMode)
 	Group5 = Page.AddGroup('Group5', sShotHudColorSettings_MCMText);
 	SHOTHUD_COLOR_DAMAGE_MCMUI		= Group5.AddDropdown('SHOTHUD_COLOR_DAMAGE', sShotHudDamageColor_MCMText, sShotHudDamageColor_MCMText, UIStateColorArray, UIStateColorArray[SHOTHUD_COLOR_DAMAGE], SHOTHUD_COLOR_DAMAGE_HANDLER, );
 	SHOTHUD_COLOR_BONUS_DAMAGE_MCMUI= Group5.AddDropdown('SHOTHUD_COLOR_BONUS_DAMAGE', sShotHudDamageBonusColor_MCMText, sShotHudDamageBonusColor_MCMText, UIStateColorArray, UIStateColorArray[SHOTHUD_COLOR_BONUS_DAMAGE], SHOTHUD_COLOR_BONUS_DAMAGE_HANDLER, );
-	SHOTHUD_COLOR_GRAZE				= Group5.AddDropdown('SHOTHUD_COLOR_GRAZE', Caps(class'X2TacticalGameRulesetDataStructures'.default.m_aAbilityHitResultStrings[eHit_Graze]), Caps(class'X2TacticalGameRulesetDataStructures'.default.m_aAbilityHitResultStrings[eHit_Graze]), UIStateColorArray, UIStateColorArray[SHOTHUD_COLOR_GRAZE], SHOTHUD_COLOR_GRAZE_HANDLER, );
+	SHOTHUD_COLOR_GRAZE_MCMUI		= Group5.AddDropdown('SHOTHUD_COLOR_GRAZE', Caps(class'X2TacticalGameRulesetDataStructures'.default.m_aAbilityHitResultStrings[eHit_Graze]), Caps(class'X2TacticalGameRulesetDataStructures'.default.m_aAbilityHitResultStrings[eHit_Graze]), UIStateColorArray, UIStateColorArray[SHOTHUD_COLOR_GRAZE], SHOTHUD_COLOR_GRAZE_HANDLER, );
 	SHOTHUD_COLOR_CRIT_MCMUI		= Group5.AddDropdown('SHOTHUD_COLOR_CRIT', class'ExtendedInformationRedux3_UITacticalHUD_ShotHUD'.default.CRIT_DAMAGE_LABEL, class'ExtendedInformationRedux3_UITacticalHUD_ShotHUD'.default.CRIT_DAMAGE_LABEL, UIStateColorArray, UIStateColorArray[SHOTHUD_COLOR_CRIT], SHOTHUD_COLOR_CRIT_HANDLER, );
 	SHOTHUD_COLOR_DAMAGE_MCMUI		= Group5.AddDropdown('SHOTHUD_COLOR_EXPECTED', class'ExtendedInformationRedux3_UITacticalHUD_ShotHUD'.default.EXPECTED_DAMAGE_LABEL, class'ExtendedInformationRedux3_UITacticalHUD_ShotHUD'.default.EXPECTED_DAMAGE_LABEL, UIStateColorArray, UIStateColorArray[SHOTHUD_COLOR_EXPECTED], SHOTHUD_COLOR_EXPECTED_HANDLER, );
 	Group5.AddLabel('empty_line',"","");
@@ -568,7 +572,7 @@ simulated function ClientModCallback(MCM_API_Instance ConfigAPI, int GameMode)
 	HACK_COLOR_REWARD_MCMUI		= Group5_1.AddDropdown('HACK_COLOR_REWARD', sHackPreviewReward_MCMText, sHackPreviewReward_MCMText, UIStateColorArray, UIStateColorArray[HACK_COLOR_REWARD], HACK_COLOR_REWARD_HANDLER, );
 	Group5_1.AddLabel('empty_line',"","");
 
-	Group5_2 = Page.AddGroup('Group5_2', sHackPreviewColorSettings_MCMText);
+	Group5_2 = Page.AddGroup('Group5_2', sStatusEffectColorSettings_MCMText);
 	STATUS_COLOR_1_MCMUI		= Group5_2.AddDropdown('STATUS_COLOR_1', sStatusEffect @ "1", sStatusEffect @ "1", UIStateColorArray, UIStateColorArray[STATUS_COLOR_1], STATUS_COLOR_1_HANDLER, );
 	STATUS_COLOR_2_MCMUI		= Group5_2.AddDropdown('STATUS_COLOR_2', sStatusEffect @ "2", sStatusEffect @ "2", UIStateColorArray, UIStateColorArray[STATUS_COLOR_2], STATUS_COLOR_2_HANDLER, );
 	STATUS_COLOR_3_MCMUI		= Group5_2.AddDropdown('STATUS_COLOR_3', sStatusEffect @ "3", sStatusEffect @ "3", UIStateColorArray, UIStateColorArray[STATUS_COLOR_3], STATUS_COLOR_3_HANDLER, );
@@ -644,6 +648,30 @@ simulated function LoadSavedSettings()
 	//DEBUG
 	//DODGE_OFFSET_Y =			`MCM_CH_GetValue(class'MCM_Defaults'.default.DODGE_OFFSET_Y,DODGE_OFFSET_Y);
 	//DEBUG
+
+	C_DMG_MODE					= `MCM_CH_GetValue(class'MCM_Defaults'.default.C_DMG_MODE,C_DMG_MODE);
+
+	SHOTBAR_SCALE				= `MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTBAR_SCALE,SHOTBAR_SCALE);
+	SHOTHUD_SLOT_WIDTH			= `MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_SLOT_WIDTH,SHOTHUD_SLOT_WIDTH);
+	DAMAGE_LABEL_WIDTH			= `MCM_CH_GetValue(class'MCM_Defaults'.default.DAMAGE_LABEL_WIDTH,DAMAGE_LABEL_WIDTH);
+
+	SHOTHUD_COLOR_DAMAGE		= `MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_COLOR_DAMAGE,SHOTHUD_COLOR_DAMAGE);
+	SHOTHUD_COLOR_BONUS_DAMAGE	= `MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_COLOR_BONUS_DAMAGE,SHOTHUD_COLOR_BONUS_DAMAGE);
+	SHOTHUD_COLOR_GRAZE			= `MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_COLOR_GRAZE,SHOTHUD_COLOR_GRAZE);
+	SHOTHUD_COLOR_CRIT			= `MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_COLOR_CRIT,SHOTHUD_COLOR_CRIT);
+	SHOTHUD_COLOR_EXPECTED		= `MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_COLOR_EXPECTED,SHOTHUD_COLOR_EXPECTED);
+	
+	STATUS_COLOR_1				= `MCM_CH_GetValue(class'MCM_Defaults'.default.STATUS_COLOR_1,STATUS_COLOR_1);
+	STATUS_COLOR_2				= `MCM_CH_GetValue(class'MCM_Defaults'.default.STATUS_COLOR_2,STATUS_COLOR_2);
+	STATUS_COLOR_3				= `MCM_CH_GetValue(class'MCM_Defaults'.default.STATUS_COLOR_3,STATUS_COLOR_3);
+	STATUS_COLOR_MISS			= `MCM_CH_GetValue(class'MCM_Defaults'.default.STATUS_COLOR_MISS,STATUS_COLOR_MISS);
+
+	HACK_COLOR_FAIL				= `MCM_CH_GetValue(class'MCM_Defaults'.default.HACK_COLOR_FAIL,HACK_COLOR_FAIL);
+	HACK_COLOR_REWARD			= `MCM_CH_GetValue(class'MCM_Defaults'.default.HACK_COLOR_REWARD,HACK_COLOR_REWARD);
+
+	FLYOVER_SHOW_CRIT_0			= `MCM_CH_GetValue(class'MCM_Defaults'.default.FLYOVER_SHOW_CRIT_0,FLYOVER_SHOW_CRIT_0);
+	FLYOVER_SHOW_GRAZE_0		= `MCM_CH_GetValue(class'MCM_Defaults'.default.FLYOVER_SHOW_GRAZE_0,FLYOVER_SHOW_GRAZE_0);
+
 	`TRACE_EXIT("");
 }
 
@@ -701,6 +729,29 @@ simulated function ResetButtonClicked(MCM_API_SettingsPage Page)
 	PREVIEW_APPLY_CHANCE_MCMUI			.SetValue(class'MCM_Defaults'.default.PREVIEW_APPLY_CHANCE, false);
 	SHOW_APPLY_CHANCE_MISS_MCMUI		.SetValue(class'MCM_Defaults'.default.SHOW_APPLY_CHANCE_MISS, false);
 	SHOW_APPLY_CHANCE_GUARANTEED_MCMUI	.SetValue(class'MCM_Defaults'.default.SHOW_APPLY_CHANCE_GUARANTEED, false);
+
+	C_DMG_MODE_MCMUI					.SetValue(sCdmgModeTexts[class'MCM_Defaults'.default.C_DMG_MODE], false);
+
+	SHOTBAR_SCALE_MCMUI					.SetValue(class'MCM_Defaults'.default.SHOTBAR_SCALE, false);
+	SHOTHUD_SLOT_WIDTH_MCMUI			.SetValue(class'MCM_Defaults'.default.SHOTHUD_SLOT_WIDTH, false);
+	DAMAGE_LABEL_WIDTH_MCMUI			.SetValue(class'MCM_Defaults'.default.DAMAGE_LABEL_WIDTH, false);
+
+	SHOTHUD_COLOR_DAMAGE_MCMUI			.SetValue(UIStateColorArray[class'MCM_Defaults'.default.SHOTHUD_COLOR_DAMAGE], false);
+	SHOTHUD_COLOR_BONUS_DAMAGE_MCMUI	.SetValue(UIStateColorArray[class'MCM_Defaults'.default.SHOTHUD_COLOR_BONUS_DAMAGE], false);
+	SHOTHUD_COLOR_GRAZE_MCMUI			.SetValue(UIStateColorArray[class'MCM_Defaults'.default.SHOTHUD_COLOR_GRAZE], false);
+	SHOTHUD_COLOR_CRIT_MCMUI			.SetValue(UIStateColorArray[class'MCM_Defaults'.default.SHOTHUD_COLOR_CRIT], false);
+	SHOTHUD_COLOR_EXPECTED_MCMUI		.SetValue(UIStateColorArray[class'MCM_Defaults'.default.SHOTHUD_COLOR_EXPECTED], false);
+
+	STATUS_COLOR_1_MCMUI				.SetValue(UIStateColorArray[class'MCM_Defaults'.default.STATUS_COLOR_1], false);
+	STATUS_COLOR_2_MCMUI				.SetValue(UIStateColorArray[class'MCM_Defaults'.default.STATUS_COLOR_2], false);
+	STATUS_COLOR_3_MCMUI				.SetValue(UIStateColorArray[class'MCM_Defaults'.default.STATUS_COLOR_3], false);
+	STATUS_COLOR_MISS_MCMUI				.SetValue(UIStateColorArray[class'MCM_Defaults'.default.STATUS_COLOR_MISS], false);
+
+	HACK_COLOR_FAIL_MCMUI				.SetValue(UIStateColorArray[class'MCM_Defaults'.default.HACK_COLOR_FAIL], false);
+	HACK_COLOR_REWARD_MCMUI				.SetValue(UIStateColorArray[class'MCM_Defaults'.default.HACK_COLOR_REWARD], false);
+
+	FLYOVER_SHOW_CRIT_0_MCMUI			.SetValue(class'MCM_Defaults'.default.FLYOVER_SHOW_CRIT_0, false);
+	FLYOVER_SHOW_GRAZE_0_MCMUI			.SetValue(class'MCM_Defaults'.default.FLYOVER_SHOW_GRAZE_0, false);
 
 	`TRACE_EXIT("");
 }

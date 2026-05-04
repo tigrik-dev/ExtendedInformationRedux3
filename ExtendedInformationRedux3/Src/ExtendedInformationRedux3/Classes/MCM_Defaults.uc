@@ -69,6 +69,7 @@ var config int		C_DMG_MODE;
 
 var config int		SHOTBAR_SCALE;
 var config int		SHOTHUD_SLOT_WIDTH;
+var config int		DAMAGE_LABEL_WIDTH;
 
 var config int		SHOTHUD_COLOR_DAMAGE;
 var config int		SHOTHUD_COLOR_BONUS_DAMAGE;

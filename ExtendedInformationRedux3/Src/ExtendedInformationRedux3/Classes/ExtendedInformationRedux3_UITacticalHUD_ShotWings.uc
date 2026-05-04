@@ -471,8 +471,7 @@ simulated function RefreshData()
 		CritStatList.RefreshData(ProcessHitCritBreakdown(Breakdown, eHit_Crit));
 
 		CritDamageLabel.SetHtmlText(class'UIUtilities_Text'.static.StyleText(CRIT_DAMAGE_LABEL, eUITextStyle_Tooltip_StatLabel));
-		TmpStr = `RANGESTRING(CritDamage.Min, CritDamage.Max);
-		CritDamageValue.SetHtmlText(class'UIUtilities_Text'.static.StyleText("+" $ TmpStr, eUITextStyle_Tooltip_StatValue));
+		CritDamageValue.SetHtmlText(class'UIUtilities_Text'.static.StyleText(class'DamageLib'.static.GetCritDamageString(NormalDamage, CritDamage), eUITextStyle_Tooltip_StatValue));
 		CritDamageStatList.RefreshData(ProcessNeoDamageBreakdown(CritDamage));
 	}
 	`TRACE_EXIT("");
