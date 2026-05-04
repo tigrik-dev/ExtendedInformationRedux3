@@ -31,13 +31,13 @@ var array<int> CritDamageSlotIndices;
 var array<int> GrazeChanceSlotIndices;
 var array<int> ExpectedDamageSlotIndices;
 
-var int BAR_HEIGHT, BAR_OFFSET_X, BAR_OFFSET_Y, BAR_POSITION_Y, BAR_WIDTH_MULT, GENERAL_OFFSET_Y;
+var int BAR_HEIGHT, BAR_OFFSET_X, BAR_OFFSET_Y, BAR_POSITION_Y, GENERAL_OFFSET_Y;
 var int MAX_ABILITIES_PER_ROW;
 var int LabelFontSize, ValueFontSize, TEXTWIDTH;
 var int BAR_ALPHA;
 var string BarColours[5];
 var int GRAZE_CRIT_LAYOUT;
-var float LabelsOffset;
+var float LabelsOffset, BAR_WIDTH_MULT;
 
 var EUIState GRAZE_STATE_COLOUR, CRIT_STATE_COLOUR;
 
@@ -77,6 +77,10 @@ struct ResOffsetSt
 
 var config array<ShotHUDSlotOffset> SlotOffsets;
 var config array<ResOffsetSt> ResOffset;
+
+var config bool bEnableTestMode;
+var config int iMockHit, iMockGraze, iMockMinDamage, iMockMaxDamage, iMockCritChance, iMockCritMinDamageBonus, iMockCritMaxDamageBonus;
+var config float fMockExpectedDamage;
 
 /**
  * Initializes the Shot HUD and sets up layout.
@@ -550,7 +554,7 @@ simulated function Update()
 					Chance[eHit_Success] += AimBonus; //Assist bonus directly adds to eHit_Success changes;
 					AimBonus=0; //Hide the seperate aimbonus bar;
 				}
-				offsetX = BAR_WIDTH_MULT * (-50) + BAR_OFFSET_X;
+				offsetX = int((BAR_WIDTH_MULT * (-50)) + 0.5f) + BAR_OFFSET_X;
 				//Mr. Nice: offsetX is an out parameter, and is incremented in SetBox() as required.
 				switch(int(TH_AIM_LEFT_OF_CRIT) + 2* int(TH_ASSIST_BESIDE_HIT))
 				{
@@ -1159,7 +1163,7 @@ defaultproperties
 
 	// ShotBar position, size, and offset settings, should not be altered whatsoever
 	// so created those default values inside the class to not expose them in MCM any more
-	BAR_WIDTH_MULT = 3;
+	BAR_WIDTH_MULT = 2.5; //3
 	BAR_HEIGHT = 10;
 	BAR_OFFSET_X = 3;
 	//BAR_OFFSET_Y = -122;

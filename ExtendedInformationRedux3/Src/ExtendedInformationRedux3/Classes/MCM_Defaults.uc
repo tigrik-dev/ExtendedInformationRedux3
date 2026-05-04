@@ -64,3 +64,25 @@ var config bool		HIDE_STAT_CONTEST;
 var config bool		PREVIEW_APPLY_CHANCE;
 var config bool		SHOW_APPLY_CHANCE_MISS;
 var config bool		SHOW_APPLY_CHANCE_GUARANTEED;
+
+var config int		C_DMG_MODE;
+
+var config int		SHOTBAR_SCALE;
+var config int		SHOTHUD_SLOT_WIDTH;
+
+var config int		SHOTHUD_COLOR_DAMAGE;
+var config int		SHOTHUD_COLOR_BONUS_DAMAGE;
+var config int		SHOTHUD_COLOR_GRAZE;
+var config int		SHOTHUD_COLOR_CRIT;
+var config int		SHOTHUD_COLOR_EXPECTED;
+
+var config int		STATUS_COLOR_1;
+var config int		STATUS_COLOR_2;
+var config int		STATUS_COLOR_3;
+var config int		STATUS_COLOR_MISS;
+
+var config int		HACK_COLOR_FAIL;
+var config int		HACK_COLOR_REWARD;
+
+var config bool		FLYOVER_SHOW_CRIT_0;
+var config bool		FLYOVER_SHOW_GRAZE_0;

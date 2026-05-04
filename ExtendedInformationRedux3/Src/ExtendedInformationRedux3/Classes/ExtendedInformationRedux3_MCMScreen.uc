@@ -58,6 +58,28 @@ var config int				TOOLTIP_ALPHA;
 var config bool				ES_TOOLTIP;
 var config bool				SHOW_EXTRA_WEAPONSTATS;
 
+var config int		C_DMG_MODE;
+
+var config int		SHOTBAR_SCALE;
+var config int		SHOTHUD_SLOT_WIDTH;
+
+var config int		SHOTHUD_COLOR_DAMAGE;
+var config int		SHOTHUD_COLOR_BONUS_DAMAGE;
+var config int		SHOTHUD_COLOR_GRAZE;
+var config int		SHOTHUD_COLOR_CRIT;
+var config int		SHOTHUD_COLOR_EXPECTED;
+
+var config int		STATUS_COLOR_1;
+var config int		STATUS_COLOR_2;
+var config int		STATUS_COLOR_3;
+var config int		STATUS_COLOR_MISS;
+
+var config int		HACK_COLOR_FAIL;
+var config int		HACK_COLOR_REWARD;
+
+var config bool		FLYOVER_SHOW_CRIT_0;
+var config bool		FLYOVER_SHOW_GRAZE_0;
+
 var localized string			sBlack;
 var localized string			sWhite;
 var localized string			sCyan;
@@ -75,7 +97,8 @@ var localized string			sOrangeEngineering;
 var localized string			sBlueScience;
 var localized string			sObjIconBackground;
 
-var array<string>			ColorArray;
+var array<string>				ColorArray;
+var array<string>				UIStateColorArray;
 
 var localized array<string>		SlotOptions;
 
@@ -150,6 +173,28 @@ var localized string			sPreviewApplyChance_MCMText;
 var localized string			sPreviewApplyChanceMiss_MCMText;
 var localized string			sPreviewApplyChanceGuaranteed_MCMText;
 
+var localized string			sCdmgMode_MCMText;
+var localized array<string>		sCdmgModeTexts;
+var localized array<string>		sCdmgModeTooltips;
+
+var localized string			sShotBarScale_MCMText;
+var localized string			sSlotWidth_MCMText;
+
+var localized string			sShotHudColorSettings_MCMText;
+var localized string			sShotHudDamageColor_MCMText;
+var localized string			sShotHudDamageBonusColor_MCMText;
+
+var localized string			sStatusEffectColorSettings_MCMText;
+var localized string			sStatusEffect;
+var localized string			sMissChanceColor_MCMText;
+
+var localized string			sHackPreviewColorSettings_MCMText;
+var localized string			sHackPreviewFailure_MCMText;
+var localized string			sHackPreviewReward_MCMText;
+
+var localized string			sFlyoverShowCrit0_MCMText;
+var localized string			sFlyoverShowGraze0_MCMText;
+
 var MCM_API_Checkbox			ShowHitChance_MCMUI;
 var MCM_API_Checkbox			VerboseText_MCMUI;
 var MCM_API_Checkbox			DisplayMissChance_MCMUI;
@@ -199,6 +244,28 @@ var MCM_API_Checkbox			HIDE_STAT_CONTEST_MCMUI;
 var MCM_API_Checkbox			PREVIEW_APPLY_CHANCE_MCMUI;
 var MCM_API_Checkbox			SHOW_APPLY_CHANCE_MISS_MCMUI;
 var MCM_API_Checkbox			SHOW_APPLY_CHANCE_GUARANTEED_MCMUI;
+
+var MCM_API_Dropdown			C_DMG_MODE_MCMUI;
+
+var MCM_API_Slider				SHOTBAR_SCALE_MCMUI;
+var MCM_API_Slider				SHOTHUD_SLOT_WIDTH_MCMUI;
+
+var MCM_API_Dropdown			SHOTHUD_COLOR_DAMAGE_MCMUI;
+var MCM_API_Dropdown			SHOTHUD_COLOR_BONUS_DAMAGE_MCMUI;
+var MCM_API_Dropdown			SHOTHUD_COLOR_GRAZE_MCMUI;
+var MCM_API_Dropdown			SHOTHUD_COLOR_CRIT_MCMUI;
+var MCM_API_Dropdown			SHOTHUD_COLOR_EXPECTED_MCMUI;
+
+var MCM_API_Dropdown			STATUS_COLOR_1_MCMUI;
+var MCM_API_Dropdown			STATUS_COLOR_2_MCMUI;
+var MCM_API_Dropdown			STATUS_COLOR_3_MCMUI;
+var MCM_API_Dropdown			STATUS_COLOR_MISS_MCMUI;
+
+var MCM_API_Dropdown			HACK_COLOR_FAIL_MCMUI;
+var MCM_API_Dropdown			HACK_COLOR_REWARD_MCMUI;
+
+var MCM_API_Checkbox			FLYOVER_SHOW_CRIT_0_MCMUI;
+var MCM_API_Checkbox			FLYOVER_SHOW_GRAZE_0_MCMUI;
 
 var string					HIT_HEX_COLOR_MCM, CRIT_HEX_COLOR_MCM, DODGE_HEX_COLOR_MCM, MISS_HEX_COLOR_MCM, ASSIST_HEX_COLOR_MCM;
 
@@ -275,6 +342,28 @@ event OnInit(UIScreen Screen)
 `MCM_API_BasicCheckboxSaveHandler(ShowApplyChanceMissHandler, SHOW_APPLY_CHANCE_MISS)
 `MCM_API_BasicCheckboxSaveHandler(ShowApplyChanceGuaranteedHandler, SHOW_APPLY_CHANCE_GUARANTEED)
 
+`MCM_API_BasicDropdownSaveHandler(C_DMG_MODE_HANDLER, C_DMG_MODE)
+
+`MCM_API_BasicSliderSaveHandler(SHOTBAR_SCALE_HANDLER, SHOTBAR_SCALE)
+`MCM_API_BasicSliderSaveHandler(SHOTHUD_SLOT_WIDTH_HANDLER, SHOTHUD_SLOT_WIDTH)
+
+`MCM_API_BasicDropdownSaveHandler(SHOTHUD_COLOR_DAMAGE_HANDLER, SHOTHUD_COLOR_DAMAGE)
+`MCM_API_BasicDropdownSaveHandler(SHOTHUD_COLOR_BONUS_DAMAGE_HANDLER, SHOTHUD_COLOR_BONUS_DAMAGE)
+`MCM_API_BasicDropdownSaveHandler(SHOTHUD_COLOR_GRAZE_HANDLER, SHOTHUD_COLOR_GRAZE)
+`MCM_API_BasicDropdownSaveHandler(SHOTHUD_COLOR_CRIT_HANDLER, SHOTHUD_COLOR_CRIT)
+`MCM_API_BasicDropdownSaveHandler(SHOTHUD_COLOR_EXPECTED_HANDLER, SHOTHUD_COLOR_EXPECTED)
+
+`MCM_API_BasicDropdownSaveHandler(STATUS_COLOR_1_HANDLER, STATUS_COLOR_1)
+`MCM_API_BasicDropdownSaveHandler(STATUS_COLOR_2_HANDLER, STATUS_COLOR_2)
+`MCM_API_BasicDropdownSaveHandler(STATUS_COLOR_3_HANDLER, STATUS_COLOR_3)
+`MCM_API_BasicDropdownSaveHandler(STATUS_COLOR_MISS_HANDLER, STATUS_COLOR_MISS)
+
+`MCM_API_BasicDropdownSaveHandler(HACK_COLOR_FAIL_HANDLER, HACK_COLOR_FAIL)
+`MCM_API_BasicDropdownSaveHandler(HACK_COLOR_REWARD_HANDLER, HACK_COLOR_REWARD)
+
+`MCM_API_BasicCheckboxSaveHandler(FLYOVER_SHOW_CRIT_0_HANDLER, FLYOVER_SHOW_CRIT_0)
+`MCM_API_BasicCheckboxSaveHandler(FLYOVER_SHOW_GRAZE_0_HANDLER, FLYOVER_SHOW_GRAZE_0)
+
 /**
  * Handles checkbox value changes and updates dependent UI elements and config values.
  *
@@ -329,7 +418,9 @@ simulated function ClientModCallback(MCM_API_Instance ConfigAPI, int GameMode)
 	local MCM_API_SettingsGroup Group2Point5;
 	local MCM_API_SettingsGroup Group3;
 	local MCM_API_SettingsGroup Group4;
-	//local MCM_API_SettingsGroup Group5;
+	local MCM_API_SettingsGroup Group5;
+	local MCM_API_SettingsGroup Group5_1;
+	local MCM_API_SettingsGroup Group5_2;
 	local MCM_API_SettingsGroup Group6;
 	local bool IsAimAssistUnsafe;
 
@@ -354,6 +445,17 @@ simulated function ClientModCallback(MCM_API_Instance ConfigAPI, int GameMode)
 	ColorArray.AddItem(sOrangeEngineering);
 	ColorArray.AddItem(sBlueScience);
 	ColorArray.AddItem(sObjIconBackground);
+
+	UIStateColorArray.AddItem(sGreen);
+	UIStateColorArray.AddItem(sRed);
+	UIStateColorArray.AddItem(sYellow);
+	UIStateColorArray.AddItem(sOrange);
+	UIStateColorArray.AddItem(sPurple);
+	UIStateColorArray.AddItem(sCyan);
+	UIStateColorArray.AddItem(sCashGreen);
+	UIStateColorArray.AddItem(sFadedYellow);
+	UIStateColorArray.AddItem(sFadedCyan);
+	UIStateColorArray.AddItem(sGray);
 
 	LoadSavedSettings();
 
@@ -382,13 +484,16 @@ simulated function ClientModCallback(MCM_API_Instance ConfigAPI, int GameMode)
 	ShowTemplarMessages_MCMUI.SetEditable(HIT_CHANCE_ENABLED);
 	//FlyoverDuration_MCMUI.SetEditable(HIT_CHANCE_ENABLED);
 	ShowGuaranteedHit_MCMUI.SetEditable(HIT_CHANCE_ENABLED);
+	FLYOVER_SHOW_CRIT_0_MCMUI		= Group1.AddCheckbox('FLYOVER_SHOW_CRIT_0', sFlyoverShowCrit0_MCMText, sFlyoverShowCrit0_MCMText, FLYOVER_SHOW_CRIT_0, FLYOVER_SHOW_CRIT_0_HANDLER, );
+	FLYOVER_SHOW_GRAZE_0_MCMUI		= Group1.AddCheckbox('FLYOVER_SHOW_GRAZE_0', sFlyoverShowGraze0_MCMText, sFlyoverShowGraze0_MCMText, FLYOVER_SHOW_GRAZE_0, FLYOVER_SHOW_GRAZE_0_HANDLER, );
 	Group1.AddLabel('empty_line',"","");
 
 	Group2 = Page.AddGroup('Group2', sGroupShotHUD_MCMText);
 	ShowGrazed_MCMUI					= Group2.AddCheckbox('ShowGrazed', sShowGrazed_MCMText, sShowGrazed_MCMText, TH_SHOW_GRAZED, ShowGrazedHandler, );
-	ShowCrit_MCMUI					= Group2.AddCheckbox('ShowCrit', sShowCrit_MCMText, sShowCrit_MCMText, TH_SHOW_CRIT_DMG, ShowCritHandler, );
+	ShowCrit_MCMUI						= Group2.AddCheckbox('ShowCrit', sShowCrit_MCMText, sShowCrit_MCMText, TH_SHOW_CRIT_DMG, ShowCritHandler, );
 	PreviewMinimum_MCMUI				= Group2.AddCheckbox('PreviewMinimum', sPreviewMinimum_MCMText, sPreviewMinimum_MCMText, TH_PREVIEW_MINIMUM, PreviewMinimumHandler, );
 	PreviewHacking_MCMUI				= Group2.AddCheckbox('PreviewHacking', sPreviewHacking_MCMText, sPreviewHacking_MCMText, TH_PREVIEW_HACKING, PreviewHackingHandler, );
+	C_DMG_MODE_MCMUI					= Group2.AddDropdown('C_DMG_MODE', sCdmgMode_MCMText, sCdmgMode_MCMText, sCdmgModeTexts, sCdmgModeTexts[C_DMG_MODE], C_DMG_MODE_HANDLER, );
 	Group2.AddLabel('empty_line',"","");
 
 	Group2Point2 = Page.AddGroup('Group2Point2', sPreviewStatusEffects_MCMText);
@@ -409,13 +514,16 @@ simulated function ClientModCallback(MCM_API_Instance ConfigAPI, int GameMode)
 	RightSide1OffsetX_MCMUI				= Group2Point5.AddSlider('RightSide1Offset', sRightSide1Offset_MCMText, sRightSide1Offset_MCMText, -200, 200, 1, SHOTHUD_RIGHT_1_OFFSET_X, Right1OffsetHandler, );
 	RightSide2OffsetX_MCMUI				= Group2Point5.AddSlider('RightSide2Offset', sRightSide2Offset_MCMText, sRightSide2Offset_MCMText, -200, 200, 1, SHOTHUD_RIGHT_2_OFFSET_X, Right2OffsetHandler, );
 	
+	SHOTHUD_SLOT_WIDTH_MCMUI			= Group2Point5.AddSlider('SHOTHUD_SLOT_WIDTH', sSlotWidth_MCMText, sSlotWidth_MCMText, 10, 50, 100, SHOTHUD_SLOT_WIDTH, SHOTHUD_SLOT_WIDTH_HANDLER, );
+	
 	Group2Point5.AddLabel('empty_line',"","");
 
 	Group3 = Page.AddGroup('Group3', sGroupShotBar_MCMText);
 	/*Group3.AddLabel('Warning1',sWarningMessage_MCMText,"");*/
+	SHOTBAR_SCALE_MCMUI				= Group3.AddSlider('SHOTBAR_SCALE', sShotBarScale_MCMText, sShotBarScale_MCMText, 5, 200, 1, SHOTBAR_SCALE, SHOTBAR_SCALE_HANDLER, );
 	BarHeight_MCMUI					= Group3.AddSlider('BarHeight', sBarHeight_MCMText, sBarHeight_MCMText, 0, 20, 1, BAR_HEIGHT, BarHeightHandler, );
-	//BarOffsetX_MCMUI					= Group3.AddSlider('BarOffsetX', sBarOffsetX_MCMText, sBarOffsetX_MCMText, -200, 200, 1, BAR_OFFSET_X, BarOffsetXHandler, );
-	BarOffsetY_MCMUI					= Group3.AddSlider('BarOffsetY', sBarOffsetY_MCMText, sBarOffsetY_MCMText, -20, 20, 1, BAR_OFFSET_Y, BarOffsetYHandler, );
+	//BarOffsetX_MCMUI				= Group3.AddSlider('BarOffsetX', sBarOffsetX_MCMText, sBarOffsetX_MCMText, -200, 200, 1, BAR_OFFSET_X, BarOffsetXHandler, );
+	BarOffsetY_MCMUI				= Group3.AddSlider('BarOffsetY', sBarOffsetY_MCMText, sBarOffsetY_MCMText, -20, 20, 1, BAR_OFFSET_Y, BarOffsetYHandler, );
 	BarAlpha_MCMUI					= Group3.AddSlider('BarAlpha', sBarAlpha_MCMText, sBarAlpha_MCMText, 0, 100, 1, BAR_ALPHA, BarAlphaHandler, );
 	AimLeftOfCrit_MCMUI				= Group3.AddCheckbox('AimLeftOfCrit', sAimLeftOfCrit_MCMText, sAimLeftOfCrit_MCMText, TH_AIM_LEFT_OF_CRIT, AimLeftOfCritHandler, );
 	AssistBesideHit_MCMUI			= Group3.AddCheckbox('AssistBesideHit', sAssistBesideHit_MCMText, sAssistBesideHit_MCMText, TH_ASSIST_BESIDE_HIT, AssistBesideHitHandler, );
@@ -447,6 +555,26 @@ simulated function ClientModCallback(MCM_API_Instance ConfigAPI, int GameMode)
 	ShowHitChance_MCMUI				= Group5.AddCheckbox('ShowAlwaysShotBreakdownHUD', sShowAlwaysShotBreakdownHUD_MCMText, sShowAlwaysShotBreakdownHUD_MCMText, SHOW_ALWAYS_SHOT_BREAKDOWN_HUD, ShotBreakdownHUDHandler, );
 	Group5.AddLabel('empty_line',"","");*/
 
+	Group5 = Page.AddGroup('Group5', sShotHudColorSettings_MCMText);
+	SHOTHUD_COLOR_DAMAGE_MCMUI		= Group5.AddDropdown('SHOTHUD_COLOR_DAMAGE', sShotHudDamageColor_MCMText, sShotHudDamageColor_MCMText, UIStateColorArray, UIStateColorArray[SHOTHUD_COLOR_DAMAGE], SHOTHUD_COLOR_DAMAGE_HANDLER, );
+	SHOTHUD_COLOR_BONUS_DAMAGE_MCMUI= Group5.AddDropdown('SHOTHUD_COLOR_BONUS_DAMAGE', sShotHudDamageBonusColor_MCMText, sShotHudDamageBonusColor_MCMText, UIStateColorArray, UIStateColorArray[SHOTHUD_COLOR_BONUS_DAMAGE], SHOTHUD_COLOR_BONUS_DAMAGE_HANDLER, );
+	SHOTHUD_COLOR_GRAZE				= Group5.AddDropdown('SHOTHUD_COLOR_GRAZE', Caps(class'X2TacticalGameRulesetDataStructures'.default.m_aAbilityHitResultStrings[eHit_Graze]), Caps(class'X2TacticalGameRulesetDataStructures'.default.m_aAbilityHitResultStrings[eHit_Graze]), UIStateColorArray, UIStateColorArray[SHOTHUD_COLOR_GRAZE], SHOTHUD_COLOR_GRAZE_HANDLER, );
+	SHOTHUD_COLOR_CRIT_MCMUI		= Group5.AddDropdown('SHOTHUD_COLOR_CRIT', class'ExtendedInformationRedux3_UITacticalHUD_ShotHUD'.default.CRIT_DAMAGE_LABEL, class'ExtendedInformationRedux3_UITacticalHUD_ShotHUD'.default.CRIT_DAMAGE_LABEL, UIStateColorArray, UIStateColorArray[SHOTHUD_COLOR_CRIT], SHOTHUD_COLOR_CRIT_HANDLER, );
+	SHOTHUD_COLOR_DAMAGE_MCMUI		= Group5.AddDropdown('SHOTHUD_COLOR_EXPECTED', class'ExtendedInformationRedux3_UITacticalHUD_ShotHUD'.default.EXPECTED_DAMAGE_LABEL, class'ExtendedInformationRedux3_UITacticalHUD_ShotHUD'.default.EXPECTED_DAMAGE_LABEL, UIStateColorArray, UIStateColorArray[SHOTHUD_COLOR_EXPECTED], SHOTHUD_COLOR_EXPECTED_HANDLER, );
+	Group5.AddLabel('empty_line',"","");
+
+	Group5_1 = Page.AddGroup('Group5_1', sHackPreviewColorSettings_MCMText);
+	HACK_COLOR_FAIL_MCMUI		= Group5_1.AddDropdown('HACK_COLOR_FAIL', sHackPreviewFailure_MCMText, sHackPreviewFailure_MCMText, UIStateColorArray, UIStateColorArray[HACK_COLOR_FAIL], HACK_COLOR_FAIL_HANDLER, );
+	HACK_COLOR_REWARD_MCMUI		= Group5_1.AddDropdown('HACK_COLOR_REWARD', sHackPreviewReward_MCMText, sHackPreviewReward_MCMText, UIStateColorArray, UIStateColorArray[HACK_COLOR_REWARD], HACK_COLOR_REWARD_HANDLER, );
+	Group5_1.AddLabel('empty_line',"","");
+
+	Group5_2 = Page.AddGroup('Group5_2', sHackPreviewColorSettings_MCMText);
+	STATUS_COLOR_1_MCMUI		= Group5_2.AddDropdown('STATUS_COLOR_1', sStatusEffect @ "1", sStatusEffect @ "1", UIStateColorArray, UIStateColorArray[STATUS_COLOR_1], STATUS_COLOR_1_HANDLER, );
+	STATUS_COLOR_2_MCMUI		= Group5_2.AddDropdown('STATUS_COLOR_2', sStatusEffect @ "2", sStatusEffect @ "2", UIStateColorArray, UIStateColorArray[STATUS_COLOR_2], STATUS_COLOR_2_HANDLER, );
+	STATUS_COLOR_3_MCMUI		= Group5_2.AddDropdown('STATUS_COLOR_3', sStatusEffect @ "3", sStatusEffect @ "3", UIStateColorArray, UIStateColorArray[STATUS_COLOR_3], STATUS_COLOR_3_HANDLER, );
+	STATUS_COLOR_MISS_MCMUI		= Group5_2.AddDropdown('STATUS_COLOR_MISS', sMissChanceColor_MCMText, sMissChanceColor_MCMText, UIStateColorArray, UIStateColorArray[STATUS_COLOR_MISS], STATUS_COLOR_MISS_HANDLER, );
+	Group5_2.AddLabel('empty_line',"","");
+	
 	Group6 = Page.AddGroup('Group6', sGroupToolTips_MCMTtext);
 	ToolTipAlpha_MCMUI				= Group6.AddSlider('ToolTipAlpha', sToolTipAlpha_MCMText, sToolTipAlpha_MCMText, 0, 100, 1, TOOLTIP_ALPHA, ToolTipAlphaHandler, );
 	ShowEnemyToolTip_MCMUI			= Group6.AddCheckbox('ShowEnemyToolTip', sShowEnemyToolTip_MCMText, sShowEnemyToolTip_MCMText, ES_TOOLTIP, ShowEnemyToolTipHandler, );
