@@ -463,6 +463,9 @@ simulated function Update()
 				TacticalHUD.SetReticleAimPercentages(-1, -1);
 			}
 			
+			// Expand the width of slots if a slot to the right is empty
+			UpdateShotHUDSlotWidths();
+
 			if( CritChance>-1 &&(
 				(!bHide && !(CRIT_HIDE_TRIVIAL && CritDamage.InfoList.Length==0 && CritChance<=0))
 				|| (bHide && CRIT_SHOW_NonTRIVIAL &&(CritDamage.Min>0 || CritDamage.Max>0))) )
@@ -474,13 +477,13 @@ simulated function Update()
 						FontString = class'DamageLib'.static.GetCritDamageString(NormalDamage, CritDamage);
 						FontString = class'UIUtilities_Text'.static.GetColoredText(FontString, class'ColorLib'.static.IndexToEUIState(get_SHOTHUD_COLOR_CRIT()), , SlotOffsets[j].bAlignRight ? "right" : "left");
 						FontString = class'UIUtilities_Text'.static.AddFontInfo(FontString,false,true, , ValueFontSize);
-						SlotValues[j].SetPosition(SlotOffsets[j].OffsetX-(TEXTWIDTH*int(SlotOffsets[j].bAlignRight)+IndexToOffsetX(j)),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) - 0.8);
+						SlotValues[j].SetPosition(SlotOffsets[j].OffsetX-(TEXTWIDTH*int(SlotOffsets[j].bAlignRight))+IndexToOffsetX(j),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)));
 						SlotValues[j].SetHTMLText(FontString);
 						SlotValues[j].Show();
 				
 						FontString = CRIT_DAMAGE_LABEL;
 						FontString = class'UIUtilities_Text'.static.GetColoredText(FontString,eUIState_Header, LabelFontSize, SlotOffsets[j].bAlignRight ? "right" : "left");
-						SlotLabels[j].SetPosition(SlotOffsets[j].OffsetX-(TEXTWIDTH*int(SlotOffsets[j].bAlignRight)+IndexToOffsetX(j)),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) + LabelsOffset);
+						SlotLabels[j].SetPosition(SlotOffsets[j].OffsetX-(TEXTWIDTH*int(SlotOffsets[j].bAlignRight))+IndexToOffsetX(j),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) + LabelsOffset);
 						SlotLabels[j].SetHTMLText(FontString);
 						SlotLabels[j].Show();
 					}
@@ -515,7 +518,7 @@ simulated function Update()
 					FontString = GrazeChance $ "%";
 					FontString = class'UIUtilities_Text'.static.GetColoredText(FontString, class'ColorLib'.static.IndexToEUIState(get_SHOTHUD_COLOR_GRAZE()), , SlotOffsets[j].bAlignRight ? "right" : "left");
 					FontString = class'UIUtilities_Text'.static.AddFontInfo(FontString,false,true, , ValueFontSize);
-					SlotValues[j].SetPosition(SlotOffsets[j].OffsetX-(TEXTWIDTH*int(SlotOffsets[j].bAlignRight))+IndexToOffsetX(j),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) - 0.8);
+					SlotValues[j].SetPosition(SlotOffsets[j].OffsetX-(TEXTWIDTH*int(SlotOffsets[j].bAlignRight))+IndexToOffsetX(j),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)));
 					SlotValues[j].SetHTMLText(FontString);
 					SlotValues[j].Show();
 					FontString = Caps(class'X2TacticalGameRulesetDataStructures'.default.m_aAbilityHitResultStrings[eHit_Graze]);
@@ -623,7 +626,7 @@ simulated function Update()
 				FontString = class'ExpectedDamageLib'.static.FormatExpectedDamageString(fExpectedDamage);
 				FontString = class'UIUtilities_Text'.static.GetColoredText(FontString, class'ColorLib'.static.IndexToEUIState(get_SHOTHUD_COLOR_EXPECTED()), , SlotOffsets[j].bAlignRight ? "right" : "left");
 				FontString = class'UIUtilities_Text'.static.AddFontInfo(FontString,false,true, , ValueFontSize);
-				SlotValues[j].SetPosition(SlotOffsets[j].OffsetX-(TEXTWIDTH*int(SlotOffsets[j].bAlignRight))+IndexToOffsetX(j),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) - 0.8);
+				SlotValues[j].SetPosition(SlotOffsets[j].OffsetX-(TEXTWIDTH*int(SlotOffsets[j].bAlignRight))+IndexToOffsetX(j),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)));
 				SlotValues[j].SetHTMLText(FontString);
 				SlotValues[j].Show();
 				FontString = EXPECTED_DAMAGE_LABEL;
@@ -914,12 +917,14 @@ function PrintShotDamage(ShotBreakdown kBreakdown, DamageBreakdown NormalDamage,
 		}
 
         if(NormalDamage.Bonus>0)
-		{
-			AddDamageScrollable(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, GetDamageColor(NormalDamage), 38), true);
+		{	
+			AddDamage(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, GetDamageColor(NormalDamage), 38), true);
+			//AddDamageScrollable(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, GetDamageColor(NormalDamage), 38), true);
 		}
 		else
 		{
-			AddDamageScrollable(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, GetDamageColor(NormalDamage), 36), true);
+			AddDamage(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, GetDamageColor(NormalDamage), 38), true);
+			//AddDamageScrollable(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, GetDamageColor(NormalDamage), 36), true);
 		}
     }
 	`TRACE_EXIT("");
@@ -962,6 +967,59 @@ simulated function AddDamageScrollable(string Label, optional bool bIsLastOne)
         Divider.bAnimateOnInit = false;
     }
 }
+
+/*
+simulated function RepositionDamageContainer()
+{
+    local int i, NextX;
+    local UIPanel Control;
+    local UIText Text;
+    local UIScrollingText ScrollingText;
+    local bool bAllTextRealized;
+
+    if (DamageContainer.NumChildren() == 1)
+        return;
+
+    NextX = 0;
+    bAllTextRealized = true;
+
+    for (i = 0; i < DamageContainer.Children.Length; ++i)
+    {
+        Control = DamageContainer.GetChildAt(i);
+        Control.SetX(NextX);
+        NextX += 10;
+
+        // --- UIText (vanilla behavior) ---
+        Text = UIText(Control);
+        if (Text != none)
+        {
+            if (Text.TextSizeRealized)
+                NextX += Text.Width;
+            else
+                bAllTextRealized = false;
+
+            continue;
+        }
+
+        // --- UIScrollingText (custom handling) ---
+        ScrollingText = UIScrollingText(Control);
+        if (ScrollingText != none)
+        {
+            // Approximate "real width"
+            // If text is short ? treat width as smaller than mask
+            // If long ? clamp to mask width
+
+            NextX += class'UIScrollingTextLib'.static.GetScrollingTextEffectiveWidth(ScrollingText);
+        }
+    }
+
+    if (bAllTextRealized)
+    {
+        DamageContainer.SetX(NextX * -0.5);
+        DamageContainer.Show();
+        DamageContainer.AnimateIn(0);
+    }
+}*/
 
 /**
  * Determines which color to use for the damage.
@@ -1049,6 +1107,84 @@ private function int IndexToOffsetX(int i)
     }
 
     return 0; // fallback for unexpected indices
+}
+
+/**
+ * Returns true if any of the provided slot index arrays contains SlotIndex.
+ */
+private function bool IsSlotUsedAnywhere(
+    int SlotIndex,
+    array<int> A,
+    array<int> B,
+    array<int> C
+)
+{
+    local int k;
+
+    for (k = 0; k < A.Length; ++k)
+        if (A[k] == SlotIndex) return true;
+
+    for (k = 0; k < B.Length; ++k)
+        if (B[k] == SlotIndex) return true;
+
+    for (k = 0; k < C.Length; ++k)
+        if (C[k] == SlotIndex) return true;
+
+    return false;
+}
+
+/**
+ * Updates slot widths based on global usage of all slot index arrays.
+ * Expand the width of slots if a slot to the right is empty.
+ *
+ * Rules:
+ * - Slot 0 expands if any stat uses 0 and none use 1
+ * - Slot 2 expands if any stat uses 2 and none use 3
+ * - Otherwise slots use base width
+ */
+private function UpdateShotHUDSlotWidths()
+{
+    local bool bUses0, bUses1, bUses2, bUses3;
+    local int BaseWidth;
+
+    BaseWidth = get_SHOTHUD_SLOT_WIDTH();
+
+    // Detect usage across all stats
+    bUses0 = IsSlotUsedAnywhere(0, CritDamageSlotIndices, GrazeChanceSlotIndices, ExpectedDamageSlotIndices);
+    bUses1 = IsSlotUsedAnywhere(1, CritDamageSlotIndices, GrazeChanceSlotIndices, ExpectedDamageSlotIndices);
+    bUses2 = IsSlotUsedAnywhere(2, CritDamageSlotIndices, GrazeChanceSlotIndices, ExpectedDamageSlotIndices);
+    bUses3 = IsSlotUsedAnywhere(3, CritDamageSlotIndices, GrazeChanceSlotIndices, ExpectedDamageSlotIndices);
+
+    // --- Left side ---
+    if (bUses0 && !bUses1)
+    {
+        SlotValues[0].SetWidth(Max(BaseWidth, 114));
+        SlotLabels[0].SetWidth(Max(BaseWidth, 114));
+    }
+    else
+    {
+        SlotValues[0].SetWidth(BaseWidth);
+        SlotLabels[0].SetWidth(BaseWidth);
+    }
+
+    // --- Right side ---
+    if (bUses2 && !bUses3)
+    {
+        SlotValues[2].SetWidth(Max(BaseWidth, 114));
+        SlotLabels[2].SetWidth(Max(BaseWidth, 114));
+    }
+    else
+    {
+        SlotValues[2].SetWidth(BaseWidth);
+        SlotLabels[2].SetWidth(BaseWidth);
+    }
+
+    // Always reset the paired slots (important!)
+    SlotValues[1].SetWidth(BaseWidth);
+    SlotLabels[1].SetWidth(BaseWidth);
+
+    SlotValues[3].SetWidth(BaseWidth);
+    SlotLabels[3].SetWidth(BaseWidth);
 }
 
 function bool GetDISPLAY_MISS_CHANCE()

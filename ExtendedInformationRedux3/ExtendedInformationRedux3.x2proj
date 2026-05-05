@@ -135,6 +135,9 @@
     <Content Include="Src\ExtendedInformationRedux3\Classes\UIAbilityList_HitChance.uc" />
     <Content Include="Src\ExtendedInformationRedux3\Classes\UIEffectListItem_HitChance.uc" />
     <Content Include="Src\ExtendedInformationRedux3\Classes\UIEffectList_HitChance.uc" />
+    <Content Include="Src\ExtendedInformationRedux3\Classes\UIScrollingTextLib.uc">
+      <SubType>Content</SubType>
+    </Content>
     <Content Include="Src\ExtendedInformationRedux3\Classes\UITacticalHUD_AbilityTooltip_HitChance.uc" />
     <Content Include="Src\ExtendedInformationRedux3\Classes\UITacticalHUD_BuffsTooltip_HitChance.uc" />
     <Content Include="Src\ExtendedInformationRedux3\Classes\UITacticalHUD_Enemies_HitChance.uc" />
