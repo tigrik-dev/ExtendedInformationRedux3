@@ -255,7 +255,7 @@ simulated function FindClosestRes(out int ResX, out int ResY)
 simulated function Update() 
 {
     local bool isValidShot, IsSkPostMelee;
-    local string ShotName, ShotDescription;
+    local string ShotName, ShotDescription, StatContestEffectChances, ApplyChanceAbilityChances;
     local int HitChance, skHitChance, CritChance, GrazeChance, TargetIndex, AimBonus, skAimBonus, BarOffsetY;
     local ShotBreakdown kBreakdown;
     local StateObjectReference Target, EmptyRef;
@@ -270,13 +270,11 @@ simulated function Update()
     local X2TargetingMethod TargetingMethod;
     local bool WillBreakConcealment, WillEndTurn, bHide;
 	local DamageBreakdown NormalDamage, CritDamage;
-	local X2AbilityToHitCalc_StandardAim StandardHitCalc;
-	local UnitValue CounterattackCheck;
-	local XComGameState_Unit UnitState, TargetUnitState;
+	local XComGameState_Unit UnitState;
 	local XComGameStateHistory History;
 	// New from Grimy Shot Bar
 	local string FontString;
-   	local int offsetX, Current, i, j, CounterGraze, CounterCrit, CounterHit, CounterBonus;
+   	local int offsetX, Current, i, j;
 	local float Chance[4];
 	local float fExpectedDamage;
 
@@ -339,7 +337,18 @@ simulated function Update()
  
 		WillBreakConcealment = SelectedAbilityState.MayBreakConcealmentOnActivation(Target.ObjectID);
 		WillEndTurn = SelectedAbilityState.WillEndTurn();
- 
+
+		StatContestEffectChances = getHIDE_STAT_CONTEST() ? "" : class'StatContestLib'.static.GetStatContestEffectChancesString(SelectedAbilityState, Target, kTarget);
+		if (StatContestEffectChances != "")
+		{
+			ShotDescription = StatContestEffectChances $ "\n" $ ShotDescription;
+		} 
+		else
+		{
+			ApplyChanceAbilityChances = getPREVIEW_APPLY_CHANCE() ? class'ApplyChanceLib'.static.GetApplyChancesString(SelectedAbilityState, Target, kTarget) : "";
+			if (ApplyChanceAbilityChances != "") ShotDescription = ApplyChanceAbilityChances $ "\n" $ ShotDescription;
+		}
+
 		//AS_SetShotInfo(ShotName, ShotDescription, WillBreakConcealment, WillEndTurn);
 		// Display Hack Info if relevant
 		AS_SetShotInfo(ShotName, UpdateHackDescription(SelectedAbilityState, Target, ShotDescription), WillBreakConcealment, WillEndTurn);
@@ -763,27 +772,92 @@ static function SetAbilityMinDamagePreview(UIUnitFlag kFlag, XComGameState_Abili
  *
  * @return string         Updated ShotDescription with hack info prepended
  */ 
-function string UpdateHackDescription( XComGameState_Ability AbilityState, StateObjectReference Target, string ShotDescription)
+function string UpdateHackDescription(
+    XComGameState_Ability AbilityState,
+    StateObjectReference Target,
+    string ShotDescription
+)
 {
-	local EIHackBreakdown HackBreakdown;
-	local HackRewardInfo RewardItem;
-	local string HackDescription;
+    local EIHackBreakdown HackBreakdown;
+    local HackRewardInfo RewardItem;
+    local string HackDescription;
+    local int i;
+    local int Chance;
+    local string Label;
+    local EUIState _Color;
 
-	`TRACE_ENTRY("");
-	if(class'HackCalcLib'.static.GetHackBreakdown(AbilityState, Target, HackBreakdown))
-	{
-		RewardItem = HackBreakdown.RewardList[0];
-		HackDescription = class'UIUtilities_Text'.static.GetColoredText(RewardItem.RewardTemplate.GetFriendlyName(), RewardItem.RewardTemplate.bBadThing ? eUIState_Bad : eUIState_Good);
-		RewardItem = HackBreakdown.RewardList[1];
-		HackDescription $= " - " $ class'UIUtilities_Text'.static.GetColoredText(RewardItem.RewardTemplate.GetFriendlyName() $ ": " $ Clamp(RewardItem.Chance, 0, 100) $ "%", eUIState_Good);
-		RewardItem = HackBreakdown.RewardList[2];
-		HackDescription $= ", " $ class'UIUtilities_Text'.static.GetColoredText(RewardItem.RewardTemplate.GetFriendlyName() $ ": " $ Clamp(RewardItem.Chance, 0, 100) $ "%", eUIState_Good);
-		
-		// Tigrik: Display hack rewards and hack chances before the ability description, instead of after it.
-		ShotDescription = HackDescription $ "\n" $ ShotDescription;
-	}
-	`TRACE_EXIT("ShotDescription:" @ ShotDescription);
-	return ShotDescription;
+    local int AddedCount; // how many valid rewards we actually used
+
+    `TRACE_ENTRY("");
+
+    if (!class'HackCalcLib'.static.GetHackBreakdown(AbilityState, Target, HackBreakdown))
+    {
+        `TRACE_EXIT("No hack breakdown");
+        return ShotDescription;
+    }
+
+    if (HackBreakdown.RewardList.Length == 0)
+    {
+        `DEBUG("No rewards in breakdown");
+        `TRACE_EXIT("ShotDescription:" @ ShotDescription);
+        return ShotDescription;
+    }
+
+    AddedCount = 0;
+
+    for (i = 0; i < HackBreakdown.RewardList.Length; i++)
+    {
+        // Stop after 3 valid rewards (matches game UI)
+        if (AddedCount >= 3)
+            break;
+
+        RewardItem = HackBreakdown.RewardList[i];
+
+        if (RewardItem.RewardTemplate == none)
+        {
+            `DEBUG("Skipping reward: no template at index" @ i);
+            continue;
+        }
+
+        Label = RewardItem.RewardTemplate.GetFriendlyName();
+        Chance = Clamp(RewardItem.Chance, 0, 100);
+        _Color = RewardItem.RewardTemplate.bBadThing ? eUIState_Bad : eUIState_Good;
+
+        if (AddedCount == 0)
+        {
+            // First reward: label only
+            HackDescription =
+                class'UIUtilities_Text'.static.GetColoredText(Label, _Color);
+        }
+        else if (AddedCount == 1)
+        {
+            // Second reward: " - "
+            HackDescription $= " - " $
+                class'UIUtilities_Text'.static.GetColoredText(
+                    Label $ ": " $ Chance $ "%",
+                    _Color
+                );
+        }
+        else // AddedCount == 2
+        {
+            // Third reward: ", "
+            HackDescription $= ", " $
+                class'UIUtilities_Text'.static.GetColoredText(
+                    Label $ ": " $ Chance $ "%",
+                    _Color
+                );
+        }
+
+        AddedCount++;
+    }
+
+    if (HackDescription != "")
+    {
+        ShotDescription = HackDescription $ "\n" $ ShotDescription;
+    }
+
+    `TRACE_EXIT("ShotDescription:" @ ShotDescription);
+    return ShotDescription;
 }
 
 /**
@@ -1008,6 +1082,15 @@ function bool getEXPECTED_DAMAGE()
 	return `MCM_CH_GetValue(class'MCM_Defaults'.default.EXPECTED_DAMAGE, class'ExtendedInformationRedux3_MCMScreen'.default.EXPECTED_DAMAGE);
 }
 
+function bool getHIDE_STAT_CONTEST()
+{
+	return `MCM_CH_GetValue(class'MCM_Defaults'.default.HIDE_STAT_CONTEST, class'ExtendedInformationRedux3_MCMScreen'.default.HIDE_STAT_CONTEST);
+}
+
+function bool getPREVIEW_APPLY_CHANCE()
+{
+	return `MCM_CH_GetValue(class'MCM_Defaults'.default.PREVIEW_APPLY_CHANCE, class'ExtendedInformationRedux3_MCMScreen'.default.PREVIEW_APPLY_CHANCE);
+}
 
 //DEBUG
 /*function float getDODGE_OFFSET_Y()

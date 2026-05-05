@@ -29,6 +29,9 @@
     <Content Include="Config\XComExtendedInformationRedux3_Logger.ini">
       <SubType>Content</SubType>
     </Content>
+    <Content Include="Config\XComExtendedInformationRedux3_StatusEffects.ini">
+      <SubType>Content</SubType>
+    </Content>
     <Content Include="Config\XComIntLoc.ini">
       <SubType>Content</SubType>
     </Content>
@@ -36,6 +39,12 @@
       <SubType>Content</SubType>
     </Content>
     <Content Include="Localization\ExtendedInformationRedux3.cht">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Localization\ExtendedInformationRedux3.esn">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Localization\ExtendedInformationRedux3.rus">
       <SubType>Content</SubType>
     </Content>
     <Content Include="ReadMe.txt" />
@@ -57,7 +66,13 @@
     <Content Include="Src\ExtendedInformationAPI\Classes\EI_DamagePreviewTemplateAPI.uc">
       <SubType>Content</SubType>
     </Content>
+    <Content Include="Src\ExtendedInformationRedux3\Classes\AbilityLib.uc">
+      <SubType>Content</SubType>
+    </Content>
     <Content Include="Src\ExtendedInformationRedux3\Classes\AimAssistLib.uc">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Src\ExtendedInformationRedux3\Classes\ApplyChanceLib.uc">
       <SubType>Content</SubType>
     </Content>
     <Content Include="Src\ExtendedInformationRedux3\Classes\DamagePreviewLib.uc">
@@ -100,7 +115,13 @@
     <Content Include="Src\ExtendedInformationRedux3\Classes\ModSupportLib.uc">
       <SubType>Content</SubType>
     </Content>
+    <Content Include="Src\ExtendedInformationRedux3\Classes\StatContestLib.uc">
+      <SubType>Content</SubType>
+    </Content>
     <Content Include="Src\ExtendedInformationRedux3\Classes\StatListLib.uc" />
+    <Content Include="Src\ExtendedInformationRedux3\Classes\StringLib.uc">
+      <SubType>Content</SubType>
+    </Content>
     <Content Include="Src\ExtendedInformationRedux3\Classes\TemplatePatchLib.uc">
       <SubType>Content</SubType>
     </Content>
@@ -132,6 +153,9 @@
       <SubType>Content</SubType>
     </Content>
     <Content Include="Src\ExtendedInformationRedux3\Classes\X2TemplatePatch.uc">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Src\ExtendedInformationRedux3\Classes\_EffectLib.uc">
       <SubType>Content</SubType>
     </Content>
     <Content Include="Src\ExtendedInformationRedux3\EIR_LoggerMacros.uci">
