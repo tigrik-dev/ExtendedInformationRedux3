@@ -44,7 +44,6 @@ var bool CRIT_SHOW_NonTRIVIAL;
 var bool CRIT_HIDE_TRIVIAL;
 var bool BAR_HIDE_TRIVIAL;
 
-//FIX
 var bool TH_ASSIST_BAR;
 var bool DISPLAY_MISS_CHANCE;
 var bool TH_SHOW_GRAZED;
@@ -124,32 +123,11 @@ simulated function InitLayout()
 	{
 		LabelsOffset = ResOffset[Index].offset;
 	}
-	//DEBUG
-	//LabelsOffset = getDODGE_OFFSET_Y();
-	//Offsets[2].CritDOffsetX = 272;
-
-	/*`redscreen(`showvar(searchString));
-	`redscreen(`showvar(searchString2));
-	`redscreen(`showvar(RenderWidth));
-	`redscreen(`showvar(RenderHeight));
-	`redscreen(`showvar(FullWidth));
-	`redscreen(`showvar(FullHeight));
-	`redscreen(`showvar(ResX));
-	`redscreen(`showvar(ResY));
-	`redscreen(`showvar(LabelsOffset));*/
-	//DEBUG
 
 	// Init MCM Config Variables
-	/*BAR_WIDTH_MULT = getBAR_WIDTH_MULT();*/
 	BAR_HEIGHT = getBAR_HEIGHT();
 	BAR_ALPHA = getBAR_ALPHA();
 	BAR_OFFSET_Y = BAR_POSITION_Y -BAR_HEIGHT + getBAR_OFFSET_Y();
-	/*BAR_OFFSET_X = getBAR_OFFSET_X();
-	GENERAL_OFFSET_Y = getGENERAL_OFFSET_Y();
-	DODGE_OFFSET_X = getDODGE_OFFSET_X();
-	DODGE_OFFSET_Y = getDODGE_OFFSET_Y();
-	CRIT_OFFSET_X = getCRIT_OFFSET_X();
-	CRIT_OFFSET_Y = getCRIT_OFFSET_Y();*/
 	BarColours[0] = getHIT_HEX_COLOR();
 	BarColours[1] = getCRIT_HEX_COLOR();
 	BarColours[2] = getDODGE_HEX_COLOR();
@@ -918,53 +896,148 @@ function PrintShotDamage(ShotBreakdown kBreakdown, DamageBreakdown NormalDamage,
 
         if(NormalDamage.Bonus>0)
 		{	
-			AddDamage(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, GetDamageColor(NormalDamage), 38), true);
-			//AddDamageScrollable(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, GetDamageColor(NormalDamage), 38), true);
+			//AddDamage(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, GetDamageColor(NormalDamage), 38), true);
+			AddDamageScrollable(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, GetDamageColor(NormalDamage), 38), true);
 		}
 		else
 		{
-			AddDamage(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, GetDamageColor(NormalDamage), 38), true);
-			//AddDamageScrollable(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, GetDamageColor(NormalDamage), 36), true);
+			//AddDamage(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, GetDamageColor(NormalDamage), 38), true);
+			AddDamageScrollable(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, GetDamageColor(NormalDamage), 36), true);
 		}
     }
 	`TRACE_EXIT("");
 }
 
 /**
- * Adds a damage entry to the Shot HUD using UIScrollingText.
+ * Adds a damage value that preserves vanilla layout behavior while
+ * overlaying a scrolling text element when the text exceeds a maximum width.
  *
- * This function behaves similarly to the base game's AddDamage(),
- * but uses UIScrollingText instead of UIText to support horizontal
- * scrolling when the text exceeds the specified width.
+ * The original UIText remains present (but invisible) so that
+ * RepositionDamageContainer() continues to calculate layout correctly.
  *
- * A divider panel is optionally added after the text unless this
- * is the last damage entry.
- *
- * @param Label        Formatted HTML string representing damage (supports colors/fonts)
- * @param bIsLastOne   If true, no divider is added after this entry
+ * @param Label         Damage text HTML (e.g. colored "200-300")
+ * @param bIsLastOne    If true, divider is omitted
  */
 simulated function AddDamageScrollable(string Label, optional bool bIsLastOne)
 {
     local UIPanel Divider;
-    local UIScrollingText Text;
+    local UIText LayoutText;
+    local UIScrollingText ScrollText;
 
-    // Create scrolling text element
-    Text = Spawn(class'UIScrollingText', DamageContainer);
-    Text.InitScrollingText('', "", float(get_DAMAGE_LABEL_WIDTH()), 0, 0);
-    Text.SetWidth(get_DAMAGE_LABEL_WIDTH()); // enforce clipping width
-    Text.SetHeight(50);
-    Text.SetHTMLText(Label);
-    Text.bAnimateOnInit = false;
+    // --------------------------------------------------
+    // Original invisible UIText
+    // Used ONLY for vanilla layout calculations
+    // --------------------------------------------------
 
-    // Preserve layout behavior from base function
-    RepositionDamageContainer();
+    LayoutText = Spawn(class'UIText', DamageContainer);
+    LayoutText.InitText(, Label, true, RepositionDamageContainer).SetHeight(50);
+    LayoutText.bAnimateOnInit = false;
 
-    // Optional divider (same as base game)
+    // Keep width contribution but hide visually
+    LayoutText.SetAlpha(0);
+
+    // --------------------------------------------------
+    // Visible scrolling overlay
+    // --------------------------------------------------
+
+    ScrollText = Spawn(class'UIScrollingText', DamageContainer);
+
+    ScrollText.InitScrollingText(
+        '',
+        "",
+        float(get_DAMAGE_LABEL_WIDTH()),
+        0,
+        12,
+        true
+    );
+
+    ScrollText.SetWidth(get_DAMAGE_LABEL_WIDTH());
+    ScrollText.SetHTMLText(Label);
+    ScrollText.bAnimateOnInit = false;
+
+    // --------------------------------------------------
+    // Divider
+    // --------------------------------------------------
+
     if (!bIsLastOne)
     {
         Divider = Spawn(class'UIPanel', DamageContainer);
         Divider.InitPanel(, class'UIUtilities_Controls'.const.MC_GenericPixel).SetSize(2, 40);
         Divider.bAnimateOnInit = false;
+    }
+}
+
+/**
+ * Aligns scrolling overlays with their corresponding layout UIText controls.
+ *
+ * Same as the original function, except that it calls SyncDamageScrollingTextPositions() at the end
+ */
+simulated function RepositionDamageContainer()
+{
+	local int i, NextX;
+	local UIPanel Control;
+	local UIText Text;
+	local bool bAllTextRealized;
+
+	// Do nothing if we just added the label and nothing else
+	if(DamageContainer.NumChildren() == 1)
+		return;
+	
+	NextX = 0;
+	bAllTextRealized = true;
+	for(i = 0; i < DamageContainer.Children.Length; ++i)
+	{
+		Control = DamageContainer.GetChildAt(i);
+		Control.SetX(NextX);
+		NextX += 10;
+
+		Text = UIText(Control);
+		if( Text != none )
+		{
+			if( Text.TextSizeRealized )
+				NextX += (i > 0) ? FMin(Text.Width, float(get_DAMAGE_LABEL_WIDTH())) : Text.Width;
+			else
+				bAllTextRealized = false;
+		}
+	}
+
+	if( bAllTextRealized )
+	{
+		DamageContainer.SetX(NextX * -0.5);
+		DamageContainer.Show();
+		DamageContainer.AnimateIn(0);
+
+		SyncDamageScrollingTextPositions();
+	}
+}
+
+/**
+ * Aligns scrolling overlays with their corresponding layout UIText controls.
+ */
+simulated function SyncDamageScrollingTextPositions()
+{
+    local int i;
+    local UIText LayoutText;
+    local UIScrollingText ScrollText;
+
+    for (i = 0; i < DamageContainer.Children.Length; ++i)
+    {
+        LayoutText = UIText(DamageContainer.GetChildAt(i));
+
+        if (LayoutText != none)
+        {
+            // Find scrolling text immediately after it
+            if (i + 1 < DamageContainer.Children.Length)
+            {
+                ScrollText = UIScrollingText(DamageContainer.GetChildAt(i + 1));
+
+                if (ScrollText != none)
+                {
+                    ScrollText.SetX(LayoutText.X);
+                    ScrollText.SetY(LayoutText.Y);
+                }
+            }
+        }
     }
 }
 
