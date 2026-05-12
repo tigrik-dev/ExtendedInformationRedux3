@@ -154,27 +154,20 @@ simulated function InitLayout()
 	CritDamageSlotIndices.Length = 0;
 	ExpectedDamageSlotIndices.Length = 0;
 
-	// Determine in which Shot HUD slots to print "Graze Chance", "Critical Damage" and "Expected Damage"
-	// Same stat could be selected multiple times, so an array is needed
+	// Determine in which Shot HUD slots to print stats
 	for (i = 0; i < SHOTHUD_LAYOUT.Length; i++)
 	{
-		// Tigrik: 0 = "None", 1 = "Graze Chance", 2 = "Critical Damage", 3 = "Expected Damage"
-		switch (SHOTHUD_LAYOUT[i])
+		// Collapse Slot 1 into Slot 0 if Slot 0 is unused
+		if (i == 1 && SHOTHUD_LAYOUT[0] == 0 && SHOTHUD_LAYOUT[1] != 0)
 		{
-			case 0:
-				break;
-			case 1:
-				GrazeChanceSlotIndices.AddItem(i);
-				break;
-			case 2:
-				CritDamageSlotIndices.AddItem(i);
-				break;
-			case 3:
-				ExpectedDamageSlotIndices.AddItem(i);
-				break;
-			default	: 
-				break;
+			AddStatToSlotArray(SHOTHUD_LAYOUT[1], 0);
+			continue;
 		}
+
+		// Skip actual Slot 1 because it was remapped
+		if (i == 1 && SHOTHUD_LAYOUT[0] == 0 && SHOTHUD_LAYOUT[1] != 0) continue;
+
+		AddStatToSlotArray(SHOTHUD_LAYOUT[i], i);
 	}
 	
 	for(Index=0; Index<ArrayCount(BarBoxes); Index++)
@@ -1185,10 +1178,7 @@ private function int IndexToOffsetX(int i)
 /**
  * Returns true if any of the provided slot index arrays contains SlotIndex.
  */
-private function bool IsSlotUsedAnywhere(
-    int SlotIndex,
-    array<int> A,
-    array<int> B,
+private function bool IsSlotUsedAnywhere(int SlotIndex, array<int> A,array<int> B,
     array<int> C
 )
 {
@@ -1258,6 +1248,25 @@ private function UpdateShotHUDSlotWidths()
 
     SlotValues[3].SetWidth(BaseWidth);
     SlotLabels[3].SetWidth(BaseWidth);
+}
+
+/**
+ * Adds a stat type to the appropriate Shot HUD slot array.
+ */
+private function AddStatToSlotArray(int StatType, int SlotIndex)
+{
+    switch (StatType)
+    {
+        case 1:
+            GrazeChanceSlotIndices.AddItem(SlotIndex);
+            break;
+        case 2:
+            CritDamageSlotIndices.AddItem(SlotIndex);
+            break;
+        case 3:
+            ExpectedDamageSlotIndices.AddItem(SlotIndex);
+            break;
+    }
 }
 
 function bool GetDISPLAY_MISS_CHANCE()
