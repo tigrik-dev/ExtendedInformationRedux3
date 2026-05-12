@@ -25,6 +25,7 @@
 class StatContestLib extends Object dependson(_EffectLib) config(ExtendedInformationRedux3_StatusEffects);
 
 `include(ExtendedInformationRedux3\Src\ExtendedInformationRedux3\EIR_LoggerMacros.uci)
+`include(ExtendedInformationRedux3\Src\ModConfigMenuAPI\MCM_API_CfgHelpers.uci)
 
 struct RelevantEffectOverride
 {
@@ -169,7 +170,7 @@ static function string GetStatContestEffectChancesString(
         Result $= " | " $
             class'UIUtilities_Text'.static.GetColoredText(
                 MissLabel $ ": " $ MissChance $ "%",
-                eUIState_Bad
+                class'ColorLib'.static.IndexToEUIState(get_STATUS_COLOR_MISS())
             );
     }
 
@@ -600,4 +601,11 @@ static function SortByFirstSeen(
             }
         }
     }
+}
+
+`MCM_CH_StaticVersionChecker(class'MCM_Defaults'.default.VERSION, class'ExtendedInformationRedux3_MCMScreen'.default.CONFIG_VERSION)
+
+static function int get_STATUS_COLOR_MISS()
+{	
+	return `MCM_CH_GetValue(class'MCM_Defaults'.default.STATUS_COLOR_MISS, class'ExtendedInformationRedux3_MCMScreen'.default.STATUS_COLOR_MISS);
 }

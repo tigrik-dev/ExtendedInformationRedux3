@@ -40,6 +40,7 @@ sShowUnsafeAimAssist_ifSafe_MCMTooltip = "(Irrelevant in the current case)\n\n\W
 sShowGuaranteedHit_MCMText = "Show 'Guaranteed Hit' String";
 
 sGroupShotBar_MCMText = "Shotbar Settings";
+sShotBarScale_MCMText = "Bar Width Scale"
 sBarHeight_MCMText = "Bar Height";
 ;sBarOffsetX_MCMText = "Bar Offset X";
 sBarOffsetY_MCMText = "Bar Offset Y";
@@ -49,14 +50,14 @@ sBarAlpha_MCMText = "Bar Alpha";
 ;sDodgeOffsetX_MCMText = "Dodge Offset X";
 ;sCritOFfsetX_MCMText = "Crit Offset X";
 ;sCritOffsetY_MCMText = "Crit Offset Y";
-sHitHexColor_MCMText = "Hit Bar Colour";
-sCritHexColor_MCMText = "Crit Bar Colour";
-sDodgeHexColor_MCMText = "Graze Bar Colour";
+sHitHexColor_MCMText = "Hit Bar Color";
+sCritHexColor_MCMText = "Crit Bar Color";
+sDodgeHexColor_MCMText = "Graze Bar Color";
 sAssistHexColor_MCMText = "Aim Assist Bar Color";
-sMissHexColor_MCMText = "Miss Bar Colour";
+sMissHexColor_MCMText = "Miss Bar Color";
 sGroupShotHUD_MCMText = "ShotHUD Settings";
 sGroupShotHUDLayout_MCMText = "ShotHUD Display Layout";
-sGroupBarColors_MCMText = "Bar Colour Settings";
+sGroupBarColors_MCMText = "Bar Color Settings";
 sShowGrazed_MCMText = "Show Grazed in ShotHUD";
 sShowCrit_MCMText = "Show Crit in ShotHUD";
 sAimLeftOfCrit_MCMText = "Aim Left Of Crit";
@@ -66,7 +67,7 @@ sPreviewMinimum_MCMText = "Preview Minimum Damage";
 sPreviewHacking_MCMText = "Preview Hacking";
 sWarningMessage_MCMText = "Please note any change to Offset might result in bad display!";
 sExpectedDamage_MCMText = "Show Expected Damage"
-sExpectedDamage_MCMTooltip = "Enable to see Expected Damage in Shot HUD next to damage. e.g. 'Damage: 3-5 (2.6)'\n\nExpected Damage is a weighted average damage. When aiming at the current enemy with the selected ability, what is the average damage you will do, considering hit chance, crit chance, dodge, graze band, weapon damage with all damage modifiers, and bonus crit damage."
+sExpectedDamage_MCMTooltip = "Enable to see Expected Damage in ShotHUD next to damage. e.g. 'Damage: 3-5 (2.6)'\n\nExpected Damage is a weighted average damage. When aiming at the current enemy with the selected ability, what is the average damage you will do, considering hit chance, crit chance, dodge, graze band, weapon damage with all damage modifiers, and bonus crit damage."
 
 ;DEBUG
 sDodgeOffsetY_MCMText = "Dodge Offset Y";
@@ -90,7 +91,7 @@ sOrangeEngineering = "Orange Engineering";
 sBlueScience = "Blue Science";
 sObjIconBackground = "Objective Icon Background";
 
-sShotHudDisplayLayout_MCMText = "Shot HUD Display Layout"
+sShotHudDisplayLayout_MCMText = "ShotHUD Display Layout"
 sLeftSide1_MCMText = "Left Side 1"
 sLeftSide2_MCMText = "Left Side 2"
 sRightSide1_MCMText = "Right Side 1"
@@ -99,6 +100,10 @@ SlotOptions[0] = "None"
 SlotOptions[1] = "Graze Chance"
 SlotOptions[2] = "Critical Damage"
 SlotOptions[3] = "Expected Damage"
+sLeftSide1Offset_MCMText = "Left Side 1 Offset X"
+sLeftSide2Offset_MCMText = "Left Side 2 Offset X"
+sRightSide1Offset_MCMText = "Right Side 1 Offset X"
+sRightSide2Offset_MCMText = "Right Side 2 Offset X"
 
 ;sShowAlwaysShotBreakdownHUD_MCMText = "Always Show Shot Breakdown";
 sGroupShotWings_MCMText = "Shot Wings Settings";
@@ -113,6 +118,33 @@ sPreviewStatContest_MCMText = "Hide Status Effects for Stat Contest Abilities (e
 sPreviewApplyChance_MCMText = "Preview Status Effects for Static Chance Abilities (e.g. Void Rift)"
 sPreviewApplyChanceMiss_MCMText = "Show Miss Chance for Static Chance Abilities (e.g. Arc Pulser)"
 sPreviewApplyChanceGuaranteed_MCMText = "Show Guaranteed Status Effects for Static Chance Abilities (e.g. 'Stunned' for Arc Pulser)"
+
+sCdmgMode_MCMText = "C-DMG Mode"
+sCdmgModeTexts[0] = "Always Show Crit Bonus"
+sCdmgModeTexts[1] = "Always Show Total Damage for Crit"
+sCdmgModeTexts[2] = "Only Show Total Damage for Crit on All Crit Ranges"
+sCdmgModeTexts[3] = "Only Show Total Damage for Crit on Crit Ranges Where Max Crit Bonus is Smaller than Min Crit Bonus"
+
+sSlotWidth_MCMText = "ShotHUD Slot Width"
+sDamageLabelWidth_MCMText = "Damage Label Width"
+
+sShotHudColorSettings_MCMText = "ShotHUD Color Settings"
+sShotHudDamageColor_MCMText = "Damage"
+sShotHudDamageBonusColor_MCMText = "Damage With a Bonus"
+sShotHudGrazeChanceColor_MCMText = "Damage With a Bonus"
+sShotHudCritDamageColor_MCMText = "Damage With a Bonus"
+sShotHudExpectedDamageColor_MCMText = "Damage With a Bonus"
+
+sStatusEffectColorSettings_MCMText = "Status Effect Color Settings"
+sStatusEffect = "Status Effect"
+sMissChanceColor_MCMText = "Miss Chance"
+
+sHackPreviewColorSettings_MCMText = "Hack Preview Color Settings"
+sHackPreviewFailure_MCMText = "Failure"
+sHackPreviewReward_MCMText = "Reward"
+
+sFlyoverShowCrit0_MCMText = "Show Crit Chance in Flyovers When It's 0%""
+sFlyoverShowGraze0_MCMText = "Show Graze Chance in Flyovers When It's 0%"
 
 [HitCalcLib]
 LOWER_DIFFICULTY_MSG = "Lower Difficulty";

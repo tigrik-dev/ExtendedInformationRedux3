@@ -70,6 +70,16 @@ simulated function bool getSHOW_GUARANTEED_HIT()
 	return `MCM_CH_GetValue(class'MCM_Defaults'.default.SHOW_GUARANTEED_HIT, class'ExtendedInformationRedux3_MCMScreen'.default.SHOW_GUARANTEED_HIT);
 }
 
+simulated function bool get_FLYOVER_SHOW_CRIT_0()
+{	
+	return `MCM_CH_GetValue(class'MCM_Defaults'.default.FLYOVER_SHOW_CRIT_0, class'ExtendedInformationRedux3_MCMScreen'.default.FLYOVER_SHOW_CRIT_0);
+}
+
+simulated function bool get_FLYOVER_SHOW_GRAZE_0()
+{	
+	return `MCM_CH_GetValue(class'MCM_Defaults'.default.FLYOVER_SHOW_GRAZE_0, class'ExtendedInformationRedux3_MCMScreen'.default.FLYOVER_SHOW_GRAZE_0);
+}
+
 `MCM_CH_VersionChecker(class'MCM_Defaults'.default.VERSION, class'ExtendedInformationRedux3_MCMScreen'.default.CONFIG_VERSION)
 
 simulated state Executing
@@ -385,8 +395,8 @@ simulated state Executing
 		else if (getDISPLAY_MISS_CHANCE()) Elements.AddItem(sMiss $ ": " $ (100-hitChance)$ "%");
 		else Elements.AddItem(sHit $ ": " $ hitChance $ "%");
 
-		if (critChance>0) Elements.AddItem(sCrit $ ": " $ critChance $ "%");
-		if (grazeChance>0) Elements.AddItem(sGraze $ ": " $ GrazeChance $ "%");
+		if (critChance>0 || get_FLYOVER_SHOW_CRIT_0()) Elements.AddItem(sCrit $ ": " $ critChance $ "%");
+		if (grazeChance>0 || get_FLYOVER_SHOW_GRAZE_0()) Elements.AddItem(sGraze $ ": " $ GrazeChance $ "%");
 		
 		//foreach Elements(sHit) `log(sHit);
 
