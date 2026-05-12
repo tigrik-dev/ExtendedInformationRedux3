@@ -101,7 +101,8 @@ var localized string			sObjIconBackground;
 var array<string>				ColorArray;
 var array<string>				UIStateColorArray;
 
-var localized array<string>		SlotOptions;
+var array<string>				SlotOptions;
+var localized string			SlotOptions_0, SlotOptions_1, SlotOptions_2, SlotOptions_3;
 
 var localized string			sSettingsPage_MCMText;
 var localized string			sPageTitle_MCMText;
@@ -175,7 +176,8 @@ var localized string			sPreviewApplyChanceMiss_MCMText;
 var localized string			sPreviewApplyChanceGuaranteed_MCMText;
 
 var localized string			sCdmgMode_MCMText;
-var localized array<string>		sCdmgModeTexts;
+var array<string>				sCdmgModeTexts;
+var localized string			sCdmgModeTexts_0, sCdmgModeTexts_1, sCdmgModeTexts_2, sCdmgModeTexts_3;
 
 var localized string			sShotBarScale_MCMText;
 var localized string			sSlotWidth_MCMText;
@@ -428,6 +430,9 @@ simulated function ClientModCallback(MCM_API_Instance ConfigAPI, int GameMode)
 	local bool IsAimAssistUnsafe;
 
 	`TRACE_ENTRY("GameMode:" @ GameMode);
+
+	InitializeSlotOptions();
+	InitializeCdmgModeTexts();
 
 	// Tigrik: IsAimAssistUnsafe: May Aim Assist cause bugs when enabled?
 	IsAimAssistUnsafe = class'AimAssistLib'.static.IsAimAssistUnsafe();
@@ -845,4 +850,38 @@ function string getStringColorFromHex(string ColorString)
 		case		"53b45e"	 : return sObjIconBackground;
 		default : return sGray;
 	}
+}
+
+/**
+ * Initializes slot option array using localized strings,
+ * while providing English fallbacks if localization is missing.
+ */
+private function InitializeSlotOptions()
+{
+	// Already initialized
+	if (SlotOptions.Length > 0) return;
+
+    SlotOptions.Length = 4;
+
+    SlotOptions[0] = (SlotOptions_0 != "") ? SlotOptions_0 : "None";
+    SlotOptions[1] = (SlotOptions_1 != "") ? SlotOptions_1 : "Graze Chance";
+    SlotOptions[2] = (SlotOptions_2 != "") ? SlotOptions_2 : "Critical Damage";
+    SlotOptions[3] = (SlotOptions_3 != "") ? SlotOptions_3 : "Expected Damage";
+}
+
+/**
+ * Initializes sCdmgModeTexts array using localized strings,
+ * while providing English fallbacks if localization is missing.
+ */
+private function InitializeCdmgModeTexts()
+{
+	// Already initialized
+	if (sCdmgModeTexts.Length > 0) return;
+
+    sCdmgModeTexts.Length = 4;
+
+    sCdmgModeTexts[0] = (sCdmgModeTexts_0 != "") ? sCdmgModeTexts_0 : "Always Show Crit Bonus";
+    sCdmgModeTexts[1] = (sCdmgModeTexts_1 != "") ? sCdmgModeTexts_1 : "Always Show Total Damage for Crit";
+    sCdmgModeTexts[2] = (sCdmgModeTexts_2 != "") ? sCdmgModeTexts_2 : "Only Show Total Damage for Crit on All Crit Ranges";
+    sCdmgModeTexts[3] = (sCdmgModeTexts_3 != "") ? sCdmgModeTexts_3 : "Only Show Total Damage for Crit on Crit Ranges Where Max Crit Bonus is Smaller than Min Crit Bonus";
 }
