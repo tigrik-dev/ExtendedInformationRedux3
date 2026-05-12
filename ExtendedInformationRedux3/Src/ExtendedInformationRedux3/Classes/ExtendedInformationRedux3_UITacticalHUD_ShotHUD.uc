@@ -428,8 +428,8 @@ simulated function Update()
 					//if (HitChance == 0)
 					//{
 						MC.ChildSetBool("statsHit", "_visible", true);
-						MC.ChildSetString("statsHit.shotLabel", "htmlText", Caps(class'X2TacticalGameRulesetDataStructures'.default.m_aAbilityHitResultStrings[eHit_Miss]));
-						MC.ChildSetString("statsHit.shotValue", "htmlText", (100-HitChance) @ "%");
+						MC.ChildSetString("statsHit.shotLabel", "htmlText", class'UIUtilities_Text'.static.GetColoredText(Caps(class'X2TacticalGameRulesetDataStructures'.default.m_aAbilityHitResultStrings[eHit_Miss]), eUIState_Header));
+						MC.ChildSetString("statsHit.shotValue", "htmlText", (100-HitChance) $ "%");
 					//}
 				}
 				else AS_SetShotChance(class'UIUtilities_Text'.static.GetColoredText(m_sShotChanceLabel, eUIState_Header), HitChance);
