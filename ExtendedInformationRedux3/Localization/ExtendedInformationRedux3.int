@@ -40,7 +40,6 @@ sShowUnsafeAimAssist_ifSafe_MCMTooltip = "(Irrelevant in the current case)\n\n\W
 sShowGuaranteedHit_MCMText = "Show 'Guaranteed Hit' String";
 
 sGroupShotBar_MCMText = "Shotbar Settings";
-sShotBarScale_MCMText = "Bar Width Scale"
 sBarHeight_MCMText = "Bar Height";
 ;sBarOffsetX_MCMText = "Bar Offset X";
 sBarOffsetY_MCMText = "Bar Offset Y";

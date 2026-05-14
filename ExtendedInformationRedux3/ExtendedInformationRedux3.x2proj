@@ -93,9 +93,6 @@
     <Content Include="Src\ExtendedInformationRedux3\Classes\EIR_TestRunner.uc">
       <SubType>Content</SubType>
     </Content>
-    <Content Include="Src\ExtendedInformationRedux3\Classes\EIR_UIScrollingText.uc">
-      <SubType>Content</SubType>
-    </Content>
     <Content Include="Src\ExtendedInformationRedux3\Classes\EIR_Version.uc">
       <SubType>Content</SubType>
     </Content>

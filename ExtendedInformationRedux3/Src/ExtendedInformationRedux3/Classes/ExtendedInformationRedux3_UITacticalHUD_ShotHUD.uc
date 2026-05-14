@@ -538,9 +538,6 @@ simulated function Update()
 					Chance[eHit_Success] += AimBonus; //Assist bonus directly adds to eHit_Success changes;
 					AimBonus=0; //Hide the seperate aimbonus bar;
 				}
-				
-				// Scale down/up based on the MCM option "Bar Width Scale"
-				BAR_WIDTH_MULT *= get_SHOTBAR_SCALE() / 100;
 
 				offsetX = int((BAR_WIDTH_MULT * (-50)) + 0.5f) + BAR_OFFSET_X;
 				//Mr. Nice: offsetX is an out parameter, and is incremented in SetBox() as required.
@@ -1354,11 +1351,6 @@ function int getSHOTHUD_RIGHT_2_OFFSET_X()
 }*/
 //DEBUG
 
-function int get_SHOTBAR_SCALE()
-{
-	return `MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTBAR_SCALE, class'ExtendedInformationRedux3_MCMScreen'.default.SHOTBAR_SCALE);
-}
-
 function int get_SHOTHUD_SLOT_WIDTH()
 {
 	return `MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_SLOT_WIDTH, class'ExtendedInformationRedux3_MCMScreen'.default.SHOTHUD_SLOT_WIDTH);
@@ -1411,7 +1403,7 @@ defaultproperties
 
 	// ShotBar position, size, and offset settings, should not be altered whatsoever
 	// so created those default values inside the class to not expose them in MCM any more
-	BAR_WIDTH_MULT = 2.5; //3
+	BAR_WIDTH_MULT = 2.5;
 	BAR_HEIGHT = 10;
 	BAR_OFFSET_X = 3;
 	//BAR_OFFSET_Y = -122;

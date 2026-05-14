@@ -67,7 +67,6 @@ var config bool		SHOW_APPLY_CHANCE_GUARANTEED;
 
 var config int		C_DMG_MODE;
 
-var config int		SHOTBAR_SCALE;
 var config int		SHOTHUD_SLOT_WIDTH;
 var config int		DAMAGE_LABEL_WIDTH;
 

@@ -60,7 +60,6 @@ var config bool				SHOW_EXTRA_WEAPONSTATS;
 
 var config int		C_DMG_MODE;
 
-var config int		SHOTBAR_SCALE;
 var config int		SHOTHUD_SLOT_WIDTH;
 var config int		DAMAGE_LABEL_WIDTH;
 
@@ -179,7 +178,6 @@ var localized string			sCdmgMode_MCMText;
 var array<string>				sCdmgModeTexts;
 var localized string			sCdmgModeTexts_0, sCdmgModeTexts_1, sCdmgModeTexts_2, sCdmgModeTexts_3;
 
-var localized string			sShotBarScale_MCMText;
 var localized string			sSlotWidth_MCMText;
 var localized string			sDamageLabelWidth_MCMText;
 
@@ -250,7 +248,6 @@ var MCM_API_Checkbox			SHOW_APPLY_CHANCE_GUARANTEED_MCMUI;
 
 var MCM_API_Dropdown			C_DMG_MODE_MCMUI;
 
-var MCM_API_Slider				SHOTBAR_SCALE_MCMUI;
 var MCM_API_Slider				SHOTHUD_SLOT_WIDTH_MCMUI;
 var MCM_API_Slider				DAMAGE_LABEL_WIDTH_MCMUI;
 
@@ -348,7 +345,6 @@ event OnInit(UIScreen Screen)
 
 `MCM_API_BasicIndexSaveHandler(C_DMG_MODE_HANDLER, C_DMG_MODE, sCdmgModeTexts)
 
-`MCM_API_BasicSliderSaveHandler(SHOTBAR_SCALE_HANDLER, SHOTBAR_SCALE)
 `MCM_API_BasicSliderSaveHandler(SHOTHUD_SLOT_WIDTH_HANDLER, SHOTHUD_SLOT_WIDTH)
 `MCM_API_BasicSliderSaveHandler(DAMAGE_LABEL_WIDTH_HANDLER, DAMAGE_LABEL_WIDTH)
 
@@ -529,7 +525,6 @@ simulated function ClientModCallback(MCM_API_Instance ConfigAPI, int GameMode)
 
 	Group3 = Page.AddGroup('Group3', sGroupShotBar_MCMText);
 	/*Group3.AddLabel('Warning1',sWarningMessage_MCMText,"");*/
-	SHOTBAR_SCALE_MCMUI				= Group3.AddSlider('SHOTBAR_SCALE', sShotBarScale_MCMText, sShotBarScale_MCMText, 5, 200, 1, SHOTBAR_SCALE, SHOTBAR_SCALE_HANDLER, );
 	BarHeight_MCMUI					= Group3.AddSlider('BarHeight', sBarHeight_MCMText, sBarHeight_MCMText, 0, 20, 1, BAR_HEIGHT, BarHeightHandler, );
 	//BarOffsetX_MCMUI				= Group3.AddSlider('BarOffsetX', sBarOffsetX_MCMText, sBarOffsetX_MCMText, -200, 200, 1, BAR_OFFSET_X, BarOffsetXHandler, );
 	BarOffsetY_MCMUI				= Group3.AddSlider('BarOffsetY', sBarOffsetY_MCMText, sBarOffsetY_MCMText, -20, 20, 1, BAR_OFFSET_Y, BarOffsetYHandler, );
@@ -656,7 +651,6 @@ simulated function LoadSavedSettings()
 
 	C_DMG_MODE					= `MCM_CH_GetValue(class'MCM_Defaults'.default.C_DMG_MODE,C_DMG_MODE);
 
-	SHOTBAR_SCALE				= `MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTBAR_SCALE,SHOTBAR_SCALE);
 	SHOTHUD_SLOT_WIDTH			= `MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_SLOT_WIDTH,SHOTHUD_SLOT_WIDTH);
 	DAMAGE_LABEL_WIDTH			= `MCM_CH_GetValue(class'MCM_Defaults'.default.DAMAGE_LABEL_WIDTH,DAMAGE_LABEL_WIDTH);
 
@@ -737,7 +731,6 @@ simulated function ResetButtonClicked(MCM_API_SettingsPage Page)
 
 	C_DMG_MODE_MCMUI					.SetValue(sCdmgModeTexts[class'MCM_Defaults'.default.C_DMG_MODE], false);
 
-	SHOTBAR_SCALE_MCMUI					.SetValue(class'MCM_Defaults'.default.SHOTBAR_SCALE, false);
 	SHOTHUD_SLOT_WIDTH_MCMUI			.SetValue(class'MCM_Defaults'.default.SHOTHUD_SLOT_WIDTH, false);
 	DAMAGE_LABEL_WIDTH_MCMUI			.SetValue(class'MCM_Defaults'.default.DAMAGE_LABEL_WIDTH, false);
 
