@@ -889,13 +889,11 @@ function PrintShotDamage(ShotBreakdown kBreakdown, DamageBreakdown NormalDamage,
 
         if(NormalDamage.Bonus>0)
 		{	
-			//AddDamage(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, GetDamageColor(NormalDamage), 38), true);
 			AddDamageScrollable(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, GetDamageColor(NormalDamage), 38), true);
 		}
 		else
 		{
-			//AddDamage(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, GetDamageColor(NormalDamage), 38), true);
-			AddDamageScrollable(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, GetDamageColor(NormalDamage), 36), true);
+			AddDamageScrollable(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, GetDamageColor(NormalDamage), 38), true);
 		}
     }
 	`TRACE_EXIT("");
@@ -917,40 +915,21 @@ simulated function AddDamageScrollable(string Label, optional bool bIsLastOne)
     local UIText LayoutText;
     local UIScrollingText ScrollText;
 
-    // --------------------------------------------------
-    // Original invisible UIText
-    // Used ONLY for vanilla layout calculations
-    // --------------------------------------------------
-
+    // Invisible layout text
     LayoutText = Spawn(class'UIText', DamageContainer);
     LayoutText.InitText(, Label, true, RepositionDamageContainer).SetHeight(50);
     LayoutText.bAnimateOnInit = false;
-
-    // Keep width contribution but hide visually
     LayoutText.SetAlpha(0);
 
-    // --------------------------------------------------
-    // Visible scrolling overlay
-    // --------------------------------------------------
-
+    // Visible scrolling text
     ScrollText = Spawn(class'UIScrollingText', DamageContainer);
 
-    ScrollText.InitScrollingText(
-        '',
-        "",
-        float(get_DAMAGE_LABEL_WIDTH()),
-        0,
-        12,
-        true
-    );
+    ScrollText.InitScrollingText('', "", float(get_DAMAGE_LABEL_WIDTH()), 0, 0, true);
 
-    ScrollText.SetWidth(get_DAMAGE_LABEL_WIDTH());
+	Label = class'UIUtilities_Text'.static.AddFontInfo(Label, false, true, , 38);
+	ScrollText.SetWidth(get_DAMAGE_LABEL_WIDTH());
     ScrollText.SetHTMLText(Label);
     ScrollText.bAnimateOnInit = false;
-
-    // --------------------------------------------------
-    // Divider
-    // --------------------------------------------------
 
     if (!bIsLastOne)
     {
@@ -1033,59 +1012,6 @@ simulated function SyncDamageScrollingTextPositions()
         }
     }
 }
-
-/*
-simulated function RepositionDamageContainer()
-{
-    local int i, NextX;
-    local UIPanel Control;
-    local UIText Text;
-    local UIScrollingText ScrollingText;
-    local bool bAllTextRealized;
-
-    if (DamageContainer.NumChildren() == 1)
-        return;
-
-    NextX = 0;
-    bAllTextRealized = true;
-
-    for (i = 0; i < DamageContainer.Children.Length; ++i)
-    {
-        Control = DamageContainer.GetChildAt(i);
-        Control.SetX(NextX);
-        NextX += 10;
-
-        // --- UIText (vanilla behavior) ---
-        Text = UIText(Control);
-        if (Text != none)
-        {
-            if (Text.TextSizeRealized)
-                NextX += Text.Width;
-            else
-                bAllTextRealized = false;
-
-            continue;
-        }
-
-        // --- UIScrollingText (custom handling) ---
-        ScrollingText = UIScrollingText(Control);
-        if (ScrollingText != none)
-        {
-            // Approximate "real width"
-            // If text is short ? treat width as smaller than mask
-            // If long ? clamp to mask width
-
-            NextX += class'UIScrollingTextLib'.static.GetScrollingTextEffectiveWidth(ScrollingText);
-        }
-    }
-
-    if (bAllTextRealized)
-    {
-        DamageContainer.SetX(NextX * -0.5);
-        DamageContainer.Show();
-        DamageContainer.AnimateIn(0);
-    }
-}*/
 
 /**
  * Determines which color to use for the damage.
