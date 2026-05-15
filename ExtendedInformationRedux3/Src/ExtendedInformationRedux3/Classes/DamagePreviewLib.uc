@@ -629,7 +629,8 @@ static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, 
 	// Dalo: Start CHL Issue #1542
 	IgnoreArmor = WepDamEffect.bIgnoreArmor ? 1 : 0;
 	IgnoreShields = bDoesDamageIgnoreShields ? 1 : 0;
-	class'CHHelpers'.static.GetCDO().TriggerOverrideDefenseBypass(AppliedDamageTypes, IgnoreArmor, IgnoreShields, TestEffectParams, WepDamEffect);
+	// Commented out pending the release of CHL PR #1571
+	//class'CHHelpers'.static.GetCDO().TriggerOverrideDefenseBypass(AppliedDamageTypes, IgnoreArmor, IgnoreShields, TestEffectParams, WepDamEffect);
 	`TRACE("Invoked TriggerOverrideDefenseBypass. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", Original Armor/Shield Ignores:" @ WepDamEffect.bIgnoreArmor $ "/" $ bDoesDamageIgnoreShields $ ", Overridden Ignores:" @ IgnoreArmor > 0 $ "/" $ IgnoreShields > 0);
 	bDoesDamageIgnoreShields = IgnoreShields > 0;
 	// End CHL Issue #1542
@@ -641,8 +642,8 @@ static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, 
 	}
 
 	// Dalo: Begin CHL Issue #1540 - preview armor DR
-	// TODO: Only run this code if the appropriate MCM option is enabled!
-	if (TargetUnit != none && IgnoreArmor == 0 && NormalDamage.Min > 0)
+	// TODO @tigrik-dev: Only run this code if the appropriate MCM option is enabled!
+	if (true && TargetUnit != none && IgnoreArmor == 0 && NormalDamage.Min > 0)
 	{
 		`TRACE_IF("TargetUnit != none && !bIgnoreArmor && NormalDamage.Min > 0");
 		// Dalo: The original mitigation (and original minimum mitigation, i.e. 0)
@@ -762,7 +763,8 @@ static function CalculateArmorMitigation(
 	MinMitigation = OriginalMitigation;
 	MinPierce = OriginalPierce;
 	MinMandatoryMitigation = 0;
-	class'CHHelpers'.static.GetCDO().TriggerAdjustArmorMitigation(
+	// Commented out pending the release of CHL PR #1567.
+	/*class'CHHelpers'.static.GetCDO().TriggerAdjustArmorMitigation(
 		MinDamage,
 		MinMitigation,
 		MinPierce,
@@ -772,7 +774,7 @@ static function CalculateArmorMitigation(
 		// Tells the event handlers that this is a minimum damage preview.
 		// (The absence of a game state tells them it's *a* damage preview.)
 		true
-	);
+	);*/
 	MinDamagePreview.Spread = MinMitigation;
 	MinDamagePreview.Pierce = MinPierce;
 	MinDamagePreview.PlusOne = MinMandatoryMitigation - AppliedMandatoryMitigationMin;
@@ -781,21 +783,25 @@ static function CalculateArmorMitigation(
 	MaxMitigation = OriginalMitigation;
 	MaxPierce = OriginalPierce;
 	MaxMandatoryMitigation = 0;
-	class'CHHelpers'.static.GetCDO().TriggerAdjustArmorMitigation(
+	// Commented out pending the release of CHL PR #1567.
+	/*class'CHHelpers'.static.GetCDO().TriggerAdjustArmorMitigation(
 		MaxDamage,
 		MaxMitigation,
 		MaxPierce,
 		MaxMandatoryMitigation, // Starts at 0
 		TestEffectParams,
 		WepDamEffect
-	);
+	);*/
 	MaxDamagePreview.Spread = MaxMitigation;
 	MaxDamagePreview.Pierce = MaxPierce;
 	MaxDamagePreview.PlusOne = MaxMandatoryMitigation - AppliedMandatoryMitigationMax;	
 
 	// Now that we're done adjusting the raw values, let's crunch them into real-(game)-world outcomes!
 	`TRACE("About to call CalculateMitigatedDamagePreview. Min/MaxMitigation:" @ MinMitigation $ "/" $ MaxMitigation $ ", Min/MaxMandatoryMitigation:" @ MinDamagePreview.PlusOne $ "/" $ MaxDamagePreview.PlusOne $ ", Min/MaxDamage:" @ MinDamage $ "/" $ MaxDamage);
-	class'CHHelpers'.static.CalculateMitigatedDamagePreview(
+	// Go back to using CHHelpers when CHL PR #1567 is released,
+	// to avoid code duplication and all that stuff.
+	CalculateMitigatedDamagePreview(
+	//class'CHHelpers'.static.CalculateMitigatedDamagePreview(
 		TestEffectParams.TargetStateObjectRef,
 		MinDamagePreview,
 		MaxDamagePreview,
@@ -1273,4 +1279,65 @@ static function string DamageBreakdownToString(DamageBreakdown DB)
 static function string DamageInfoToString(DamageInfo Info)
 {
 	return "{Label=\"" $ Info.Label $ "\", Min=" $ string(Info.Min) $ ", Max=" $ string(Info.Max) $ "}";
+}
+
+// TODO: Delete this function when CHL PR #1567 is released
+// Helper function to calculate mitigated damage for ShotWings/ShotHUD.
+// Quick reminder: Spread holds mitigation, PlusOne holds minimum mitigation. 
+static simulated function CalculateMitigatedDamagePreview(StateObjectReference Target, WeaponDamageValue MinDamageValue, WeaponDamageValue MaxDamageValue, int AllowsShield, out int MinDamage, out int MaxDamage, out int NetMitigationMin, out int NetMitigationMax)
+{
+	local XComGameStateHistory History;
+	local XComGameState_Unit TargetUnit;
+	local int TargetShields;
+	local int MandatoryDamage;
+	local int GuaranteedDamageMin, GuaranteedDamageMax;
+	
+	History = `XCOMHISTORY;
+
+	if (MinDamageValue.Spread == 0 && MaxDamageValue.Spread == 0 || Target.ObjectId == 0)
+	{
+		return;
+	}
+
+	TargetUnit = XComGameState_Unit(History.GetGameStateForObjectId(Target.ObjectID));
+	if (TargetUnit == none)
+	{
+		return;
+	}
+
+	if (!class'X2Effect_ApplyWeaponDamage'.default.NO_MINIMUM_DAMAGE) // Account for issue #321
+	{
+		MandatoryDamage = 1;
+	}
+	else
+	{
+		MandatoryDamage = 0;
+	}
+	GuaranteedDamageMin = MandatoryDamage;
+	GuaranteedDamageMax = MandatoryDamage;
+
+	// If shields are applicable and not subject to mitigation,
+	// then we are never guaranteed HP damage, but always
+	// guaranteed shield damage so let's preview that.
+	if (AllowsShield > 0 && !class'X2Effect_ApplyWeaponDamage'.default.ARMOR_BEFORE_SHIELD) // From issue #743
+	{
+		TargetShields = TargetUnit.GetCurrentStat(eStat_ShieldHP);
+	}
+	if (TargetShields > MandatoryDamage)
+	{
+		GuaranteedDamageMin = min(MinDamage, TargetShields);
+		GuaranteedDamageMax = min(MaxDamage, TargetShields);
+	}
+	
+	// This is a bit condensed from the real damage calculator, so to summarize:
+	// 1. Subtract piercing from mitigation.
+	// 2. Don't let mitigation drop below the minimum mitigation.
+	// 3. Now subtract mitigation from damage.
+	// 4. Make sure damage is *at least* the guaranteed damage for this attack.
+	MinDamage = max(MinDamage - max(MinDamageValue.Spread - MinDamageValue.Pierce, MinDamageValue.PlusOne), min(GuaranteedDamageMin, MinDamage));
+	MaxDamage = max(MaxDamage - max(MaxDamageValue.Spread - MaxDamageValue.Pierce, MaxDamageValue.PlusOne), min(GuaranteedDamageMax, MaxDamage));
+
+	// Net mitigation for ShotWings: How much damage did the armor actually prevent?
+	NetMitigationMin = MinDamage - MinDamageValue.Damage;
+	NetMitigationMax = MaxDamage - MaxDamageValue.Damage;
 }
