@@ -233,7 +233,7 @@ static function string GetApplyChancesString(
         Result $= " | " $
             class'UIUtilities_Text'.static.GetColoredText(
                 MissLabel $ ": " $ MissChance $ "%",
-                eUIState_Bad
+                class'ColorLib'.static.IndexToEUIState(get_STATUS_COLOR_MISS())
             );
     }
 
@@ -332,3 +332,7 @@ static function bool GetSHOW_APPLY_CHANCE_GUARANTEED()
 	return `MCM_CH_GetValue(class'MCM_Defaults'.default.SHOW_APPLY_CHANCE_GUARANTEED, class'ExtendedInformationRedux3_MCMScreen'.default.SHOW_APPLY_CHANCE_GUARANTEED);
 }
 
+static function int get_STATUS_COLOR_MISS()
+{	
+	return `MCM_CH_GetValue(class'MCM_Defaults'.default.STATUS_COLOR_MISS, class'ExtendedInformationRedux3_MCMScreen'.default.STATUS_COLOR_MISS);
+}

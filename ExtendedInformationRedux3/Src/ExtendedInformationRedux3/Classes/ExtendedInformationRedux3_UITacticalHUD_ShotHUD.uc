@@ -19,27 +19,24 @@ class ExtendedInformationRedux3_UITacticalHUD_ShotHUD extends UITacticalHUD_Shot
 `include(ExtendedInformationRedux3\Src\ModConfigMenuAPI\MCM_API_CfgHelpers.uci)
 `include(ExtendedInformationRedux3\Src\ExtendedInformationRedux3\LangFallBack.uci)
 `include(ExtendedInformationRedux3\Src\ExtendedInformationRedux3\EIR_LoggerMacros.uci)
-
-`define RANGESTRING(MIN, MAX)  ( `MIN == `MAX ? string(`MIN) : string(`MIN) $ "-" $ string(`MAX) )
+`include(ExtendedInformationRedux3\Src\ExtendedInformationRedux3\EIR_UtilityMacros.uci)
 
 var UIBGBox BarBoxes[5];
-var UIText SlotValues[4];
-var UIText SlotLabels[4];
+var UIScrollingText SlotValues[4];
+var UIScrollingText SlotLabels[4];
 
 // In which ShotHUD slots should "Critical Damage" be printed. "Left 1" = 0, "Left 2" = 1, "Right 1" = 2, "Right 2" = 3
 var array<int> CritDamageSlotIndices;
 var array<int> GrazeChanceSlotIndices;
 var array<int> ExpectedDamageSlotIndices;
 
-var int BAR_HEIGHT, BAR_OFFSET_X, BAR_OFFSET_Y, BAR_POSITION_Y, BAR_WIDTH_MULT, GENERAL_OFFSET_Y;
+var int BAR_HEIGHT, BAR_OFFSET_X, BAR_OFFSET_Y, BAR_POSITION_Y, GENERAL_OFFSET_Y;
 var int MAX_ABILITIES_PER_ROW;
 var int LabelFontSize, ValueFontSize, TEXTWIDTH;
 var int BAR_ALPHA;
 var string BarColours[5];
 var int GRAZE_CRIT_LAYOUT;
-var float LabelsOffset;
-
-var EUIState GRAZE_STATE_COLOUR, CRIT_STATE_COLOUR;
+var float LabelsOffset, BAR_WIDTH_MULT;
 
 var bool HIT_SHOW_NonTRIVIAL;
 var bool GRAZE_SHOW_NonTRIVIAL;
@@ -47,7 +44,6 @@ var bool CRIT_SHOW_NonTRIVIAL;
 var bool CRIT_HIDE_TRIVIAL;
 var bool BAR_HIDE_TRIVIAL;
 
-//FIX
 var bool TH_ASSIST_BAR;
 var bool DISPLAY_MISS_CHANCE;
 var bool TH_SHOW_GRAZED;
@@ -77,6 +73,10 @@ struct ResOffsetSt
 
 var config array<ShotHUDSlotOffset> SlotOffsets;
 var config array<ResOffsetSt> ResOffset;
+
+var config bool bEnableTestMode;
+var config int iMockHit, iMockGraze, iMockMinDamage, iMockMaxDamage, iMockCritChance, iMockCritMinDamageBonus, iMockCritMaxDamageBonus;
+var config float fMockExpectedDamage;
 
 /**
  * Initializes the Shot HUD and sets up layout.
@@ -123,32 +123,11 @@ simulated function InitLayout()
 	{
 		LabelsOffset = ResOffset[Index].offset;
 	}
-	//DEBUG
-	//LabelsOffset = getDODGE_OFFSET_Y();
-	//Offsets[2].CritDOffsetX = 272;
-
-	/*`redscreen(`showvar(searchString));
-	`redscreen(`showvar(searchString2));
-	`redscreen(`showvar(RenderWidth));
-	`redscreen(`showvar(RenderHeight));
-	`redscreen(`showvar(FullWidth));
-	`redscreen(`showvar(FullHeight));
-	`redscreen(`showvar(ResX));
-	`redscreen(`showvar(ResY));
-	`redscreen(`showvar(LabelsOffset));*/
-	//DEBUG
 
 	// Init MCM Config Variables
-	/*BAR_WIDTH_MULT = getBAR_WIDTH_MULT();*/
 	BAR_HEIGHT = getBAR_HEIGHT();
 	BAR_ALPHA = getBAR_ALPHA();
 	BAR_OFFSET_Y = BAR_POSITION_Y -BAR_HEIGHT + getBAR_OFFSET_Y();
-	/*BAR_OFFSET_X = getBAR_OFFSET_X();
-	GENERAL_OFFSET_Y = getGENERAL_OFFSET_Y();
-	DODGE_OFFSET_X = getDODGE_OFFSET_X();
-	DODGE_OFFSET_Y = getDODGE_OFFSET_Y();
-	CRIT_OFFSET_X = getCRIT_OFFSET_X();
-	CRIT_OFFSET_Y = getCRIT_OFFSET_Y();*/
 	BarColours[0] = getHIT_HEX_COLOR();
 	BarColours[1] = getCRIT_HEX_COLOR();
 	BarColours[2] = getDODGE_HEX_COLOR();
@@ -175,27 +154,20 @@ simulated function InitLayout()
 	CritDamageSlotIndices.Length = 0;
 	ExpectedDamageSlotIndices.Length = 0;
 
-	// Determine in which Shot HUD slots to print "Graze Chance", "Critical Damage" and "Expected Damage"
-	// Same stat could be selected multiple times, so an array is needed
+	// Determine in which Shot HUD slots to print stats
 	for (i = 0; i < SHOTHUD_LAYOUT.Length; i++)
 	{
-		// Tigrik: 0 = "None", 1 = "Graze Chance", 2 = "Critical Damage", 3 = "Expected Damage"
-		switch (SHOTHUD_LAYOUT[i])
+		// Collapse Slot 1 into Slot 0 if Slot 0 is unused
+		if (i == 1 && SHOTHUD_LAYOUT[0] == 0 && SHOTHUD_LAYOUT[1] != 0)
 		{
-			case 0:
-				break;
-			case 1:
-				GrazeChanceSlotIndices.AddItem(i);
-				break;
-			case 2:
-				CritDamageSlotIndices.AddItem(i);
-				break;
-			case 3:
-				ExpectedDamageSlotIndices.AddItem(i);
-				break;
-			default	: 
-				break;
+			AddStatToSlotArray(SHOTHUD_LAYOUT[1], 0);
+			continue;
 		}
+
+		// Skip actual Slot 1 because it was remapped
+		if (i == 1 && SHOTHUD_LAYOUT[0] == 0 && SHOTHUD_LAYOUT[1] != 0) continue;
+
+		AddStatToSlotArray(SHOTHUD_LAYOUT[i], i);
 	}
 	
 	for(Index=0; Index<ArrayCount(BarBoxes); Index++)
@@ -405,9 +377,22 @@ simulated function Update()
 			{
 				fExpectedDamage = class'ExpectedDamageLib'.static.GetExpectedDamage(kBreakdown, NormalDamage, CritDamage);
 			}
+
+			// If test mode is enabled - test how ShotHUD looks like with certain values in it
+			if (bEnableTestMode)
+			{
+				HitChance = iMockHit;
+				kBreakdown.ResultTable[eHit_Crit] = iMockCritChance;
+				kBreakdown.ResultTable[eHit_Graze] = iMockGraze;
+				NormalDamage.Min = iMockMinDamage;
+				NormalDamage.Max = iMockMaxDamage;
+				CritDamage.Min = iMockCritMinDamageBonus;
+				CritDamage.Max = iMockCritMaxDamageBonus;
+				fExpectedDamage = fMockExpectedDamage;
+			}
+
 			// Tigrik: Print e.g. "Damage: 3-5"
 			PrintShotDamage(kBreakdown, NormalDamage, CritDamage, fExpectedDamage);
-
 
 			CritChance = kBreakdown.ResultTable[eHit_Crit];
 			GrazeChance= kBreakdown.ResultTable[eHit_Graze];
@@ -436,8 +421,8 @@ simulated function Update()
 					//if (HitChance == 0)
 					//{
 						MC.ChildSetBool("statsHit", "_visible", true);
-						MC.ChildSetString("statsHit.shotLabel", "htmlText", Caps(class'X2TacticalGameRulesetDataStructures'.default.m_aAbilityHitResultStrings[eHit_Miss]));
-						MC.ChildSetString("statsHit.shotValue", "htmlText", (100-HitChance) @ "%");
+						MC.ChildSetString("statsHit.shotLabel", "htmlText", class'UIUtilities_Text'.static.GetColoredText(Caps(class'X2TacticalGameRulesetDataStructures'.default.m_aAbilityHitResultStrings[eHit_Miss]), eUIState_Header));
+						MC.ChildSetString("statsHit.shotValue", "htmlText", (100-HitChance) $ "%");
 					//}
 				}
 				else AS_SetShotChance(class'UIUtilities_Text'.static.GetColoredText(m_sShotChanceLabel, eUIState_Header), HitChance);
@@ -449,6 +434,9 @@ simulated function Update()
 				TacticalHUD.SetReticleAimPercentages(-1, -1);
 			}
 			
+			// Expand the width of slots if a slot to the right is empty
+			UpdateShotHUDSlotWidths();
+
 			if( CritChance>-1 &&(
 				(!bHide && !(CRIT_HIDE_TRIVIAL && CritDamage.InfoList.Length==0 && CritChance<=0))
 				|| (bHide && CRIT_SHOW_NonTRIVIAL &&(CritDamage.Min>0 || CritDamage.Max>0))) )
@@ -457,17 +445,17 @@ simulated function Update()
 				{
 					foreach CritDamageSlotIndices(j)
 					{
-						FontString = "+" $ `RANGESTRING(CritDamage.Min, CritDamage.Max);
-						FontString = class'UIUtilities_Text'.static.GetColoredText(FontString, CRIT_STATE_COLOUR, , SlotOffsets[j].bAlignRight ? "right" : "left");
+						FontString = class'DamageLib'.static.GetCritDamageString(NormalDamage, CritDamage);
+						FontString = class'UIUtilities_Text'.static.GetColoredText(FontString, class'ColorLib'.static.IndexToEUIState(get_SHOTHUD_COLOR_CRIT()), , SlotOffsets[j].bAlignRight ? "right" : "left");
 						FontString = class'UIUtilities_Text'.static.AddFontInfo(FontString,false,true, , ValueFontSize);
-						SlotValues[j].SetPosition(SlotOffsets[j].OffsetX-TEXTWIDTH*int(SlotOffsets[j].bAlignRight),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) - 0.8);
-						SlotValues[j].SetText(FontString);
+						SlotValues[j].SetPosition(SlotOffsets[j].OffsetX-(TEXTWIDTH*int(SlotOffsets[j].bAlignRight))+IndexToOffsetX(j),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)));
+						SlotValues[j].SetHTMLText(FontString);
 						SlotValues[j].Show();
 				
 						FontString = CRIT_DAMAGE_LABEL;
 						FontString = class'UIUtilities_Text'.static.GetColoredText(FontString,eUIState_Header, LabelFontSize, SlotOffsets[j].bAlignRight ? "right" : "left");
-						SlotLabels[j].SetPosition(SlotOffsets[j].OffsetX-TEXTWIDTH*int(SlotOffsets[j].bAlignRight),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) + LabelsOffset);
-						SlotLabels[j].SetText(FontString);
+						SlotLabels[j].SetPosition(SlotOffsets[j].OffsetX-(TEXTWIDTH*int(SlotOffsets[j].bAlignRight))+IndexToOffsetX(j),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) + LabelsOffset);
+						SlotLabels[j].SetHTMLText(FontString);
 						SlotLabels[j].Show();
 					}
 				}
@@ -499,15 +487,15 @@ simulated function Update()
 				foreach GrazeChanceSlotIndices(j)
 				{
 					FontString = GrazeChance $ "%";
-					FontString = class'UIUtilities_Text'.static.GetColoredText(FontString, GRAZE_STATE_COLOUR, , SlotOffsets[j].bAlignRight ? "right" : "left");
+					FontString = class'UIUtilities_Text'.static.GetColoredText(FontString, class'ColorLib'.static.IndexToEUIState(get_SHOTHUD_COLOR_GRAZE()), , SlotOffsets[j].bAlignRight ? "right" : "left");
 					FontString = class'UIUtilities_Text'.static.AddFontInfo(FontString,false,true, , ValueFontSize);
-					SlotValues[j].SetPosition(SlotOffsets[j].OffsetX-TEXTWIDTH*int(SlotOffsets[j].bAlignRight),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) - 0.8);
-					SlotValues[j].SetText(FontString);
+					SlotValues[j].SetPosition(SlotOffsets[j].OffsetX-(TEXTWIDTH*int(SlotOffsets[j].bAlignRight))+IndexToOffsetX(j),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)));
+					SlotValues[j].SetHTMLText(FontString);
 					SlotValues[j].Show();
 					FontString = Caps(class'X2TacticalGameRulesetDataStructures'.default.m_aAbilityHitResultStrings[eHit_Graze]);
 					FontString = class'UIUtilities_Text'.static.GetColoredText(FontString,eUIState_Header,LabelFontSize ,SlotOffsets[j].bAlignRight ? "right" : "left");
-					SlotLabels[j].SetPosition(SlotOffsets[j].OffsetX-TEXTWIDTH*int(SlotOffsets[j].bAlignRight),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) + LabelsOffset);
-					SlotLabels[j].SetText(FontString);
+					SlotLabels[j].SetPosition(SlotOffsets[j].OffsetX-(TEXTWIDTH*int(SlotOffsets[j].bAlignRight))+IndexToOffsetX(j),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) + LabelsOffset);
+					SlotLabels[j].SetHTMLText(FontString);
 					SlotLabels[j].Show();
 				}
 			}
@@ -550,7 +538,8 @@ simulated function Update()
 					Chance[eHit_Success] += AimBonus; //Assist bonus directly adds to eHit_Success changes;
 					AimBonus=0; //Hide the seperate aimbonus bar;
 				}
-				offsetX = BAR_WIDTH_MULT * (-50) + BAR_OFFSET_X;
+
+				offsetX = int((BAR_WIDTH_MULT * (-50)) + 0.5f) + BAR_OFFSET_X;
 				//Mr. Nice: offsetX is an out parameter, and is incremented in SetBox() as required.
 				switch(int(TH_AIM_LEFT_OF_CRIT) + 2* int(TH_ASSIST_BESIDE_HIT))
 				{
@@ -603,15 +592,15 @@ simulated function Update()
 			foreach ExpectedDamageSlotIndices(j)
 			{
 				FontString = class'ExpectedDamageLib'.static.FormatExpectedDamageString(fExpectedDamage);
-				FontString = class'UIUtilities_Text'.static.GetColoredText(FontString, eUIState_Normal, , SlotOffsets[j].bAlignRight ? "right" : "left");
+				FontString = class'UIUtilities_Text'.static.GetColoredText(FontString, class'ColorLib'.static.IndexToEUIState(get_SHOTHUD_COLOR_EXPECTED()), , SlotOffsets[j].bAlignRight ? "right" : "left");
 				FontString = class'UIUtilities_Text'.static.AddFontInfo(FontString,false,true, , ValueFontSize);
-				SlotValues[j].SetPosition(SlotOffsets[j].OffsetX-TEXTWIDTH*int(SlotOffsets[j].bAlignRight),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) - 0.8);
-				SlotValues[j].SetText(FontString);
+				SlotValues[j].SetPosition(SlotOffsets[j].OffsetX-(TEXTWIDTH*int(SlotOffsets[j].bAlignRight))+IndexToOffsetX(j),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)));
+				SlotValues[j].SetHTMLText(FontString);
 				SlotValues[j].Show();
 				FontString = EXPECTED_DAMAGE_LABEL;
 				FontString = class'UIUtilities_Text'.static.GetColoredText(FontString,eUIState_Header,LabelFontSize ,SlotOffsets[j].bAlignRight ? "right" : "left");
-				SlotLabels[j].SetPosition(SlotOffsets[j].OffsetX-TEXTWIDTH*int(SlotOffsets[j].bAlignRight),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) + LabelsOffset);
-				SlotLabels[j].SetText(FontString);
+				SlotLabels[j].SetPosition(SlotOffsets[j].OffsetX-(TEXTWIDTH*int(SlotOffsets[j].bAlignRight))+IndexToOffsetX(j),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) + LabelsOffset);
+				SlotLabels[j].SetHTMLText(FontString);
 				SlotLabels[j].Show();
 			}
 		} else
@@ -821,7 +810,7 @@ function string UpdateHackDescription(
 
         Label = RewardItem.RewardTemplate.GetFriendlyName();
         Chance = Clamp(RewardItem.Chance, 0, 100);
-        _Color = RewardItem.RewardTemplate.bBadThing ? eUIState_Bad : eUIState_Good;
+        _Color = RewardItem.RewardTemplate.bBadThing ? class'ColorLib'.static.IndexToEUIState(get_HACK_COLOR_FAIL()) : class'ColorLib'.static.IndexToEUIState(get_HACK_COLOR_REWARD());
 
         if (AddedCount == 0)
         {
@@ -896,28 +885,142 @@ function PrintShotDamage(ShotBreakdown kBreakdown, DamageBreakdown NormalDamage,
 		}
 
         if(NormalDamage.Bonus>0)
-		{
-			AddDamage(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, GetDamageColor(NormalDamage), 38), true);
+		{	
+			AddDamageScrollable(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, GetDamageColor(NormalDamage), 38), true);
 		}
 		else
 		{
-			AddDamage(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, GetDamageColor(NormalDamage), 36), true);
+			AddDamageScrollable(class'UIUtilities_Text'.static.GetColoredText(ShotDamage, GetDamageColor(NormalDamage), 38), true);
 		}
     }
 	`TRACE_EXIT("");
 }
 
 /**
+ * Adds a damage value that preserves vanilla layout behavior while
+ * overlaying a scrolling text element when the text exceeds a maximum width.
+ *
+ * The original UIText remains present (but invisible) so that
+ * RepositionDamageContainer() continues to calculate layout correctly.
+ *
+ * @param Label         Damage text HTML (e.g. colored "200-300")
+ * @param bIsLastOne    If true, divider is omitted
+ */
+simulated function AddDamageScrollable(string Label, optional bool bIsLastOne)
+{
+    local UIPanel Divider;
+    local UIText LayoutText;
+    local UIScrollingText ScrollText;
+
+    // Invisible layout text
+    LayoutText = Spawn(class'UIText', DamageContainer);
+    LayoutText.InitText(, Label, true, RepositionDamageContainer).SetHeight(50);
+    LayoutText.bAnimateOnInit = false;
+    LayoutText.SetAlpha(0);
+
+    // Visible scrolling text
+    ScrollText = Spawn(class'UIScrollingText', DamageContainer);
+
+    ScrollText.InitScrollingText('', "", float(get_DAMAGE_LABEL_WIDTH()), 0, 0, true);
+
+	Label = class'UIUtilities_Text'.static.AddFontInfo(Label, false, true, , 38);
+	ScrollText.SetWidth(get_DAMAGE_LABEL_WIDTH());
+    ScrollText.SetHTMLText(Label);
+    ScrollText.bAnimateOnInit = false;
+
+    if (!bIsLastOne)
+    {
+        Divider = Spawn(class'UIPanel', DamageContainer);
+        Divider.InitPanel(, class'UIUtilities_Controls'.const.MC_GenericPixel).SetSize(2, 40);
+        Divider.bAnimateOnInit = false;
+    }
+}
+
+/**
+ * Aligns scrolling overlays with their corresponding layout UIText controls.
+ *
+ * Same as the original function, except that it calls SyncDamageScrollingTextPositions() at the end
+ */
+simulated function RepositionDamageContainer()
+{
+	local int i, NextX;
+	local UIPanel Control;
+	local UIText Text;
+	local bool bAllTextRealized;
+
+	// Do nothing if we just added the label and nothing else
+	if(DamageContainer.NumChildren() == 1)
+		return;
+	
+	NextX = 0;
+	bAllTextRealized = true;
+	for(i = 0; i < DamageContainer.Children.Length; ++i)
+	{
+		Control = DamageContainer.GetChildAt(i);
+		Control.SetX(NextX);
+		NextX += 10;
+
+		Text = UIText(Control);
+		if( Text != none )
+		{
+			if( Text.TextSizeRealized )
+				NextX += (i > 0) ? FMin(Text.Width, float(get_DAMAGE_LABEL_WIDTH())) : Text.Width;
+			else
+				bAllTextRealized = false;
+		}
+	}
+
+	if( bAllTextRealized )
+	{
+		DamageContainer.SetX(NextX * -0.5);
+		DamageContainer.Show();
+		DamageContainer.AnimateIn(0);
+
+		SyncDamageScrollingTextPositions();
+	}
+}
+
+/**
+ * Aligns scrolling overlays with their corresponding layout UIText controls.
+ */
+simulated function SyncDamageScrollingTextPositions()
+{
+    local int i;
+    local UIText LayoutText;
+    local UIScrollingText ScrollText;
+
+    for (i = 0; i < DamageContainer.Children.Length; ++i)
+    {
+        LayoutText = UIText(DamageContainer.GetChildAt(i));
+
+        if (LayoutText != none)
+        {
+            // Find scrolling text immediately after it
+            if (i + 1 < DamageContainer.Children.Length)
+            {
+                ScrollText = UIScrollingText(DamageContainer.GetChildAt(i + 1));
+
+                if (ScrollText != none)
+                {
+                    ScrollText.SetX(LayoutText.X);
+                    ScrollText.SetY(LayoutText.Y);
+                }
+            }
+        }
+    }
+}
+
+/**
  * Determines which color to use for the damage.
  * 
  * Behavior:
- * - Returns eUIState_Warning2 is NormalDamage has any bonus damage
- * - Returns eUIState_Good otherwise
+ * - Returns an associated color for the MCM option SHOTHUD_COLOR_BONUS_DAMAGE if NormalDamage has any bonus damage
+ * - Returns an associated color for the MCM option SHOTHUD_COLOR_DAMAGE otherwise
  * @param NormalDamage	Base damage breakdown (min/max + modifiers)
  */
 function EUIState GetDamageColor(DamageBreakdown NormalDamage)
 {
-	return (NormalDamage.Bonus > 0) ? eUIState_Warning2 : eUIState_Good;
+	return (NormalDamage.Bonus > 0) ? class'ColorLib'.static.IndexToEUIState(get_SHOTHUD_COLOR_BONUS_DAMAGE()) : class'ColorLib'.static.IndexToEUIState(get_SHOTHUD_COLOR_DAMAGE());
 }
 
 /**
@@ -935,29 +1038,158 @@ private function int AlignOffsetY(UITacticalHUD TacticalHUD, int OffsetY)
 {
 	return (TacticalHUD.m_kAbilityHUD.ActiveAbilities > MAX_ABILITIES_PER_ROW) ? (OffsetY + GENERAL_OFFSET_Y) : OffsetY;
 }
-
 /**
- * Creates and initializes a UIText element for use in the Shot HUD.
+ * Creates and initializes a UIScrollingText element for use in the Shot HUD.
  *
  * The text element is configured with default properties including bottom-center anchoring,
- * predefined width, and hidden visibility. This ensures consistent setup for all Shot HUD
- * text elements such as values and labels.
+ * predefined width, and hidden visibility. Unlike UIText, this implementation enables
+ * automatic horizontal scrolling when the text exceeds the specified width.
  *
- * @param ShotHUD       Reference to the Shot HUD that will own the created text element
+ * This ensures consistent setup for all Shot HUD text elements such as values and labels,
+ * while supporting overflow handling via scrolling.
  *
- * @return UIText       Newly created and initialized UIText instance
+ * @param ShotHUD           Reference to the Shot HUD that will own the created text element
+ *
+ * @return UIScrollingText  Newly created and initialized UIScrollingText instance
  */
-private function UIText CreateShotHUDText(UITacticalHUD_ShotHUD ShotHUD)
+private function UIScrollingText CreateShotHUDText(UITacticalHUD_ShotHUD ShotHUD)
 {
-    local UIText Text;
+    local UIScrollingText Text;
 
-    Text = Owner.Spawn(class'UIText', ShotHUD);
-    Text.InitText();
+    Text = Owner.Spawn(class'UIScrollingText', ShotHUD);
+    Text.InitScrollingText('', "", float(get_SHOTHUD_SLOT_WIDTH()), 0, 0);
     Text.AnchorBottomCenter();
-    Text.SetWidth(TEXTWIDTH);
+    Text.SetWidth(get_SHOTHUD_SLOT_WIDTH());
     Text.Hide();
 
     return Text;
+}
+
+/**
+ * Maps a slot index to its corresponding horizontal offset value
+ * for the Shot HUD elements. The offsets are retrieved from MCM
+ * configuration (or defaults if not set).
+ *
+ * Index mapping:
+ * - 0 ? Left Side 1 offset
+ * - 1 ? Left Side 2 offset
+ * - 2 ? Right Side 1 offset
+ * - 3 ? Right Side 2 offset
+ *
+ * If an invalid index is provided, the function returns 0 as a safe fallback.
+ *
+ * @param i
+ *     Zero-based index identifying the HUD slot.
+ *
+ * @return
+ *     The configured horizontal offset (in pixels) for the specified slot,
+ *     or 0 if the index is out of range.
+ */
+private function int IndexToOffsetX(int i)
+{
+    switch (i)
+    {
+        case 0: return getSHOTHUD_LEFT_1_OFFSET_X();
+        case 1: return getSHOTHUD_LEFT_2_OFFSET_X();
+        case 2: return getSHOTHUD_RIGHT_1_OFFSET_X();
+        case 3: return getSHOTHUD_RIGHT_2_OFFSET_X();
+    }
+
+    return 0; // fallback for unexpected indices
+}
+
+/**
+ * Returns true if any of the provided slot index arrays contains SlotIndex.
+ */
+private function bool IsSlotUsedAnywhere(int SlotIndex, array<int> A,array<int> B,
+    array<int> C
+)
+{
+    local int k;
+
+    for (k = 0; k < A.Length; ++k)
+        if (A[k] == SlotIndex) return true;
+
+    for (k = 0; k < B.Length; ++k)
+        if (B[k] == SlotIndex) return true;
+
+    for (k = 0; k < C.Length; ++k)
+        if (C[k] == SlotIndex) return true;
+
+    return false;
+}
+
+/**
+ * Updates slot widths based on global usage of all slot index arrays.
+ * Expand the width of slots if a slot to the right is empty.
+ *
+ * Rules:
+ * - Slot 0 expands if any stat uses 0 and none use 1
+ * - Slot 2 expands if any stat uses 2 and none use 3
+ * - Otherwise slots use base width
+ */
+private function UpdateShotHUDSlotWidths()
+{
+    local bool bUses0, bUses1, bUses2, bUses3;
+    local int BaseWidth;
+
+    BaseWidth = get_SHOTHUD_SLOT_WIDTH();
+
+    // Detect usage across all stats
+    bUses0 = IsSlotUsedAnywhere(0, CritDamageSlotIndices, GrazeChanceSlotIndices, ExpectedDamageSlotIndices);
+    bUses1 = IsSlotUsedAnywhere(1, CritDamageSlotIndices, GrazeChanceSlotIndices, ExpectedDamageSlotIndices);
+    bUses2 = IsSlotUsedAnywhere(2, CritDamageSlotIndices, GrazeChanceSlotIndices, ExpectedDamageSlotIndices);
+    bUses3 = IsSlotUsedAnywhere(3, CritDamageSlotIndices, GrazeChanceSlotIndices, ExpectedDamageSlotIndices);
+
+    // --- Left side ---
+    if (bUses0 && !bUses1)
+    {
+        SlotValues[0].SetWidth(Max(BaseWidth, 114));
+        SlotLabels[0].SetWidth(Max(BaseWidth, 114));
+    }
+    else
+    {
+        SlotValues[0].SetWidth(BaseWidth);
+        SlotLabels[0].SetWidth(BaseWidth);
+    }
+
+    // --- Right side ---
+    if (bUses2 && !bUses3)
+    {
+        SlotValues[2].SetWidth(Max(BaseWidth, 114));
+        SlotLabels[2].SetWidth(Max(BaseWidth, 114));
+    }
+    else
+    {
+        SlotValues[2].SetWidth(BaseWidth);
+        SlotLabels[2].SetWidth(BaseWidth);
+    }
+
+    // Always reset the paired slots (important!)
+    SlotValues[1].SetWidth(BaseWidth);
+    SlotLabels[1].SetWidth(BaseWidth);
+
+    SlotValues[3].SetWidth(BaseWidth);
+    SlotLabels[3].SetWidth(BaseWidth);
+}
+
+/**
+ * Adds a stat type to the appropriate Shot HUD slot array.
+ */
+private function AddStatToSlotArray(int StatType, int SlotIndex)
+{
+    switch (StatType)
+    {
+        case 1:
+            GrazeChanceSlotIndices.AddItem(SlotIndex);
+            break;
+        case 2:
+            CritDamageSlotIndices.AddItem(SlotIndex);
+            break;
+        case 3:
+            ExpectedDamageSlotIndices.AddItem(SlotIndex);
+            break;
+    }
 }
 
 function bool GetDISPLAY_MISS_CHANCE()
@@ -1092,12 +1324,77 @@ function bool getPREVIEW_APPLY_CHANCE()
 	return `MCM_CH_GetValue(class'MCM_Defaults'.default.PREVIEW_APPLY_CHANCE, class'ExtendedInformationRedux3_MCMScreen'.default.PREVIEW_APPLY_CHANCE);
 }
 
+function int getSHOTHUD_LEFT_1_OFFSET_X()
+{
+	return `MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_LEFT_1_OFFSET_X, class'ExtendedInformationRedux3_MCMScreen'.default.SHOTHUD_LEFT_1_OFFSET_X);
+}
+
+function int getSHOTHUD_LEFT_2_OFFSET_X()
+{
+	return `MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_LEFT_2_OFFSET_X, class'ExtendedInformationRedux3_MCMScreen'.default.SHOTHUD_LEFT_2_OFFSET_X);
+}
+
+function int getSHOTHUD_RIGHT_1_OFFSET_X()
+{
+	return `MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_RIGHT_1_OFFSET_X, class'ExtendedInformationRedux3_MCMScreen'.default.SHOTHUD_RIGHT_1_OFFSET_X);
+}
+
+function int getSHOTHUD_RIGHT_2_OFFSET_X()
+{
+	return `MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_RIGHT_2_OFFSET_X, class'ExtendedInformationRedux3_MCMScreen'.default.SHOTHUD_RIGHT_2_OFFSET_X);
+}
+
 //DEBUG
 /*function float getDODGE_OFFSET_Y()
 {
 	return `MCM_CH_GetValue(class'MCM_Defaults'.default.DODGE_OFFSET_Y, class'ExtendedInformationRedux3_MCMScreen'.default.DODGE_OFFSET_Y);
 }*/
 //DEBUG
+
+function int get_SHOTHUD_SLOT_WIDTH()
+{
+	return `MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_SLOT_WIDTH, class'ExtendedInformationRedux3_MCMScreen'.default.SHOTHUD_SLOT_WIDTH);
+}
+
+function int get_DAMAGE_LABEL_WIDTH()
+{
+	return `MCM_CH_GetValue(class'MCM_Defaults'.default.DAMAGE_LABEL_WIDTH, class'ExtendedInformationRedux3_MCMScreen'.default.DAMAGE_LABEL_WIDTH);
+}
+
+function int get_SHOTHUD_COLOR_DAMAGE()
+{
+	return `MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_COLOR_DAMAGE, class'ExtendedInformationRedux3_MCMScreen'.default.SHOTHUD_COLOR_DAMAGE);
+}
+
+function int get_SHOTHUD_COLOR_BONUS_DAMAGE()
+{
+	return `MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_COLOR_BONUS_DAMAGE, class'ExtendedInformationRedux3_MCMScreen'.default.SHOTHUD_COLOR_BONUS_DAMAGE);
+}
+
+function int get_SHOTHUD_COLOR_GRAZE()
+{
+	return `MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_COLOR_GRAZE, class'ExtendedInformationRedux3_MCMScreen'.default.SHOTHUD_COLOR_GRAZE);
+}
+
+function int get_SHOTHUD_COLOR_CRIT()
+{
+	return `MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_COLOR_CRIT, class'ExtendedInformationRedux3_MCMScreen'.default.SHOTHUD_COLOR_CRIT);
+}
+
+function int get_SHOTHUD_COLOR_EXPECTED()
+{
+	return `MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_COLOR_EXPECTED, class'ExtendedInformationRedux3_MCMScreen'.default.SHOTHUD_COLOR_EXPECTED);
+}
+
+function int get_HACK_COLOR_FAIL()
+{
+	return `MCM_CH_GetValue(class'MCM_Defaults'.default.HACK_COLOR_FAIL, class'ExtendedInformationRedux3_MCMScreen'.default.HACK_COLOR_FAIL);
+}
+
+function int get_HACK_COLOR_REWARD()
+{
+	return `MCM_CH_GetValue(class'MCM_Defaults'.default.HACK_COLOR_REWARD, class'ExtendedInformationRedux3_MCMScreen'.default.HACK_COLOR_REWARD);
+}
 
 
 defaultproperties
@@ -1106,7 +1403,7 @@ defaultproperties
 
 	// ShotBar position, size, and offset settings, should not be altered whatsoever
 	// so created those default values inside the class to not expose them in MCM any more
-	BAR_WIDTH_MULT = 3;
+	BAR_WIDTH_MULT = 2.5;
 	BAR_HEIGHT = 10;
 	BAR_OFFSET_X = 3;
 	//BAR_OFFSET_Y = -122;
@@ -1119,10 +1416,6 @@ defaultproperties
 	MAX_ABILITIES_PER_ROW = 15;
 	//TEXTWIDTH=100;
 	TEXTWIDTH=150;
-
-	GRAZE_STATE_COLOUR=eUIState_Cash;
-	CRIT_STATE_COLOUR=eUIState_Warning;
-
 
 	HIT_SHOW_NonTRIVIAL=true;
 	GRAZE_SHOW_NonTRIVIAL=true;

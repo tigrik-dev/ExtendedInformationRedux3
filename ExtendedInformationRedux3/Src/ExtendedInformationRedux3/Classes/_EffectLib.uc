@@ -22,6 +22,7 @@
 class _EffectLib extends Object;
 
 `include(ExtendedInformationRedux3\Src\ExtendedInformationRedux3\EIR_LoggerMacros.uci)
+`include(ExtendedInformationRedux3\Src\ModConfigMenuAPI\MCM_API_CfgHelpers.uci)
 
 var localized string sUnknownEffect;
 var localized string sFuseTriggered;
@@ -252,24 +253,29 @@ static function bool IsMissingLocalization(string Value)
 static function EUIState GetColorForIndex(int Index, int Total)
 {
     local int GoodCount, WarningCount;
+	local EUIState StatusColor1, StatusColor2, StatusColor3;
+	
+	StatusColor1 = class'ColorLib'.static.IndexToEUIState(get_STATUS_COLOR_1());
+	StatusColor2 = class'ColorLib'.static.IndexToEUIState(get_STATUS_COLOR_2());
+	StatusColor3 = class'ColorLib'.static.IndexToEUIState(get_STATUS_COLOR_3());
 
     if (Total == 1)
-        return eUIState_Good;
+        return StatusColor1;
 
     if (Total == 2)
-        return (Index == 0) ? eUIState_Good : eUIState_Psyonic;
+        return (Index == 0) ? StatusColor1 : StatusColor3;
 
     // Distribute
     GoodCount = (Total + 2) / 3;
     WarningCount = (Total + 1) / 3;
 
     if (Index < GoodCount)
-        return eUIState_Good;
+        return StatusColor1;
 
     if (Index < GoodCount + WarningCount)
-        return eUIState_Warning;
+        return StatusColor2;
 
-    return eUIState_Psyonic;
+    return StatusColor3;
 }
 
 /**
@@ -553,4 +559,21 @@ static function bool DoesFlamethrowerEffectPass(
     }
 
 	return bEffectRequiresNapalmX ? bUnitHasNapalmX : !bUnitHasNapalmX;
+}
+
+`MCM_CH_StaticVersionChecker(class'MCM_Defaults'.default.VERSION, class'ExtendedInformationRedux3_MCMScreen'.default.CONFIG_VERSION)
+
+static function int get_STATUS_COLOR_1()
+{	
+	return `MCM_CH_GetValue(class'MCM_Defaults'.default.STATUS_COLOR_1, class'ExtendedInformationRedux3_MCMScreen'.default.STATUS_COLOR_1);
+}
+
+static function int get_STATUS_COLOR_2()
+{	
+	return `MCM_CH_GetValue(class'MCM_Defaults'.default.STATUS_COLOR_2, class'ExtendedInformationRedux3_MCMScreen'.default.STATUS_COLOR_2);
+}
+
+static function int get_STATUS_COLOR_3()
+{	
+	return `MCM_CH_GetValue(class'MCM_Defaults'.default.STATUS_COLOR_3, class'ExtendedInformationRedux3_MCMScreen'.default.STATUS_COLOR_3);
 }
