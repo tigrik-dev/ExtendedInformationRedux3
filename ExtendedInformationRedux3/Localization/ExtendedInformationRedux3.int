@@ -130,9 +130,6 @@ sDamageLabelWidth_MCMText = "Damage Label Width"
 sShotHudColorSettings_MCMText = "ShotHUD Color Settings"
 sShotHudDamageColor_MCMText = "Damage"
 sShotHudDamageBonusColor_MCMText = "Damage With a Bonus"
-sShotHudGrazeChanceColor_MCMText = "Damage With a Bonus"
-sShotHudCritDamageColor_MCMText = "Damage With a Bonus"
-sShotHudExpectedDamageColor_MCMText = "Damage With a Bonus"
 
 sStatusEffectColorSettings_MCMText = "Status Effect Color Settings"
 sStatusEffect = "Status Effect"
@@ -142,7 +139,7 @@ sHackPreviewColorSettings_MCMText = "Hack Preview Color Settings"
 sHackPreviewFailure_MCMText = "Failure"
 sHackPreviewReward_MCMText = "Reward"
 
-sFlyoverShowCrit0_MCMText = "Show Crit Chance in Flyovers When It's 0%""
+sFlyoverShowCrit0_MCMText = "Show Crit Chance in Flyovers When It's 0%"
 sFlyoverShowGraze0_MCMText = "Show Graze Chance in Flyovers When It's 0%"
 
 [HitCalcLib]
