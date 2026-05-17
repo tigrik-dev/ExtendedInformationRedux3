@@ -132,5 +132,5 @@ defaultproperties
 {
     MajorVersion = 0
     MinorVersion = 4
-    PatchVersion = 1
+    PatchVersion = 2
 }
