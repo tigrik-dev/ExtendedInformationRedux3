@@ -155,9 +155,6 @@
     <Content Include="Src\ExtendedInformationRedux3\Classes\X2Patch_PrecisionShotCritDamage.uc">
       <SubType>Content</SubType>
     </Content>
-    <Content Include="Src\ExtendedInformationRedux3\Classes\X2TacticalGameRulesetLib.uc">
-      <SubType>Content</SubType>
-    </Content>
     <Content Include="Src\ExtendedInformationRedux3\Classes\X2TacticalGameRuleset_BreakdownObserver.uc">
       <SubType>Content</SubType>
     </Content>
