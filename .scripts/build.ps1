@@ -2,7 +2,8 @@ Param(
     [string] $srcDirectory, # the path that contains your mod's .XCOM_sln
     [string] $sdkPath, # the path to your SDK installation ending in "XCOM 2 War of the Chosen SDK"
     [string] $gamePath, # the path to your XCOM 2 installation ending in "XCOM2-WaroftheChosen"
-    [string] $config # build configuration
+    [string] $config, # build configuration
+    [switch] $useHighlanderFromEnv # If present, builds the mod against the Community Highlander, as found in X2EMPT_HIGHLANDER_FOLDER
 )
 
 $ScriptDirectory = Split-Path $MyInvocation.MyCommand.Path
@@ -22,6 +23,17 @@ $builder = [BuildProject]::new("ExtendedInformationRedux3", $srcDirectory, $sdkP
 # Specify path to your local Highlander repository or the Highlander's mod folder,
 # and uncomment the line:
 # $builder.IncludeSrc("C:\Users\Iridar\Documents\Firaxis ModBuddy\X2WOTCCommunityHighlander\X2WOTCCommunityHighlander\Src")
+
+# Building against Highlander option 3:
+# Create an X2EMPT_HIGHLANDER_FOLDER environment variable (if it does not already exist)
+# containing the path to your local Highlander repository or the Highlander's mod folder,
+# then uncomment the line:
+if ($useHighlanderFromEnv) {
+    # Hid this behind a switch so I don't break your workflow!
+    # I've been building all my mods like this, very ergonomic
+    # once it's set up. --Dalo
+    $builder.IncludeSrc($env:X2EMPT_HIGHLANDER_FOLDER)
+}
 
 # Uncomment to use additional global Custom Src to build against.
 # $builder.IncludeSrc("C:\Users\Iridar\Documents\Firaxis ModBuddy\CustomSrc")
