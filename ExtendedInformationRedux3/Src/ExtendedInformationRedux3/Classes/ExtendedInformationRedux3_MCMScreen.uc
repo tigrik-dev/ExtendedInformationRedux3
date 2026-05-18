@@ -80,6 +80,8 @@ var config int		HACK_COLOR_REWARD;
 var config bool		FLYOVER_SHOW_CRIT_0;
 var config bool		FLYOVER_SHOW_GRAZE_0;
 
+`MCM_API_AutoCheckBoxVars(SHOW_MITIGATION);
+
 var localized string			sBlack;
 var localized string			sWhite;
 var localized string			sCyan;
@@ -365,6 +367,8 @@ event OnInit(UIScreen Screen)
 `MCM_API_BasicCheckboxSaveHandler(FLYOVER_SHOW_CRIT_0_HANDLER, FLYOVER_SHOW_CRIT_0)
 `MCM_API_BasicCheckboxSaveHandler(FLYOVER_SHOW_GRAZE_0_HANDLER, FLYOVER_SHOW_GRAZE_0)
 
+`MCM_API_AutoCheckBoxSaveHandler(SHOW_MITIGATION);
+
 /**
  * Handles checkbox value changes and updates dependent UI elements and config values.
  *
@@ -476,6 +480,7 @@ simulated function ClientModCallback(MCM_API_Instance ConfigAPI, int GameMode)
 	
 	DisplayMissChance_MCMUI			= Group0.AddCheckbox('DisplayMissChance', sDisplayMissChance_MCMText, sDisplayMissChance_MCMText, DISPLAY_MISS_CHANCE, DisplayMissChanceHandler, );
 	ExpectedDamage_MCMUI			= Group0.AddCheckbox('ExpectedDamage', sExpectedDamage_MCMText, sExpectedDamage_MCMTooltip, EXPECTED_DAMAGE, , CheckBoxChangeHandler);
+	`MCM_API_AutoAddCheckBox(Group0, SHOW_MITIGATION, none);
 	Group0.AddLabel('empty_line',"","");
 	
 	Group1 = Page.AddGroup('Group1', sGroupFlyoverSettings_MCMText);
@@ -671,6 +676,8 @@ simulated function LoadSavedSettings()
 	FLYOVER_SHOW_CRIT_0			= `MCM_CH_GetValue(class'MCM_Defaults'.default.FLYOVER_SHOW_CRIT_0,FLYOVER_SHOW_CRIT_0);
 	FLYOVER_SHOW_GRAZE_0		= `MCM_CH_GetValue(class'MCM_Defaults'.default.FLYOVER_SHOW_GRAZE_0,FLYOVER_SHOW_GRAZE_0);
 
+	SHOW_MITIGATION = `GETMCMVAR(SHOW_MITIGATION);
+
 	`TRACE_EXIT("");
 }
 
@@ -750,6 +757,8 @@ simulated function ResetButtonClicked(MCM_API_SettingsPage Page)
 
 	FLYOVER_SHOW_CRIT_0_MCMUI			.SetValue(class'MCM_Defaults'.default.FLYOVER_SHOW_CRIT_0, false);
 	FLYOVER_SHOW_GRAZE_0_MCMUI			.SetValue(class'MCM_Defaults'.default.FLYOVER_SHOW_GRAZE_0, false);
+
+	`MCM_API_AutoReset(SHOW_MITIGATION);
 
 	`TRACE_EXIT("");
 }

@@ -1,5 +1,15 @@
 // Contains helper functions for doing proper user-configurable save data. See documentation for patterns on how to do it.
 
+// ============================================================
+// Config
+// ============================================================
+
+`define MCM_DEFAULT_CLASS class'MCM_Defaults'
+`define MCM_SCREEN_CLASS class'ExtendedInformationRedux3_MCMScreen'
+
+`define GETMCMVAR(MCMVAR) \
+    `MCM_CH_GetValue(`MCM_DEFAULT_CLASS.default.`MCMVAR, `MCMVAR)
+
 `define MCM_CH_StaticVersionChecker(SrcVer,TrgVer)\
     static function bool MCM_CH_IMPL_VersionChecker()\
     {\
@@ -25,3 +35,25 @@
 
 `define MCM_CH_GetCompositeVersion()\
     MCM_CH_IMPL_VersionMax()
+
+`define GET_MCM_VAR(VAR_NAME) \
+	`MCM_CH_GetValue( \
+		`MCM_DEFAULT_CLASS.default.`VAR_NAME, \
+		`MCM_SCREEN_CLASS.default.`VAR_NAME \
+	)
+
+// ============================================================
+// Version helpers
+// ============================================================
+
+`define MCM_STATIC_VERSION_CHECKER() \
+	`MCM_CH_StaticVersionChecker( \
+		`MCM_DEFAULT_CLASS.default.VERSION, \
+		`MCM_SCREEN_CLASS.default.CONFIG_VERSION \
+	)
+
+`define MCM_VERSION_CHECKER() \
+	`MCM_CH_VersionChecker( \
+		`MCM_DEFAULT_CLASS.default.VERSION, \
+		`MCM_SCREEN_CLASS.default.CONFIG_VERSION \
+	)

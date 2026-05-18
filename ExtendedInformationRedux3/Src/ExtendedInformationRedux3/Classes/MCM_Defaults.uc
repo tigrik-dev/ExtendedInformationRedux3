@@ -86,3 +86,5 @@ var config int		HACK_COLOR_REWARD;
 
 var config bool		FLYOVER_SHOW_CRIT_0;
 var config bool		FLYOVER_SHOW_GRAZE_0;
+
+var config bool		SHOW_MITIGATION;

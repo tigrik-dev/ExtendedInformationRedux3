@@ -15,6 +15,7 @@
 class DamagePreviewLib extends Object implements(EI_DamagePreviewHelperAPI);
 
 `include(ExtendedInformationRedux3\Src\ExtendedInformationRedux3\EIR_LoggerMacros.uci)
+`include(ExtendedInformationRedux3\Src\ModConfigMenuAPI\MCM_API_CfgHelpers.uci)
 
 // Computes minimum damage from WeaponDamageValue
 `define MINDAM(WEPDAM) ( `WEPDAM.Damage - `WEPDAM.Spread )
@@ -642,10 +643,9 @@ static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, 
 	}
 
 	// Dalo: Begin CHL Issue #1540 - preview armor DR
-	// TODO @tigrik-dev: Only run this code if the appropriate MCM option is enabled!
-	if (true && TargetUnit != none && IgnoreArmor == 0 && NormalDamage.Min > 0)
+	if (Get_SHOW_MITIGATION() && TargetUnit != none && IgnoreArmor == 0 && NormalDamage.Min > 0)
 	{
-		`TRACE_IF("TargetUnit != none && !bIgnoreArmor && NormalDamage.Min > 0");
+		`TRACE_IF("Get_SHOW_MITIGATION() && TargetUnit != none && !bIgnoreArmor && NormalDamage.Min > 0");
 		// Dalo: The original mitigation (and original minimum mitigation, i.e. 0)
 		// are shared across both damage values, so can be initialized here.
 		OriginalMitigation = TargetUnit.GetArmorMitigationForUnitFlag();
@@ -1340,4 +1340,11 @@ static simulated function CalculateMitigatedDamagePreview(StateObjectReference T
 	// Net mitigation for ShotWings: How much damage did the armor actually prevent?
 	NetMitigationMin = MinDamage - MinDamageValue.Damage;
 	NetMitigationMax = MaxDamage - MaxDamageValue.Damage;
+}
+
+`MCM_STATIC_VERSION_CHECKER();
+
+static function bool Get_SHOW_MITIGATION()
+{
+	return `GET_MCM_VAR(SHOW_MITIGATION);
 }
