@@ -68,6 +68,7 @@ var config int		SHOTHUD_COLOR_BONUS_DAMAGE;
 var config int		SHOTHUD_COLOR_GRAZE;
 var config int		SHOTHUD_COLOR_CRIT;
 var config int		SHOTHUD_COLOR_EXPECTED;
+var config int		SHOTHUD_COLOR_KILL_CHANCE;
 
 var config int		STATUS_COLOR_1;
 var config int		STATUS_COLOR_2;
@@ -103,7 +104,7 @@ var array<string>				ColorArray;
 var array<string>				UIStateColorArray;
 
 var array<string>				SlotOptions;
-var localized string			SlotOptions_0, SlotOptions_1, SlotOptions_2, SlotOptions_3;
+var localized string			SlotOptions_0, SlotOptions_1, SlotOptions_2, SlotOptions_3, SlotOptions_4;
 
 var localized string			sSettingsPage_MCMText;
 var localized string			sPageTitle_MCMText;
@@ -258,6 +259,7 @@ var MCM_API_Dropdown			SHOTHUD_COLOR_BONUS_DAMAGE_MCMUI;
 var MCM_API_Dropdown			SHOTHUD_COLOR_GRAZE_MCMUI;
 var MCM_API_Dropdown			SHOTHUD_COLOR_CRIT_MCMUI;
 var MCM_API_Dropdown			SHOTHUD_COLOR_EXPECTED_MCMUI;
+var MCM_API_Dropdown			SHOTHUD_COLOR_KILL_CHANCE_MCMUI;
 
 var MCM_API_Dropdown			STATUS_COLOR_1_MCMUI;
 var MCM_API_Dropdown			STATUS_COLOR_2_MCMUI;
@@ -355,6 +357,7 @@ event OnInit(UIScreen Screen)
 `MCM_API_BasicIndexSaveHandler(SHOTHUD_COLOR_GRAZE_HANDLER, SHOTHUD_COLOR_GRAZE, UIStateColorArray)
 `MCM_API_BasicIndexSaveHandler(SHOTHUD_COLOR_CRIT_HANDLER, SHOTHUD_COLOR_CRIT, UIStateColorArray)
 `MCM_API_BasicIndexSaveHandler(SHOTHUD_COLOR_EXPECTED_HANDLER, SHOTHUD_COLOR_EXPECTED, UIStateColorArray)
+`MCM_API_BasicIndexSaveHandler(SHOTHUD_COLOR_KILL_CHANCE_HANDLER, SHOTHUD_COLOR_KILL_CHANCE, UIStateColorArray)
 
 `MCM_API_BasicIndexSaveHandler(STATUS_COLOR_1_HANDLER, STATUS_COLOR_1, UIStateColorArray)
 `MCM_API_BasicIndexSaveHandler(STATUS_COLOR_2_HANDLER, STATUS_COLOR_2, UIStateColorArray)
@@ -569,7 +572,8 @@ simulated function ClientModCallback(MCM_API_Instance ConfigAPI, int GameMode)
 	SHOTHUD_COLOR_BONUS_DAMAGE_MCMUI= Group5.AddDropdown('SHOTHUD_COLOR_BONUS_DAMAGE', sShotHudDamageBonusColor_MCMText, sShotHudDamageBonusColor_MCMText, UIStateColorArray, UIStateColorArray[SHOTHUD_COLOR_BONUS_DAMAGE], SHOTHUD_COLOR_BONUS_DAMAGE_HANDLER, );
 	SHOTHUD_COLOR_GRAZE_MCMUI		= Group5.AddDropdown('SHOTHUD_COLOR_GRAZE', Caps(class'X2TacticalGameRulesetDataStructures'.default.m_aAbilityHitResultStrings[eHit_Graze]), Caps(class'X2TacticalGameRulesetDataStructures'.default.m_aAbilityHitResultStrings[eHit_Graze]), UIStateColorArray, UIStateColorArray[SHOTHUD_COLOR_GRAZE], SHOTHUD_COLOR_GRAZE_HANDLER, );
 	SHOTHUD_COLOR_CRIT_MCMUI		= Group5.AddDropdown('SHOTHUD_COLOR_CRIT', class'ExtendedInformationRedux3_UITacticalHUD_ShotHUD'.default.CRIT_DAMAGE_LABEL, class'ExtendedInformationRedux3_UITacticalHUD_ShotHUD'.default.CRIT_DAMAGE_LABEL, UIStateColorArray, UIStateColorArray[SHOTHUD_COLOR_CRIT], SHOTHUD_COLOR_CRIT_HANDLER, );
-	SHOTHUD_COLOR_DAMAGE_MCMUI		= Group5.AddDropdown('SHOTHUD_COLOR_EXPECTED', class'ExtendedInformationRedux3_UITacticalHUD_ShotHUD'.default.EXPECTED_DAMAGE_LABEL, class'ExtendedInformationRedux3_UITacticalHUD_ShotHUD'.default.EXPECTED_DAMAGE_LABEL, UIStateColorArray, UIStateColorArray[SHOTHUD_COLOR_EXPECTED], SHOTHUD_COLOR_EXPECTED_HANDLER, );
+	SHOTHUD_COLOR_EXPECTED_MCMUI	= Group5.AddDropdown('SHOTHUD_COLOR_EXPECTED', class'ExtendedInformationRedux3_UITacticalHUD_ShotHUD'.default.EXPECTED_DAMAGE_LABEL, class'ExtendedInformationRedux3_UITacticalHUD_ShotHUD'.default.EXPECTED_DAMAGE_LABEL, UIStateColorArray, UIStateColorArray[SHOTHUD_COLOR_EXPECTED], SHOTHUD_COLOR_EXPECTED_HANDLER, );
+	SHOTHUD_COLOR_KILL_CHANCE_MCMUI	= Group5.AddDropdown('SHOTHUD_COLOR_KILL_CHANCE', class'ExtendedInformationRedux3_UITacticalHUD_ShotHUD'.default.KILL_CHANCE_LABEL, class'ExtendedInformationRedux3_UITacticalHUD_ShotHUD'.default.KILL_CHANCE_LABEL, UIStateColorArray, UIStateColorArray[SHOTHUD_COLOR_KILL_CHANCE], SHOTHUD_COLOR_KILL_CHANCE_HANDLER, );
 	Group5.AddLabel('empty_line',"","");
 
 	Group5_1 = Page.AddGroup('Group5_1', sHackPreviewColorSettings_MCMText);
@@ -664,6 +668,7 @@ simulated function LoadSavedSettings()
 	SHOTHUD_COLOR_GRAZE			= `MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_COLOR_GRAZE,SHOTHUD_COLOR_GRAZE);
 	SHOTHUD_COLOR_CRIT			= `MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_COLOR_CRIT,SHOTHUD_COLOR_CRIT);
 	SHOTHUD_COLOR_EXPECTED		= `MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_COLOR_EXPECTED,SHOTHUD_COLOR_EXPECTED);
+	SHOTHUD_COLOR_KILL_CHANCE	= `MCM_CH_GetValue(class'MCM_Defaults'.default.SHOTHUD_COLOR_KILL_CHANCE,SHOTHUD_COLOR_KILL_CHANCE);
 	
 	STATUS_COLOR_1				= `MCM_CH_GetValue(class'MCM_Defaults'.default.STATUS_COLOR_1,STATUS_COLOR_1);
 	STATUS_COLOR_2				= `MCM_CH_GetValue(class'MCM_Defaults'.default.STATUS_COLOR_2,STATUS_COLOR_2);
@@ -746,6 +751,7 @@ simulated function ResetButtonClicked(MCM_API_SettingsPage Page)
 	SHOTHUD_COLOR_GRAZE_MCMUI			.SetValue(UIStateColorArray[class'MCM_Defaults'.default.SHOTHUD_COLOR_GRAZE], false);
 	SHOTHUD_COLOR_CRIT_MCMUI			.SetValue(UIStateColorArray[class'MCM_Defaults'.default.SHOTHUD_COLOR_CRIT], false);
 	SHOTHUD_COLOR_EXPECTED_MCMUI		.SetValue(UIStateColorArray[class'MCM_Defaults'.default.SHOTHUD_COLOR_EXPECTED], false);
+	SHOTHUD_COLOR_KILL_CHANCE_MCMUI		.SetValue(UIStateColorArray[class'MCM_Defaults'.default.SHOTHUD_COLOR_KILL_CHANCE], false);
 
 	STATUS_COLOR_1_MCMUI				.SetValue(UIStateColorArray[class'MCM_Defaults'.default.STATUS_COLOR_1], false);
 	STATUS_COLOR_2_MCMUI				.SetValue(UIStateColorArray[class'MCM_Defaults'.default.STATUS_COLOR_2], false);
@@ -863,12 +869,13 @@ private function InitializeSlotOptions()
 	// Already initialized
 	if (SlotOptions.Length > 0) return;
 
-    SlotOptions.Length = 4;
+    SlotOptions.Length = 5;
 
     SlotOptions[0] = (SlotOptions_0 != "") ? SlotOptions_0 : "None";
     SlotOptions[1] = (SlotOptions_1 != "") ? SlotOptions_1 : "Graze Chance";
     SlotOptions[2] = (SlotOptions_2 != "") ? SlotOptions_2 : "Critical Damage";
     SlotOptions[3] = (SlotOptions_3 != "") ? SlotOptions_3 : "Expected Damage";
+	SlotOptions[4] = (SlotOptions_4 != "") ? SlotOptions_4 : "Kill Chance";
 }
 
 /**

@@ -29,6 +29,7 @@ var UIScrollingText SlotLabels[4];
 var array<int> CritDamageSlotIndices;
 var array<int> GrazeChanceSlotIndices;
 var array<int> ExpectedDamageSlotIndices;
+var array<int> KillChanceSlotIndices;
 
 var int BAR_HEIGHT, BAR_OFFSET_X, BAR_OFFSET_Y, BAR_POSITION_Y, GENERAL_OFFSET_Y;
 var int MAX_ABILITIES_PER_ROW;
@@ -54,7 +55,7 @@ var bool TH_PREVIEW_MINIMUM;
 
 var array<int> SHOTHUD_LAYOUT;
 
-var localized string CRIT_DAMAGE_LABEL, GRAZE_CHANCE_LABEL, MISS_CHANCE_LABEL, EXPECTED_DAMAGE_LABEL;
+var localized string CRIT_DAMAGE_LABEL, GRAZE_CHANCE_LABEL, MISS_CHANCE_LABEL, EXPECTED_DAMAGE_LABEL, KILL_CHANCE_LABEL;
 
 struct ShotHUDSlotOffset
 {
@@ -153,6 +154,7 @@ simulated function InitLayout()
 	GrazeChanceSlotIndices.Length = 0;
 	CritDamageSlotIndices.Length = 0;
 	ExpectedDamageSlotIndices.Length = 0;
+	KillChanceSlotIndices.Length = 0;
 
 	// Determine in which Shot HUD slots to print stats
 	for (i = 0; i < SHOTHUD_LAYOUT.Length; i++)
@@ -241,7 +243,7 @@ simulated function Update()
     //local WeaponDamageValue MinDamageValue, MaxDamageValue;
     local X2TargetingMethod TargetingMethod;
     local bool WillBreakConcealment, WillEndTurn, bHide;
-	local DamageBreakdown NormalDamage, CritDamage;
+	local DamageBreakdown NormalDamage, CritDamage, NormalMitigationDamage, CritMitigationDamage;
 	local XComGameState_Unit UnitState;
 	local XComGameStateHistory History;
 	// New from Grimy Shot Bar
@@ -349,9 +351,9 @@ simulated function Update()
 			&& SelectedAbilityTemplate.AbilityMultiTargetStyle != none
 			&& SelectedAbilityTemplate.AbilityMultiTargetEffects.Length > 0 )
 		{
-			class'DamagePreviewLib'.static.GetDamagePreview(skAbilityState, EmptyRef, NormalDamage, CritDamage);
+			class'DamagePreviewLib'.static.GetDamagePreview(skAbilityState, EmptyRef, NormalDamage, CritDamage, NormalMitigationDamage, CritMitigationDamage);
 		}
-		else class'DamagePreviewLib'.static.GetDamagePreview(skAbilityState, Target, NormalDamage, CritDamage);
+		else class'DamagePreviewLib'.static.GetDamagePreview(skAbilityState, Target, NormalDamage, CritDamage, NormalMitigationDamage, CritMitigationDamage);
 
         //Set up percent to hit / crit values
         //*********************************************************************************
@@ -606,6 +608,34 @@ simulated function Update()
 		} else
 		{
 			foreach ExpectedDamageSlotIndices(j)
+			{
+				SlotValues[j].Hide();
+				SlotLabels[j].Hide();
+			}
+		}
+
+		// Print Kill Chance in any ShotHUD layout slots "Left 1", "Left 2", "Right 1" or "Right 2" selected by MCM options
+		// Check that Min or Max damage is greater than 0 to not show Kill Chance for abilities that do no damage
+		if (!bHide && (NormalDamage.Min > 0.0 || NormalDamage.Max > 0.0))
+		{
+			foreach KillChanceSlotIndices(j)
+			{
+				FontString = string(class'KillChanceLib'.static.GetKillChance(kBreakdown, NormalMitigationDamage, CritMitigationDamage, kTarget)) $ "%";
+				FontString = class'UIUtilities_Text'.static.GetColoredText(FontString, class'ColorLib'.static.IndexToEUIState(get_SHOTHUD_COLOR_KILL_CHANCE()), , SlotOffsets[j].bAlignRight ? "right" : "left");
+				FontString = class'UIUtilities_Text'.static.AddFontInfo(FontString,false,true, , ValueFontSize);
+				SlotValues[j].SetPosition(SlotOffsets[j].OffsetX-(TEXTWIDTH*int(SlotOffsets[j].bAlignRight))+IndexToOffsetX(j),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)));
+				SlotValues[j].SetHTMLText(FontString);
+				SlotValues[j].Show();
+				
+				FontString = KILL_CHANCE_LABEL;
+				FontString = class'UIUtilities_Text'.static.GetColoredText(FontString,eUIState_Header,LabelFontSize ,SlotOffsets[j].bAlignRight ? "right" : "left");
+				SlotLabels[j].SetPosition(SlotOffsets[j].OffsetX-(TEXTWIDTH*int(SlotOffsets[j].bAlignRight))+IndexToOffsetX(j),(AlignOffsetY(TacticalHUD, SlotOffsets[j].OffsetY)) + LabelsOffset);
+				SlotLabels[j].SetHTMLText(FontString);
+				SlotLabels[j].Show();
+			}
+		} else
+		{
+			foreach KillChanceSlotIndices(j)
 			{
 				SlotValues[j].Hide();
 				SlotLabels[j].Hide();
@@ -1101,9 +1131,7 @@ private function int IndexToOffsetX(int i)
 /**
  * Returns true if any of the provided slot index arrays contains SlotIndex.
  */
-private function bool IsSlotUsedAnywhere(int SlotIndex, array<int> A,array<int> B,
-    array<int> C
-)
+private function bool IsSlotUsedAnywhere(int SlotIndex, array<int> A, array<int> B, array<int> C, array<int> D)
 {
     local int k;
 
@@ -1115,6 +1143,9 @@ private function bool IsSlotUsedAnywhere(int SlotIndex, array<int> A,array<int> 
 
     for (k = 0; k < C.Length; ++k)
         if (C[k] == SlotIndex) return true;
+
+    for (k = 0; k < D.Length; ++k)
+        if (D[k] == SlotIndex) return true;
 
     return false;
 }
@@ -1136,10 +1167,10 @@ private function UpdateShotHUDSlotWidths()
     BaseWidth = get_SHOTHUD_SLOT_WIDTH();
 
     // Detect usage across all stats
-    bUses0 = IsSlotUsedAnywhere(0, CritDamageSlotIndices, GrazeChanceSlotIndices, ExpectedDamageSlotIndices);
-    bUses1 = IsSlotUsedAnywhere(1, CritDamageSlotIndices, GrazeChanceSlotIndices, ExpectedDamageSlotIndices);
-    bUses2 = IsSlotUsedAnywhere(2, CritDamageSlotIndices, GrazeChanceSlotIndices, ExpectedDamageSlotIndices);
-    bUses3 = IsSlotUsedAnywhere(3, CritDamageSlotIndices, GrazeChanceSlotIndices, ExpectedDamageSlotIndices);
+    bUses0 = IsSlotUsedAnywhere(0, CritDamageSlotIndices, GrazeChanceSlotIndices, ExpectedDamageSlotIndices, KillChanceSlotIndices);
+    bUses1 = IsSlotUsedAnywhere(1, CritDamageSlotIndices, GrazeChanceSlotIndices, ExpectedDamageSlotIndices, KillChanceSlotIndices);
+    bUses2 = IsSlotUsedAnywhere(2, CritDamageSlotIndices, GrazeChanceSlotIndices, ExpectedDamageSlotIndices, KillChanceSlotIndices);
+    bUses3 = IsSlotUsedAnywhere(3, CritDamageSlotIndices, GrazeChanceSlotIndices, ExpectedDamageSlotIndices, KillChanceSlotIndices);
 
     // --- Left side ---
     if (bUses0 && !bUses1)
@@ -1189,6 +1220,9 @@ private function AddStatToSlotArray(int StatType, int SlotIndex)
         case 3:
             ExpectedDamageSlotIndices.AddItem(SlotIndex);
             break;
+		case 4:
+			KillChanceSlotIndices.AddItem(SlotIndex);
+			break;
     }
 }
 
@@ -1394,6 +1428,11 @@ function int get_HACK_COLOR_FAIL()
 function int get_HACK_COLOR_REWARD()
 {
 	return `MCM_CH_GetValue(class'MCM_Defaults'.default.HACK_COLOR_REWARD, class'ExtendedInformationRedux3_MCMScreen'.default.HACK_COLOR_REWARD);
+}
+
+function int get_SHOTHUD_COLOR_KILL_CHANCE()
+{
+	return `GET_MCM_VAR(SHOTHUD_COLOR_KILL_CHANCE);
 }
 
 

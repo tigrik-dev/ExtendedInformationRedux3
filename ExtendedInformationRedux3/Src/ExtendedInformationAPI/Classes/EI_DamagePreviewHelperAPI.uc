@@ -21,4 +21,4 @@ struct DamageBreakdown
 	var int Bonus;
 };
 
-function NormalAbilityDamagePreview(XComGameState_Ability AbilityState, StateObjectReference TargetRef, out DamageBreakdown NormalDamage, out DamageBreakdown CritDamage, out int AllowsShield);
+function NormalAbilityDamagePreview(XComGameState_Ability AbilityState, StateObjectReference TargetRef, out DamageBreakdown NormalDamage, out DamageBreakdown CritDamage, out int AllowsShield, out DamageBreakdown NormalMitigationDamage, out DamageBreakdown CritMitigationDamage);

@@ -75,6 +75,7 @@ var config int		SHOTHUD_COLOR_BONUS_DAMAGE;
 var config int		SHOTHUD_COLOR_GRAZE;
 var config int		SHOTHUD_COLOR_CRIT;
 var config int		SHOTHUD_COLOR_EXPECTED;
+var config int		SHOTHUD_COLOR_KILL_CHANCE;
 
 var config int		STATUS_COLOR_1;
 var config int		STATUS_COLOR_2;

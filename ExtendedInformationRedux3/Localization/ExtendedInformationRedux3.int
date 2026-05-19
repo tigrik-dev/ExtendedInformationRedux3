@@ -101,6 +101,7 @@ SlotOptions_0 = "None"
 SlotOptions_1 = "Graze Chance"
 SlotOptions_2 = "Critical Damage"
 SlotOptions_3 = "Expected Damage"
+SlotOptions_4 = "Kill Chance"
 sLeftSide1Offset_MCMText = "Left Side 1 Offset X"
 sLeftSide2Offset_MCMText = "Left Side 2 Offset X"
 sRightSide1Offset_MCMText = "Right Side 1 Offset X"
@@ -157,8 +158,8 @@ MULTIPLIER="Multiplier"
 [ExtendedInformationRedux3_UITacticalHUD_ShotHUD]
 CRIT_DAMAGE_LABEL="C-DMG";
 EXPECTED_DAMAGE_LABEL="E-DMG";
+KILL_CHANCE_LABEL="KILL";
 ;GRAZE_CHANCE_LABEL="GRAZED";
-
 
 [StatListLib]
 AssistsLabel = "ASSISTS";

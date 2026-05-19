@@ -100,7 +100,7 @@ class DamagePreviewLib extends Object implements(EI_DamagePreviewHelperAPI);
  * @param NormalDamage   Output normal damage breakdown
  * @param CritDamage     Output crit damage breakdown
  */
-static function GetDamagePreview(XComGameState_Ability AbilityState, StateObjectReference TargetRef, optional out DamageBreakdown NormalDamage, optional out DamageBreakdown CritDamage)
+static function GetDamagePreview(XComGameState_Ability AbilityState, StateObjectReference TargetRef, optional out DamageBreakdown NormalDamage, optional out DamageBreakdown CritDamage, optional out DamageBreakdown NormalMitigationDamage, optional out DamageBreakdown CritMitigationDamage)
 {
 	local X2AbilityTemplate AbilityTemplate;
 	local EI_DamagePreviewTemplateAPI EIPreview;
@@ -139,7 +139,7 @@ static function GetDamagePreview(XComGameState_Ability AbilityState, StateObject
 			return;
 		}
 	}
-	NormalAbilityDamagePreview(AbilityState, TargetRef, NormalDamage, CritDamage, AllowsShield);
+	NormalAbilityDamagePreview(AbilityState, TargetRef, NormalDamage, CritDamage, AllowsShield, NormalMitigationDamage, CritMitigationDamage);
 	`DEBUG("AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
 	`TRACE_EXIT("AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
 }
@@ -203,7 +203,7 @@ static function bool DamagePreviewFnHandler(XComGameState_Ability AbilityState, 
 /**
  * Default fallback damage preview logic.
  */
-static function NormalAbilityDamagePreview(XComGameState_Ability AbilityState, StateObjectReference TargetRef, out DamageBreakdown NormalDamage, out DamageBreakdown CritDamage, out int AllowsShield)
+static function NormalAbilityDamagePreview(XComGameState_Ability AbilityState, StateObjectReference TargetRef, out DamageBreakdown NormalDamage, out DamageBreakdown CritDamage, out int AllowsShield, out DamageBreakdown NormalMitigationDamage, out DamageBreakdown CritMitigationDamage)
 {
 	local X2AbilityTemplate AbilityTemplate;
 	local X2AbilityMultiTarget_BurstFire BurstFire;
@@ -306,7 +306,7 @@ static function NormalAbilityDamagePreview(XComGameState_Ability AbilityState, S
 			`ADDDAMITEM(Crit, true);
 		}
 		else
-			GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage(Effect), TargetRef, AbilityState, bAsPrimaryTarget, NormalDamage, CritDamage, AllowsShield);
+			GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage(Effect), TargetRef, AbilityState, bAsPrimaryTarget, NormalDamage, CritDamage, AllowsShield, NormalMitigationDamage, CritMitigationDamage);
 	}
 
 	`TRACE("After foreach TargetEffects(Effect). AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
@@ -340,7 +340,7 @@ static function NormalAbilityDamagePreview(XComGameState_Ability AbilityState, S
 /**
  * Core weapon damage calculation logic.
  */
-static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, StateObjectReference TargetRef, XComGameState_Ability AbilityState, bool bAsPrimaryTarget, out DamageBreakdown NormalDamage, out DamageBreakdown CritDamage, out int AllowsShield)
+static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, StateObjectReference TargetRef, XComGameState_Ability AbilityState, bool bAsPrimaryTarget, out DamageBreakdown NormalDamage, out DamageBreakdown CritDamage, out int AllowsShield, out DamageBreakdown NormalMitigationDamage, out DamageBreakdown CritMitigationDamage)
 {
 	local XComGameStateHistory History;
 	local XComGameState_Unit TargetUnit, SourceUnit;
@@ -642,8 +642,11 @@ static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, 
 		AllowsShield += NormalDamage.Max;
 	}
 
+	NormalMitigationDamage = NormalDamage;
+	CritMitigationDamage = CritDamage;
+
 	// Dalo: Begin CHL Issue #1540 - preview armor DR
-	if (Get_SHOW_MITIGATION() && TargetUnit != none && IgnoreArmor == 0 && NormalDamage.Min > 0)
+	if (TargetUnit != none && IgnoreArmor == 0 && NormalDamage.Min > 0)
 	{
 		`TRACE_IF("Get_SHOW_MITIGATION() && TargetUnit != none && !bIgnoreArmor && NormalDamage.Min > 0");
 		// Dalo: The original mitigation (and original minimum mitigation, i.e. 0)
@@ -675,7 +678,8 @@ static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, 
 		DamageItem.Min = MinDamage;
 		DamageItem.Max = MaxDamage;
 		`TRACE("Completed first call to CalculateArmorMitigation. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", MinDamage:" @ MinDamage $ ", MaxDamage:" @ MaxDamage);
-		`INSERTDAMITEM_TOINDEX(Normal, 1);
+		if(Get_SHOW_MITIGATION()) `INSERTDAMITEM_TOINDEX(Normal, 1);
+		`INSERTDAMITEM_TOINDEX(NormalMitigation, 1);
 
 		MinDamage = DamageItemCrit.Min;
 		MaxDamage = DamageItemCrit.Max;
@@ -698,7 +702,8 @@ static function GetWeaponDamagePreview(X2Effect_ApplyWeaponDamage WepDamEffect, 
 		DamageItemCrit.Min = MinDamage - DamageItem.Min;
 		DamageItemCrit.Max = MaxDamage - DamageItem.Max;
 		DamageItem = DamageItemCrit;
-		`INSERTDAMITEM_TOINDEX(Crit, 1);	
+		if(Get_SHOW_MITIGATION()) `INSERTDAMITEM_TOINDEX(Crit, 1);
+		`INSERTDAMITEM_TOINDEX(CritMitigation, 1);
 		`TRACE("Invoked AdjustArmorMitigation. AbilityState.GetMyFriendlyName():" @ AbilityName $ ", NormalDamage:" @ DamageBreakdownToString(NormalDamage) $ ", CritDamage:" @ DamageBreakdownToString(CritDamage));
 	}
 	// End CHL Issue #1540

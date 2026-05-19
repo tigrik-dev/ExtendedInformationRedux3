@@ -114,11 +114,17 @@
     <Content Include="Src\ExtendedInformationRedux3\Classes\HitChance_Localization.uc">
       <SubType>Content</SubType>
     </Content>
+    <Content Include="Src\ExtendedInformationRedux3\Classes\KillChanceLib.uc">
+      <SubType>Content</SubType>
+    </Content>
     <Content Include="Src\ExtendedInformationRedux3\Classes\MCM_Defaults.uc" />
     <Content Include="Src\ExtendedInformationRedux3\Classes\ModClassOverrideLib.uc">
       <SubType>Content</SubType>
     </Content>
     <Content Include="Src\ExtendedInformationRedux3\Classes\ModSupportLib.uc">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Src\ExtendedInformationRedux3\Classes\PercentageLib.uc">
       <SubType>Content</SubType>
     </Content>
     <Content Include="Src\ExtendedInformationRedux3\Classes\StatContestLib.uc">
